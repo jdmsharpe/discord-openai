@@ -1,7 +1,7 @@
 import logging
 import openai
 from discord.ext import commands
-from discord.commands import slash_command, option, OptionChoice
+from discord.commands import slash_command, option, CommandNotFound, OptionChoice
 from discord import ApplicationContext, Embed, Colour
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
@@ -9,6 +9,7 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 class ChatGPT(commands.Cog):
     def __init__(self, bot):
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         self.bot = bot
         openai.api_key = OPENAI_API_KEY
 
@@ -21,6 +22,12 @@ class ChatGPT(commands.Cog):
             logging.info('Commands synchronized successfully.')
         except Exception as e:
             logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
+
+    async def on_command_error(self, ctx, e):
+        if isinstance(e, CommandNotFound):
+            logging.warning(f'Command not found: {ctx.message.content}')
+        else:
+            logging.error(f'Unexpected error: {e}', exc_info=True)
 
     @slash_command(
         name="chat", description="Post query to ChatGPT", guild_ids=GUILD_IDS
