@@ -152,6 +152,7 @@ class ChatGPT(commands.Cog):
                 color=Colour.blue(),
             )
             embed.set_image(url=image_url)  # Setting the image URL in the embed
+            embed.image.url
             await ctx.followup.send(embed=embed)
         except Exception as e:
             await ctx.followup.send(

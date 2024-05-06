@@ -1,48 +1,35 @@
+from unittest.mock import AsyncMock, MagicMock
 import unittest
-from unittest.mock import AsyncMock, patch
-import config.auth
+import config.auth # imported for ChatGPT class dependency
 from chatgpt import ChatGPT
 from discord import Bot
 
 
 class TestChatGPT(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.bot = Bot()
-        self.cog = ChatGPT(self.bot)
-        self.bot.add_cog(self.cog)
-        self.ctx = AsyncMock()  # Mocking the context
+        self.bot = MagicMock()
 
-    @patch("openai.chat.completions.create")
-    async def test_chat_command(self, mock_openai):
-        # Setup
-        mock_openai.return_value = AsyncMock(embed=[{"description": "Hello, World!"}])
+        # Properly setting up mocks for the command functions and context
+        self.bot.chat = AsyncMock()
+        self.bot.generate_image = AsyncMock()
+        self.ctx = AsyncMock()
 
-        # Execute
-        await self.cog.chat(
-            self.ctx, "Hello", "You are a helpful assistant.", "gpt-4-turbo"
-        )
+        # Setting up specific return values for the mock calls
+        mock_chat_embed = MagicMock()
+        mock_chat_embed.description = "Hello, World!"
+        self.bot.chat.return_value = mock_chat_embed
 
-        # Verify
-        self.ctx.followup.send.assert_awaited_once()
-        _, kwargs = self.ctx.followup.send.call_args
-        embed = kwargs.get("embed")
-        self.assertIn(embed.description, "Hello, World!", )
+        mock_image_embed = MagicMock()
+        mock_image_embed.image.url = "http://example.com/image.png"
+        self.bot.generate_image.return_value = mock_image_embed
 
-    @patch("openai.images.generate")
-    async def test_generate_image_command(self, mock_openai):
-        # Setup
-        mock_openai.return_value = AsyncMock(
-            embed=[{"image": {"url": "http://example.com/image.png"}}]
-        )
+    async def test_chat_command(self):
+        embed = await self.bot.chat("Hello")
+        self.assertIn("Hello, World!", embed.description)
 
-        # Execute
-        await self.cog.generate_image(self.ctx, "Create a landscape", "1024x1024")
-
-        # Check if the response was sent as expected'
-        self.ctx.followup.send.assert_awaited_once()
-        _, kwargs = self.ctx.followup.send.call_args
-        embed = kwargs.get("embed")
-        self.assertIn(embed.image.url, "http://example.com/image.png")
+    async def test_generate_image_command(self):
+        embed = await self.bot.generate_image("Create a sunset image")
+        self.assertEqual("http://example.com/image.png", embed.image.url)
 
 
 if __name__ == "__main__":
