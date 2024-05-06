@@ -1,12 +1,6 @@
 services:
   python-bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        BOT_TOKEN: ${BOT_TOKEN}
-        GUILD_IDS: ${GUILD_IDS}
-        OPENAI_API_KEY: ${OPENAI_API_KEY}
+    build: .
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - GUILD_IDS=${GUILD_IDS}

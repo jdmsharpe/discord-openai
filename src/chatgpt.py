@@ -1,3 +1,4 @@
+import logging
 import openai
 from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
@@ -50,3 +51,23 @@ class ChatGPT(commands.Cog):
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
             )
+
+    async def on_ready(self):
+        logging.info(f'Logged in as {self.user} (ID: {self.user.id})')
+        logging.info('Synchronizing commands...')
+        try:
+            await self.sync_commands()
+            logging.info('Commands synchronized successfully.')
+        except Exception as e:
+            logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
+
+    async def on_command_error(self, context, exception):
+        if isinstance(exception, commands.CommandNotFound):
+            logging.warning(f'Command not found: {context.message.content}')
+        else:
+            logging.error(f'Unexpected error: {exception}', exc_info=True)
+
+    async def on_application_command_error(self, interaction, exception):
+        logging.error(f'Error in application command: {exception}', exc_info=True)
+        # Respond to the interaction with the error message
+        await interaction.response.send_message(f'An error occurred: {exception}', ephemeral=True)
