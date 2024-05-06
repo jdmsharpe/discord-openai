@@ -1,24 +1,29 @@
 # Discord ChatGPT Bot
 
 <div align="center">
-
+[![HitCount](https://hits.dwyl.com/jdmsharpe/discord-chatgpt.svg?style=flat-square)](http://hits.dwyl.com/jdmsharpe/discord-chatgpt)
 <a href="https://hub.docker.com/r/jsgreen152/discord-chatgpt" target="_blank" rel="noopener noreferrer">![Workflow](https://github.com/jdmsharpe/discord-chatgpt/actions/workflows/main.yml/badge.svg)</a>
   
 </div>
 
 ## What is it?
-This is a Discord bot built on <a href="https://github.com/Pycord-Development/pycord">Pycord 2.0</a>. It draws heavily from <a href="https://github.com/Nick-McGee/discord-bot">Nick McGee's awesome discord-bot</a>. The bot allows users in the server to interact with ChatGPT. It is controlled with slash commands and the message-based user interface.
+This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Development/pycord). It draws heavily from [Nick McGee's awesome discord-bot](https://github.com/Nick-McGee/discord-bot)Nick McGee's awesome discord-bot. The bot allows users in the server to interact with ChatGPT. It is controlled with slash commands and the message-based user interface.
+
+Please also check out the official OpenAI Discord bot [here](https://github.com/openai/gpt-discord-bot/tree/main).
 
 ### Commands
 + **chat** - Query ChatGPT to generate text based on input
 + **More to come**
 
 ### UI
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/20d6af48-699c-40e7-be62-d62f1256744e)
 
 ### Demo
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/563968fe-caeb-4a0f-bd27-625839c251c7)
 
 ## How to use it?
 + <a href="https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D.">**Create a Discord Bot** and invite it to your Discord server</a>
++ Note that this bot needs the following Discord bot permissions to function correctly: ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/92645355-827e-46a1-9140-cd56898e09c2)
 
 ### Build and Run with Docker (Recommended)
 #### Build and run the image locally
