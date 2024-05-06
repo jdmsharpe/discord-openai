@@ -14,7 +14,7 @@ This is a Discord bot built on <a href="https://github.com/Pycord-Development/py
 + **More to come**
 
 ### UI
-![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/4ce2f2e1-70d8-4295-ae8f-059617a97fd9)
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/20d6af48-699c-40e7-be62-d62f1256744e)
 
 ### Demo
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/563968fe-caeb-4a0f-bd27-625839c251c7)
