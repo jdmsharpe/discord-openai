@@ -107,7 +107,10 @@ class ChatGPT(commands.Cog):
         ],
     )
     @option(
-        "n", description="Number of images to generate (default: 1)", required=False, type=int
+        "n",
+        description="Number of images to generate (default: 1)",
+        required=False,
+        type=int,
     )
     @option(
         "model",
