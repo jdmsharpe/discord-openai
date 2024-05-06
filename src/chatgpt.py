@@ -27,12 +27,17 @@ class ChatGPT(commands.Cog):
             logging.error(f"Error during command synchronization: {e}", exc_info=True)
 
     @slash_command(
-        name="chat", description="Post query to ChatGPT", guild_ids=GUILD_IDS
+        name="chat", description="Send prompt to ChatGPT", guild_ids=GUILD_IDS
     )
-    @option("query", description="Prompt", required=True)
+    @option("prompt", description="Prompt", required=True)
+    @option(
+        "personality",
+        description="A description of what role you want the model to emulate",
+        required=False,
+    )
     @option(
         "model",
-        description="Choose a GPT model",
+        description="Choose from the following GPT models (default: GPT-4 Turbo for cheaper cost)",
         required=False,
         choices=[
             OptionChoice(name="GPT-3.5 Turbo", value="gpt-3.5-turbo-0125"),
@@ -42,15 +47,19 @@ class ChatGPT(commands.Cog):
         ],
     )
     async def chat(
-        self, ctx: ApplicationContext, query: str, model: str = "gpt-4-turbo"
+        self,
+        ctx: ApplicationContext,
+        prompt: str,
+        personality: str = "You are a helpful assistant.",
+        model: str = "gpt-4-turbo",
     ):
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
             response = openai.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": query},
+                    {"role": "system", "content": personality},
+                    {"role": "user", "content": prompt},
                 ],
             )
             response_text = (
@@ -61,7 +70,7 @@ class ChatGPT(commands.Cog):
             await ctx.followup.send(
                 embed=Embed(
                     title="ChatGPT Text Generation",
-                    description=f"**Prompt:**\n{query}\n\n**Response:**\n{response_text}",
+                    description=f"**Prompt:**\n{prompt}\n\n**Response:**\n{response_text}",
                     color=Colour.blue(),
                 )
             )
