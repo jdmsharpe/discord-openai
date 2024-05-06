@@ -139,11 +139,11 @@ class ChatGPT(commands.Cog):
             return
         try:
             response = openai.images.generate(
-                model=model,
                 prompt=prompt,
                 size=size,
                 quality=quality,
                 n=n,
+                model=model,
             )
             image_url = response.data[0].url if response.data else "No image."
             embed = Embed(
