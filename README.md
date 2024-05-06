@@ -7,7 +7,7 @@
 </div>
 
 ## What is it?
-This is a Discord bot built on <a href="https://github.com/Pycord-Development/pycord">Pycord 2.0</a>. It draws heavily <a href="https://github.com/Nick-McGee/discord-bot">Nick McGee's discord-bot</a>. The bot allows users in the server to interact with ChatGPT. It is controlled with slash commands and the message-based user interface.
+This is a Discord bot built on <a href="https://github.com/Pycord-Development/pycord">Pycord 2.0</a>. It draws heavily from <a href="https://github.com/Nick-McGee/discord-bot">Nick McGee's awesome discord-bot</a>. The bot allows users in the server to interact with ChatGPT. It is controlled with slash commands and the message-based user interface.
 
 ### Commands
 + **chat** - Query ChatGPT to generate text based on input
