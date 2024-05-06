@@ -27,7 +27,9 @@ class ChatGPT(commands.Cog):
             logging.error(f"Error during command synchronization: {e}", exc_info=True)
 
     @slash_command(
-        name="chat", description="Send prompt to ChatGPT", guild_ids=GUILD_IDS
+        name="chat",
+        description="Generate text in response to prompt.",
+        guild_ids=GUILD_IDS,
     )
     @option("prompt", description="Prompt", required=True)
     @option(
@@ -74,6 +76,83 @@ class ChatGPT(commands.Cog):
                     color=Colour.blue(),
                 )
             )
+        except Exception as e:
+            await ctx.followup.send(
+                embed=Embed(title="Error", description=str(e), color=Colour.red())
+            )
+
+    @slash_command(
+        name="generate_image",
+        description="Generate image from prompt. Image URLs expire after 1 hour.",
+        guild_ids=GUILD_IDS,
+    )
+    @option("prompt", description="Prompt", required=True)
+    @option(
+        "size",
+        description="Size of the image in pixels (default: 1024x1024)",
+        required=False,
+        choices=[
+            OptionChoice(name="1024x1024", value="1024x1024"),
+            OptionChoice(name="1024x1792 (landscape)", value="1024x1792"),
+            OptionChoice(name="1792x1024 (portrait)", value="1792x1024"),
+        ],
+    )
+    @option(
+        "quality",
+        description="Quality of the image (default: standard)",
+        required=False,
+        choices=[
+            OptionChoice(name="Standard", value="standard"),
+            OptionChoice(name="HD", value="hd"),
+        ],
+    )
+    @option(
+        "n", description="Number of images to generate (default: 1)", required=False
+    )
+    @option(
+        "model",
+        description="Choose from the following DALL-E models (default: dall-e-3)",
+        required=False,
+        choices=[
+            OptionChoice(name="DALL-E 3", value="dall-e-3"),
+            OptionChoice(name="DALL-E 2", value="dall-e-2"),
+        ],
+    )
+    async def generate_image(
+        self,
+        ctx: ApplicationContext,
+        prompt: str,
+        size: str = "1024x1024",
+        quality: str = "standard",
+        n: int = 1,
+        model: str = "dall-e-3",
+    ):
+        await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
+        if model == "dall-e-2" and n > 10 or model == "dall-e-3" and n > 1:
+            await ctx.followup.send(
+                embed=Embed(
+                    title="Error",
+                    description="The maximum number of images for DALL-E 2 is 10 and for DALL-E 3 is 1.",
+                    color=Colour.red(),
+                )
+            )
+            return
+        try:
+            response = openai.images.generate(
+                model=model,
+                prompt=prompt,
+                size=size,
+                quality=quality,
+                n=n,
+            )
+            image_url = response.data[0].url if response.data else "No image."
+            embed = Embed(
+                title="ChatGPT Response",
+                description=f"**Your Prompt:**\n{prompt}",
+                color=Colour.blue(),
+            )
+            embed.set_image(url=image_url)  # Setting the image URL in the embed
+            await ctx.followup.send(embed=embed)
         except Exception as e:
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
