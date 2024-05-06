@@ -20,15 +20,19 @@ Please also check out the official OpenAI Discord bot [here](https://github.com/
 ### UI
 
 <div align="center">
+
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/20d6af48-699c-40e7-be62-d62f1256744e)
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/96baf673-5a58-4197-b413-bd6ebf9f1394)
+
 </div>
 
 ### Demo
 
 <div align="center">
+
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/563968fe-caeb-4a0f-bd27-625839c251c7)
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/d5e0758e-f9d5-4ca6-bdb4-bea33c5065a3)
+
 </div>
 
 ## How to use it?
