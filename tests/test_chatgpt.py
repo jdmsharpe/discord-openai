@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import AsyncMock, patch
-from src.chatgpt import ChatGPT
+import config.auth
+from chatgpt import ChatGPT
 from discord import Bot
 
 
