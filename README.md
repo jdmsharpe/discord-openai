@@ -1,6 +1,7 @@
 # Discord ChatGPT Bot
 
 <div align="center">
+
 [![HitCount](https://hits.dwyl.com/jdmsharpe/discord-chatgpt.svg?style=flat-square)](http://hits.dwyl.com/jdmsharpe/discord-chatgpt)
 <a href="https://hub.docker.com/r/jsgreen152/discord-chatgpt" target="_blank" rel="noopener noreferrer">![Workflow](https://github.com/jdmsharpe/discord-chatgpt/actions/workflows/main.yml/badge.svg)</a>
   
