@@ -12,4 +12,6 @@ RUN apt-get -y upgrade
 COPY ./src /bot/src/
 COPY ./tests /bot/tests/
 
+ENV PYTHONPATH=/bot
+
 CMD ["python", "-m", "unittest", "tests/test_chatgpt.py"]
