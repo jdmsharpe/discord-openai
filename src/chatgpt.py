@@ -12,6 +12,16 @@ class ChatGPT(commands.Cog):
         self.bot = bot
         openai.api_key = OPENAI_API_KEY
 
+    async def on_ready(self):
+        logging.info(f'Logged in as {self.bot.user} (ID: {self.bot.user.id})')
+        logging.info(f'GUILD_IDS: {GUILD_IDS}')
+        logging.info('Synchronizing commands...')
+        try:
+            await self.sync_commands()
+            logging.info('Commands synchronized successfully.')
+        except Exception as e:
+            logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
+
     @slash_command(
         name="chat", description="Post query to ChatGPT", guild_ids=GUILD_IDS
     )
@@ -52,22 +62,13 @@ class ChatGPT(commands.Cog):
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
             )
 
-    async def on_ready(self):
-        logging.info(f'Logged in as {self.user} (ID: {self.user.id})')
-        logging.info('Synchronizing commands...')
+    @slash_command(
+        name="sync_commands", description="Force Discord command update?", guild_ids=GUILD_IDS
+    )
+    async def sync_commands(self, ctx):
         try:
-            await self.sync_commands()
-            logging.info('Commands synchronized successfully.')
+            await self.bot.sync_commands()
+            await ctx.send("Commands synchronized successfully.")
         except Exception as e:
+            await ctx.send(f"Failed to synchronize commands: {e}")
             logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
-
-    async def on_command_error(self, context, exception):
-        if isinstance(exception, commands.CommandNotFound):
-            logging.warning(f'Command not found: {context.message.content}')
-        else:
-            logging.error(f'Unexpected error: {exception}', exc_info=True)
-
-    async def on_application_command_error(self, interaction, exception):
-        logging.error(f'Error in application command: {exception}', exc_info=True)
-        # Respond to the interaction with the error message
-        await interaction.response.send_message(f'An error occurred: {exception}', ephemeral=True)
