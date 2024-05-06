@@ -22,7 +22,7 @@ Please also check out the official OpenAI Discord bot [here](https://github.com/
 <div align="center">
 
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/20d6af48-699c-40e7-be62-d62f1256744e)
-![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/96baf673-5a58-4197-b413-bd6ebf9f1394)
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/99e81595-b30f-40b5-b8ac-2a9c8cc49948)
 
 </div>
 
