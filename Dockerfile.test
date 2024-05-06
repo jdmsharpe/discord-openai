@@ -8,7 +8,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 RUN apt-get -y update
 RUN apt-get -y upgrade
 
-COPY ./src/test_chatgpt.py /bot/tests
+COPY ./src/chatgpt.py /bot/tests
 COPY ./tests /bot/tests
 
 CMD ["python", "-m", "unittest", "tests/test_chatgpt.py"]
