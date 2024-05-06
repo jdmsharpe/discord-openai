@@ -1,7 +1,7 @@
 import logging
 import openai
 from discord.ext import commands
-from discord.commands import slash_command, option, CommandNotFound, OptionChoice
+from discord.commands import slash_command, option, OptionChoice
 from discord import ApplicationContext, Embed, Colour
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
@@ -24,7 +24,7 @@ class ChatGPT(commands.Cog):
             logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
 
     async def on_command_error(self, ctx, e):
-        if isinstance(e, CommandNotFound):
+        if isinstance(e, commands.CommandNotFound):
             logging.warning(f'Command not found: {ctx.message.content}')
         else:
             logging.error(f'Unexpected error: {e}', exc_info=True)
