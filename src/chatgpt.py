@@ -13,6 +13,7 @@ class ChatGPT(commands.Cog):
         self.bot = bot
         openai.api_key = OPENAI_API_KEY
 
+    # Added for debugging purposes
     @commands.Cog.listener()
     async def on_ready(self):
         logging.info(f'Logged in as {self.bot.user} (ID: {self.bot.user.id})')
@@ -22,13 +23,6 @@ class ChatGPT(commands.Cog):
             logging.info('Commands synchronized successfully.')
         except Exception as e:
             logging.error(f'Error during command synchronization: {e}', exc_info=True)
-
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, e):
-        if isinstance(e, commands.CommandNotFound):
-            logging.warning(f'Command not found: {ctx.message.content}')
-        else:
-            logging.error(f'Unexpected error: {e}', exc_info=True)
 
     @slash_command(
         name="chat", description="Post query to ChatGPT", guild_ids=GUILD_IDS
@@ -59,9 +53,9 @@ class ChatGPT(commands.Cog):
                 else "No response."
             )
             await ctx.followup.send(
-                embed=Embed(
+                embed = Embed(
                     title="ChatGPT Response",
-                    description=response_text,
+                    description=f"**Prompt:**\n{query}\n\n**Response:**\n{response_text}",
                     color=Colour.blue(),
                 )
             )
