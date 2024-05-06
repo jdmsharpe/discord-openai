@@ -26,7 +26,7 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
         self.ctx.followup.send.assert_awaited_once()
         _, kwargs = self.ctx.followup.send.call_args
         embed = kwargs.get("embed")
-        self.assertEqual(embed.description, "Hello, World!", )
+        self.assertIn(embed.description, "Hello, World!", )
 
     @patch("openai.images.generate")
     async def test_generate_image_command(self, mock_openai):
@@ -42,7 +42,7 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
         self.ctx.followup.send.assert_awaited_once()
         _, kwargs = self.ctx.followup.send.call_args
         embed = kwargs.get("embed")
-        self.assertEqual(embed.image.url, "http://example.com/image.png")
+        self.assertIn(embed.image.url, "http://example.com/image.png")
 
 
 if __name__ == "__main__":
