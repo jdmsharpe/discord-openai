@@ -23,6 +23,7 @@ class ChatGPT(commands.Cog):
         except Exception as e:
             logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
 
+    @commands.Cog.listener()
     async def on_command_error(self, ctx, e):
         if isinstance(e, commands.CommandNotFound):
             logging.warning(f'Command not found: {ctx.message.content}')
