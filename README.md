@@ -14,8 +14,10 @@ This is a Discord bot built on <a href="https://github.com/Pycord-Development/py
 + **More to come**
 
 ### UI
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/4ce2f2e1-70d8-4295-ae8f-059617a97fd9)
 
 ### Demo
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/563968fe-caeb-4a0f-bd27-625839c251c7)
 
 ## How to use it?
 + <a href="https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D.">**Create a Discord Bot** and invite it to your Discord server</a>
