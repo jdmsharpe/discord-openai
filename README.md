@@ -13,14 +13,23 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 Please also check out the official OpenAI Discord bot [here](https://github.com/openai/gpt-discord-bot/tree/main).
 
 ### Commands
-+ **chat** - Query ChatGPT to generate text based on input
++ **chat** - Generate text in response to prompt.
++ **generate_image** - Generate image from prompt. Image URLs expire after 1 hour.
 + **More to come**
 
 ### UI
+
+<div align="center">
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/20d6af48-699c-40e7-be62-d62f1256744e)
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/96baf673-5a58-4197-b413-bd6ebf9f1394)
+</div>
 
 ### Demo
+
+<div align="center">
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/563968fe-caeb-4a0f-bd27-625839c251c7)
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/d5e0758e-f9d5-4ca6-bdb4-bea33c5065a3)
+</div>
 
 ## How to use it?
 + <a href="https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D.">**Create a Discord Bot** and invite it to your Discord server</a>
