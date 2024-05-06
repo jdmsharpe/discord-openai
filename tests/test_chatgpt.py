@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import AsyncMock, patch
-from chatgpt import ChatGPT
+from src.chatgpt import ChatGPT
 from discord import Bot
 
 
