@@ -9,20 +9,22 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 class ChatGPT(commands.Cog):
     def __init__(self, bot):
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.basicConfig(
+            level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+        )
         self.bot = bot
         openai.api_key = OPENAI_API_KEY
 
     # Added for debugging purposes
     @commands.Cog.listener()
     async def on_ready(self):
-        logging.info(f'Logged in as {self.bot.user} (ID: {self.bot.user.id})')
-        logging.info(f'Attempting to sync commands for guilds: {GUILD_IDS}')
+        logging.info(f"Logged in as {self.bot.user} (ID: {self.bot.user.id})")
+        logging.info(f"Attempting to sync commands for guilds: {GUILD_IDS}")
         try:
             await self.bot.sync_commands()
-            logging.info('Commands synchronized successfully.')
+            logging.info("Commands synchronized successfully.")
         except Exception as e:
-            logging.error(f'Error during command synchronization: {e}', exc_info=True)
+            logging.error(f"Error during command synchronization: {e}", exc_info=True)
 
     @slash_command(
         name="chat", description="Post query to ChatGPT", guild_ids=GUILD_IDS
@@ -45,7 +47,11 @@ class ChatGPT(commands.Cog):
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
             response = openai.chat.completions.create(
-                model=model, messages=[{"role": "user", "content": query}]
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": query},
+                ],
             )
             response_text = (
                 response.choices[0].message.content
@@ -53,8 +59,8 @@ class ChatGPT(commands.Cog):
                 else "No response."
             )
             await ctx.followup.send(
-                embed = Embed(
-                    title="ChatGPT Response",
+                embed=Embed(
+                    title="ChatGPT Text Generation",
                     description=f"**Prompt:**\n{query}\n\n**Response:**\n{response_text}",
                     color=Colour.blue(),
                 )
@@ -63,14 +69,3 @@ class ChatGPT(commands.Cog):
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
             )
-
-    @slash_command(
-        name="sync_commands", description="Force Discord command update?", guild_ids=GUILD_IDS
-    )
-    async def sync_commands(self, ctx):
-        try:
-            await self.bot.sync_commands()
-            await ctx.send("Commands synchronized successfully.")
-        except Exception as e:
-            await ctx.send(f"Failed to synchronize commands: {e}")
-            logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
