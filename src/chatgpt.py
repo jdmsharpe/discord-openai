@@ -16,12 +16,12 @@ class ChatGPT(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         logging.info(f'Logged in as {self.bot.user} (ID: {self.bot.user.id})')
-        logging.info('Bot is ready and commands are being synchronized...')
+        logging.info(f'Attempting to sync commands for guilds: {GUILD_IDS}')
         try:
             await self.bot.sync_commands()
             logging.info('Commands synchronized successfully.')
         except Exception as e:
-            logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
+            logging.error(f'Error during command synchronization: {e}', exc_info=True)
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, e):
