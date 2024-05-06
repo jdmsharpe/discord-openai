@@ -13,15 +13,10 @@ class ChatGPT(commands.Cog):
         self.bot = bot
         openai.api_key = OPENAI_API_KEY
 
-    async def on_ready(self):
         logging.info(f'Logged in as {self.bot.user} (ID: {self.bot.user.id})')
         logging.info(f'GUILD_IDS: {GUILD_IDS}')
         logging.info('Synchronizing commands...')
-        try:
-            await self.sync_commands()
-            logging.info('Commands synchronized successfully.')
-        except Exception as e:
-            logging.error(f'Failed to synchronize commands: {e}', exc_info=True)
+        self.bot.sync_commands()
 
     async def on_command_error(self, ctx, e):
         if isinstance(e, commands.CommandNotFound):
