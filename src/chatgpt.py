@@ -59,11 +59,11 @@ class ChatGPT(commands.Cog):
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
             response = openai.chat.completions.create(
-                model=model,
                 messages=[
                     {"role": "system", "content": personality},
                     {"role": "user", "content": prompt},
                 ],
+                model=model,
             )
             response_text = (
                 response.choices[0].message.content
@@ -126,10 +126,11 @@ class ChatGPT(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        size: str = "1024x1024",
-        quality: str = "standard",
         n: int = 1,
+        quality: str = "standard",
         model: str = "dall-e-3",
+        size: str = "1024x1024",
+        style: str = "",
     ):
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         if model == "dall-e-2" and n > 10 or model == "dall-e-3" and n > 1:
@@ -143,11 +144,7 @@ class ChatGPT(commands.Cog):
             return
         try:
             response = openai.images.generate(
-                prompt=prompt,
-                size=size,
-                quality=quality,
-                n=n,
-                model=model,
+                prompt=prompt, n=n, quality=quality, model=model, size=size, style=style
             )
             image_url = response.data[0].url if response.data else "No image."
             embed = Embed(
@@ -183,7 +180,7 @@ class ChatGPT(commands.Cog):
         ],
     )
     @option(
-        "format",
+        "response_format",
         description="Choose the format of the audio (default: mp3)",
         required=False,
         choices=[
@@ -194,6 +191,12 @@ class ChatGPT(commands.Cog):
             OptionChoice(name="FLAC", value="flac"),
             OptionChoice(name="PCM", value="pcm"),
         ],
+    )
+    @option(
+        "speed",
+        description="Speed of the generated audio (default: 1.0)",
+        required=False,
+        type=float,
     )
     @option(
         "model",
@@ -208,19 +211,26 @@ class ChatGPT(commands.Cog):
         self,
         ctx: ApplicationContext,
         text: str,
-        voice: str = "alloy",
-        format: str = "mp3",
         model: str = "tts-1",
+        voice: str = "alloy",
+        response_format: str = "mp3",
+        speed: float = 1.0,
     ):
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
-            # Generate spoken audio from input text using OpenAI's Audio API
-            response = openai.Speech.create(
-                voice=voice, input=text, format=format, model=model
+            # Generate spoken audio from input text
+            response = openai.Client.audio.speech.create(
+                input=text,
+                model=model,
+                voice=voice,
+                response_format=response_format,
+                speed=speed,
             )
 
             # Path where the audio file will be saved
-            speech_file_path = Path(__file__).parent / f"{voice}_speech.mp3"
+            speech_file_path = (
+                Path(__file__).parent / f"{voice}_speech.{response_format}"
+            )
 
             # Stream audio to file
             response.stream_to_file(speech_file_path)
