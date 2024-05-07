@@ -26,7 +26,7 @@ jobs:
         push: true
         context: .
         file: ./Dockerfile
-        tags: discord-chatgpt:latest
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/discord-chatgpt:latest
       env: 
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
@@ -36,7 +36,7 @@ jobs:
         push: false
         context: .
         file: ./Dockerfile.test
-        tags: discord-chatgpt-test:latest
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/discord-chatgpt-test:latest
 
     - name: Run Docker container to execute tests
       run: docker run discord-chatgpt-test
