@@ -183,22 +183,41 @@ class ChatGPT(commands.Cog):
         ],
     )
     @option(
+        "format",
+        description="Choose the format of the audio (default: mp3)",
+        required=False,
+        choices=[
+            OptionChoice(name="MP3", value="mp3"),
+            OptionChoice(name="WAV", value="wav"),
+            OptionChoice(name="Opus", value="opus"),
+            OptionChoice(name="AAC", value="aac"),
+            OptionChoice(name="FLAC", value="flac"),
+            OptionChoice(name="PCM", value="pcm"),
+        ],
+    )
+    @option(
         "model",
         description="Choose from the following TTS models",
         required=False,
-        choices=[OptionChoice(name="tts-1", value="tts-1-hd")],
+        choices=[
+            OptionChoice(name="tts-1", value="tts-1-"),
+            OptionChoice(name="tts-1-hd", value="tts-1-hd"),
+        ],
     )
     async def text_to_speech(
         self,
         ctx: ApplicationContext,
         text: str,
         voice: str = "alloy",
+        format: str = "mp3",
         model: str = "tts-1",
     ):
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
             # Generate spoken audio from input text using OpenAI's Audio API
-            response = openai.Audio.create(model=model, voice=voice, input=text)
+            response = openai.Speech.create(
+                voice=voice, input=text, format=format, model=model
+            )
 
             # Path where the audio file will be saved
             speech_file_path = Path(__file__).parent / f"{voice}_speech.mp3"
