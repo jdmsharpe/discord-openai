@@ -219,7 +219,7 @@ class ChatGPT(commands.Cog):
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
             # Generate spoken audio from input text
-            response = openai.Client.audio.speech.create(
+            response = openai.audio.speech.create(
                 input=text,
                 model=model,
                 voice=voice,
@@ -233,7 +233,7 @@ class ChatGPT(commands.Cog):
             )
 
             # Stream audio to file
-            response.stream_to_file(speech_file_path)
+            response.write_to_file(speech_file_path)
 
             # Inform the user that the audio has been created
             embed = Embed(
