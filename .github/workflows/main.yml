@@ -40,6 +40,6 @@ jobs:
         tags: ${{ secrets.DOCKER_HUB_USERNAME }}/discord-chatgpt-test:latest
 
     - name: Run Docker container to execute tests
-      run: docker run discord-chatgpt-test
+      run: docker run discord-chatgpt-test:latest
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
