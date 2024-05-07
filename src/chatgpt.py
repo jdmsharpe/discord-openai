@@ -191,14 +191,14 @@ class ChatGPT(commands.Cog):
     async def text_to_speech(
         self,
         ctx: ApplicationContext,
-        prompt: str,
+        text: str,
         voice: str = "alloy",
         model: str = "tts-1",
     ):
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
             # Generate spoken audio from input text using OpenAI's Audio API
-            response = openai.Audio.create(model=model, voice=voice, input=prompt)
+            response = openai.Audio.create(model=model, voice=voice, input=text)
 
             # Path where the audio file will be saved
             speech_file_path = Path(__file__).parent / f"{voice}_speech.mp3"
@@ -209,7 +209,7 @@ class ChatGPT(commands.Cog):
             # Inform the user that the audio has been created
             embed = Embed(
                 title="Text to Speech Conversion",
-                description=f"**Prompt:** {prompt}\n**Voice:** {voice}\n**Audio File:** Attached",
+                description=f"**Text:** {text}\n**Voice:** {voice}\n**Audio File:** Attached",
                 color=Colour.green(),
             )
             await ctx.followup.send(embed=embed, file=File(speech_file_path))
