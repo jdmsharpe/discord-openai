@@ -10,6 +10,12 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 class ChatGPT(commands.Cog):
     def __init__(self, bot):
+        """
+        Initialize the ChatGPT class.
+
+        Args:
+            bot: The bot instance.
+        """
         logging.basicConfig(
             level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
         )
@@ -19,6 +25,10 @@ class ChatGPT(commands.Cog):
     # Added for debugging purposes
     @commands.Cog.listener()
     async def on_ready(self):
+        """
+        Event listener that runs when the bot is ready.
+        Logs bot details and attempts to synchronize commands.
+        """
         logging.info(f"Logged in as {self.bot.user} (ID: {self.bot.user.id})")
         logging.info(f"Attempting to sync commands for guilds: {GUILD_IDS}")
         try:
@@ -56,6 +66,15 @@ class ChatGPT(commands.Cog):
         personality: str = "You are a helpful assistant.",
         model: str = "gpt-4-turbo",
     ):
+        """
+        Generate text in response to a given prompt using the specified GPT model and personality.
+
+        Args:
+            ctx: The context in which the command was called.
+            prompt: The prompt for the GPT model.
+            personality: The personality for the GPT model.
+            model: The GPT model to use.
+        """
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
             response = openai.chat.completions.create(
@@ -132,6 +151,18 @@ class ChatGPT(commands.Cog):
         size: str = "1024x1024",
         style: str = "",
     ):
+        """
+        Generate an image from a given prompt using the specified DALL-E model, size, and quality.
+
+        Args:
+            ctx: The context in which the command was called.
+            prompt: The prompt for the DALL-E model.
+            n: The number of images to generate.
+            quality: The quality of the generated image.
+            model: The DALL-E model to use.
+            size: The size of the generated image.
+            style: The style of the generated image.
+        """
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         if model == "dall-e-2" and n > 10 or model == "dall-e-3" and n > 1:
             await ctx.followup.send(
@@ -216,6 +247,17 @@ class ChatGPT(commands.Cog):
         response_format: str = "mp3",
         speed: float = 1.0,
     ):
+        """
+        Convert a given text to speech using the specified TTS model, voice, format, and speed.
+
+        Args:
+            ctx: The context in which the command was called.
+            text: The text to convert to speech.
+            model: The TTS model to use.
+            voice: The voice for the speech.
+            response_format: The format of the generated audio.
+            speed: The speed of the generated audio.
+        """
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
             # Generate spoken audio from input text
