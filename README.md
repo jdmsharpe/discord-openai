@@ -15,6 +15,7 @@ Please also check out the official OpenAI Discord bot [here](https://github.com/
 ### Commands
 + **chat** - Generate text in response to prompt.
 + **generate_image** - Generate image from prompt. Image URLs expire after 1 hour.
++ **text_to_speech** - Converts text to lifelike spoken audio.
 + **More to come**
 
 ### UI
