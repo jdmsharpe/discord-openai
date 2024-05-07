@@ -2,7 +2,8 @@ import logging
 import openai
 from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
-from discord import ApplicationContext, Embed, Colour
+from discord import ApplicationContext, Colour, Embed, File
+from pathlib import Path
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
@@ -150,13 +151,68 @@ class ChatGPT(commands.Cog):
             )
             image_url = response.data[0].url if response.data else "No image."
             embed = Embed(
-                title="ChatGPT Response",
+                title="DALL-E Image Generation",
                 description=f"**Your Prompt:**\n{prompt}",
                 color=Colour.blue(),
             )
             embed.set_image(url=image_url)  # Setting the image URL in the embed
             embed.image.url
             await ctx.followup.send(embed=embed)
+        except Exception as e:
+            await ctx.followup.send(
+                embed=Embed(title="Error", description=str(e), color=Colour.red())
+            )
+
+    @slash_command(
+        name="text_to_speech",
+        description="Converts text to lifelike spoken audio.",
+        guild_ids=GUILD_IDS,
+    )
+    @option("text", description="Text to convert to speech", required=True)
+    @option(
+        "voice",
+        description="Choose a voice for the speech",
+        required=False,
+        choices=[
+            OptionChoice(name="alloy", value="alloy"),
+            OptionChoice(name="echo", value="echo"),
+            OptionChoice(name="fable", value="fable"),
+            OptionChoice(name="onyx", value="onyx"),
+            OptionChoice(name="nova", value="nova"),
+            OptionChoice(name="shimmer", value="shimmer"),
+        ],
+    )
+    @option(
+        "model",
+        description="Choose from the following TTS models",
+        required=False,
+        choices=[OptionChoice(name="tts-1", value="tts-1-hd")],
+    )
+    async def text_to_speech(
+        self,
+        ctx: ApplicationContext,
+        prompt: str,
+        voice: str = "alloy",
+        model: str = "tts-1",
+    ):
+        await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
+        try:
+            # Generate spoken audio from input text using OpenAI's Audio API
+            response = openai.Audio.create(model=model, voice=voice, input=prompt)
+
+            # Path where the audio file will be saved
+            speech_file_path = Path(__file__).parent / f"{voice}_speech.mp3"
+
+            # Stream audio to file
+            response.stream_to_file(speech_file_path)
+
+            # Inform the user that the audio has been created
+            embed = Embed(
+                title="Text to Speech Conversion",
+                description=f"**Prompt:** {prompt}\n**Voice:** {voice}\n**Audio File:** Attached",
+                color=Colour.green(),
+            )
+            await ctx.followup.send(embed=embed, file=File(speech_file_path))
         except Exception as e:
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
