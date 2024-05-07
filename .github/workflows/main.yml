@@ -20,16 +20,23 @@ jobs:
         username: ${{ secrets.DOCKER_HUB_USERNAME }}
         password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-    - name: Build and push
+    - name: Build and push release image
       uses: docker/build-push-action@v5
       with:
         push: true
         context: .
-        file: ./Dockerfile.test
-        load: true
-        tags: discord-chatgpt-test:latest
+        file: ./Dockerfile
+        tags: discord-chatgpt:latest
       env: 
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    - name: Build test image
+      uses: docker/build-push-action@v5
+      with:
+        push: false
+        context: .
+        file: ./Dockerfile.test
+        tags: discord-chatgpt-test:latest
 
     - name: Run Docker container to execute tests
       run: docker run discord-chatgpt-test
