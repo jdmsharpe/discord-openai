@@ -250,21 +250,25 @@ class ChatGPT(commands.Cog):
             response = openai.images.generate(**image_params)
             image_urls = [data.url for data in response.data]
             if image_urls:
+                image_files = []
+                for idx, url in enumerate(image_urls):
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url) as resp:
+                            if resp.status != 200:
+                                await ctx.followup.send("Could not download file...")
+                                continue  # Skip this iteration and proceed with the next image
+                            data = io.BytesIO(await resp.read())
+                            image_files.append(File(data, f"image{idx}.png"))
+
+                if len(image_files) <= 0:
+                    raise Exception("No images were generated.")
+
                 embed = Embed(
                     title="DALL-E Image Generation",
                     description=f"**Prompt:**\n{prompt}",
                     color=Colour.blue(),
                 )
-            for idx, url in enumerate(image_urls):
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as resp:
-                        if resp.status != 200:
-                            await ctx.followup.send("Could not download file...")
-                            continue  # Skip this iteration and proceed with the next image
-                        data = io.BytesIO(await resp.read())
-                        await ctx.followup.send(
-                            file=File(data, f"image{idx}.png"), embed=embed
-                        )
+                await ctx.followup.send(embed=embed, files=image_files)
         except Exception as e:
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
