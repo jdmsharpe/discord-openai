@@ -1,4 +1,6 @@
+import aiohttp
 import logging
+import io
 import openai
 from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
@@ -191,6 +193,8 @@ class ChatGPT(commands.Cog):
               images. This param is only supported for `dall-e-3`.
         """
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
+
+        # Guard clauses for model-specific constraints
         if (model == "dall-e-2" and n > 10) or (model == "dall-e-3" and n > 1):
             error_message = (
                 "The maximum number of images for DALL-E 2 is 10 and for DALL-E 3 is 1."
@@ -229,8 +233,8 @@ class ChatGPT(commands.Cog):
             )
             return
 
-        if model == "dall-e-2" and style:
-            # Style is not supported for DALL-E 2
+        if model == "dall-e-2" and style is not None:
+            # Style is not supported for DALL-E 2, pass None instead
             style = None
 
         try:
@@ -244,9 +248,16 @@ class ChatGPT(commands.Cog):
                     description=f"**Prompt:**\n{prompt}",
                     color=Colour.blue(),
                 )
-                for url in image_urls:
-                    embed.set_image(url=url)
-                    await ctx.followup.send(embed=embed)
+            for idx, url in enumerate(image_urls):
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url) as resp:
+                        if resp.status != 200:
+                            await ctx.followup.send("Could not download file...")
+                            continue  # Skip this iteration and proceed with the next image
+                        data = io.BytesIO(await resp.read())
+                        await ctx.followup.send(
+                            file=File(data, f"image{idx}.png"), embed=embed
+                        )
             else:
                 await ctx.followup.send("No images generated.")
         except Exception as e:

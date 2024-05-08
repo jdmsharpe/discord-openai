@@ -22,7 +22,7 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
         self.bot.chat.return_value = mock_chat_embed
 
         mock_image_embed = MagicMock()
-        mock_image_embed.image.url = "http://example.com/image.png"
+        mock_image_embed.file = "image.png"
         self.bot.generate_image.return_value = mock_image_embed
 
         mock_text_to_speech_embed = MagicMock()
@@ -34,7 +34,7 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
 
     async def test_generate_image_command(self):
         embed = await self.bot.generate_image("Create a sunset image")
-        self.assertEqual("http://example.com/image.png", embed.image.url)
+        self.assertEqual("image.png", embed.file)
 
     async def test_text_to_speech_command(self):
         pass # Complete this test case
