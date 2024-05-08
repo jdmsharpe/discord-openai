@@ -13,10 +13,12 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 Please also check out the official OpenAI Discord bot [here](https://github.com/openai/gpt-discord-bot/tree/main).
 
 ### Commands
-+ **chat** - Generate text in response to prompt.
-+ **generate_image** - Generate image from prompt. Image URLs expire after 1 hour.
-+ **text_to_speech** - Converts text to lifelike spoken audio.
++ **chat** - Creates a model response for the given chat conversation.
++ **generate_image** - Creates image(s) given a prompt.
++ **text_to_speech** - Generates lifelike spoken audio from the input text.
 + **More to come**
+
+Please see the [helpful OpenAI API guide doc](https://platform.openai.com/docs/guides/) for further reference and information.
 
 ### UI
 
@@ -24,6 +26,7 @@ Please also check out the official OpenAI Discord bot [here](https://github.com/
 
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/20d6af48-699c-40e7-be62-d62f1256744e)
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/99e81595-b30f-40b5-b8ac-2a9c8cc49948)
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/e69242d0-acdc-42af-be66-794c95d81af7)
 
 </div>
 
@@ -33,6 +36,7 @@ Please also check out the official OpenAI Discord bot [here](https://github.com/
 
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/563968fe-caeb-4a0f-bd27-625839c251c7)
 ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/d5e0758e-f9d5-4ca6-bdb4-bea33c5065a3)
+![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/c5992fac-3372-4c99-81f1-93c7fbda1d0e)
 
 </div>
 
