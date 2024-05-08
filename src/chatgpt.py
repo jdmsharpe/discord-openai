@@ -136,8 +136,7 @@ class ChatGPT(commands.Cog):
     )
     @option(
         "size",
-        description="Size of the image in pixels. Note that sizes 256x256 and 512x512 are only supported by \
-                DALL-E 2. (default: 1024x1024)",
+        description="Size of the image (default: 1024x1024)",
         required=False,
         choices=[
             OptionChoice(name="256x256", value="256x256"),
@@ -164,7 +163,7 @@ class ChatGPT(commands.Cog):
         n: int = 1,
         quality: str = "standard",
         size: str = "1024x1024",
-        style: Optional[str] = "natural",
+        style: str = "natural",
     ):
         """
         Creates an image given a prompt.
@@ -231,26 +230,25 @@ class ChatGPT(commands.Cog):
             return
         
         if model == "dall-e-2" and style:
-            error_message = "The `style` parameter is only supported for DALL-E 3."
-            await ctx.followup.send(
-                embed=Embed(
-                    title="Error", description=error_message, color=Colour.red()
-                )
-            )
-            return
+            # Style is not supported for DALL-E 2
+            style = None
 
         try:
             response = openai.images.generate(
                 prompt=prompt, n=n, quality=quality, model=model, size=size, style=style
             )
-            image_url = response.data[0].url if response.data else "No image."
-            embed = Embed(
-                title="DALL-E Image Generation",
-                description=f"**Prompt:**\n{prompt}",
-                color=Colour.blue(),
-            )
-            embed.set_image(url=image_url)
-            await ctx.followup.send(embed=embed)
+            image_urls = [data.url for data in response.data]
+            if image_urls:
+                embed = Embed(
+                    title="DALL-E Image Generation",
+                    description=f"**Prompt:**\n{prompt}",
+                    color=Colour.blue(),
+                )
+                for url in image_urls:
+                    embed.set_image(url=url)
+                    await ctx.followup.send(embed=embed)
+            else:
+                await ctx.followup.send("No images generated.")
         except Exception as e:
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
