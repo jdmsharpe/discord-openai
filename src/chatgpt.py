@@ -233,14 +233,21 @@ class ChatGPT(commands.Cog):
             )
             return
 
-        if model == "dall-e-2" and style is not None:
-            # Style is not supported for DALL-E 2, pass None instead
-            style = None
+        # Initialize parameters for the image generation API
+        image_params = {
+            "prompt": prompt,
+            "model": model,
+            "n": n,
+            "quality": quality,
+            "size": size,
+        }
+
+        # style parameter is not supported for DALL-E 2
+        if model != "dall-e-2" or style is not None:
+            image_params["style"] = style
 
         try:
-            response = openai.images.generate(
-                prompt=prompt, n=n, quality=quality, model=model, size=size, style=style
-            )
+            response = openai.images.generate(**image_params)
             image_urls = [data.url for data in response.data]
             if image_urls:
                 embed = Embed(
@@ -258,8 +265,6 @@ class ChatGPT(commands.Cog):
                         await ctx.followup.send(
                             file=File(data, f"image{idx}.png"), embed=embed
                         )
-            else:
-                await ctx.followup.send("No images generated.")
         except Exception as e:
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
