@@ -228,7 +228,7 @@ class ChatGPT(commands.Cog):
                 )
             )
             return
-        
+
         if model == "dall-e-2" and style:
             # Style is not supported for DALL-E 2
             style = None
