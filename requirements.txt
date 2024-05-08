@@ -1,2 +1,2 @@
-openai==1.25.2
-py-cord==2.4.1
+openai==1.26.0
+py-cord==2.5.0
