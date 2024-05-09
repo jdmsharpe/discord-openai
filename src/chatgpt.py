@@ -7,7 +7,6 @@ from discord.commands import slash_command, option, OptionChoice
 from discord import ApplicationContext, Colour, Embed, File
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
