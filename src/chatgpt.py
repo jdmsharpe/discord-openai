@@ -5,8 +5,9 @@ import openai
 from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
 from discord import ApplicationContext, Colour, Embed, File
+import json
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
@@ -25,6 +26,9 @@ class ChatGPT(commands.Cog):
         self.bot = bot
         openai.api_key = OPENAI_API_KEY
 
+        # Dictionary to store conversation history for each thread
+        self.conversation_histories = {}
+
     # Added for debugging purposes
     @commands.Cog.listener()
     async def on_ready(self):
@@ -39,6 +43,36 @@ class ChatGPT(commands.Cog):
             logging.info("Commands synchronized successfully.")
         except Exception as e:
             logging.error(f"Error during command synchronization: {e}", exc_info=True)
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        # Ignore messages sent by the bot itself
+        if message.author == self.bot.user:
+            return
+
+        # Check if the message is in a thread
+        if message.thread is not None:
+            # Get the thread ID
+            thread_id = message.thread.id
+
+            # If this is the first message in the thread, initialize the conversation history
+            if thread_id not in self.conversation_histories:
+                self.conversation_histories[thread_id] = []
+
+            # Determine the role based on the sender
+            role = "assistant" if message.author == self.bot.user else "user"
+
+            # Add the message to the conversation history
+            self.conversation_histories[thread_id].append(
+                {"role": role, "content": message.content}
+            )
+
+            # If the message was sent by a user, generate a response using the conversation history
+            if role == "user":
+                response = self.chat(self.conversation_histories[thread_id])
+
+                # Send the response in the thread
+                await message.thread.send(response)
 
     @slash_command(
         name="chat",
@@ -62,12 +96,19 @@ class ChatGPT(commands.Cog):
             OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
         ],
     )
+    @option(
+        "messages",
+        description="A list of messages comprising the conversation so far. JSON format required.",
+        required=False,
+        type=str,
+    )
     async def chat(
         self,
         ctx: ApplicationContext,
         prompt: str,
         personality: str = "You are a helpful assistant.",
         model: str = "gpt-4-turbo",
+        message_history: str = None,
     ):
         """
         Creates a model response for the given chat conversation.
@@ -82,11 +123,17 @@ class ChatGPT(commands.Cog):
         """
         await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
+            # Parse the messages string into a list of dictionaries
+            message_list = json.loads(message_history) if message_history else []
+
+            # Create the final input from the prompt, personality, and message list
+            messages = [
+                {"role": "system", "content": personality},
+                {"role": "user", "content": prompt},
+            ] + message_list
+
             response = openai.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": personality},
-                    {"role": "user", "content": prompt},
-                ],
+                messages=messages,
                 model=model,
             )
             response_text = (
