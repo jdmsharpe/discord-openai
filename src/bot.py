@@ -6,7 +6,7 @@ python -m pip install --upgrade --no-deps --force-reinstall git+https://github.c
 """
 
 from discord import Bot, Intents
-from src.chatgpt import ChatGPT
+from chatgpt import ChatGPT
 from config.auth import BOT_TOKEN
 
 if __name__ == "__main__":
