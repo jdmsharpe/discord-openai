@@ -14,6 +14,7 @@ if __name__ == "__main__":
     intents.presences = False
     intents.members = True
     intents.message_content = True
+    intents.guilds = True
     bot = Bot(intents=intents)
     bot.add_cog(ChatGPT(bot=bot))
     bot.run(BOT_TOKEN)
