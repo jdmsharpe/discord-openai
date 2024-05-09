@@ -11,9 +11,9 @@ from config.auth import BOT_TOKEN
 
 if __name__ == "__main__":
     intents = Intents.default()
-    intents.message_content = True
     intents.presences = False
     intents.members = True
+    intents.message_content = True
     bot = Bot(intents=intents)
     bot.add_cog(ChatGPT(bot=bot))
     bot.run(BOT_TOKEN)

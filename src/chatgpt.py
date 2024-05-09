@@ -47,8 +47,8 @@ class ChatGPT(commands.Cog):
     async def on_message(self, message):
         logging.info(f"Message received: {message.content}")
 
-        # Ignore messages sent by the bot itself or not within a thread
-        if message.author == self.bot.user or message.thread is None:
+        # Ignore messages not within a thread
+        if message.thread is None:
             return
 
         # Ensure activation in threads specifically for ChatGPT interactions
@@ -58,29 +58,57 @@ class ChatGPT(commands.Cog):
         # Retrieve the thread ID
         thread_id = message.thread.id
 
-        # Initialize conversation history for the thread if not already present
+        # Should not happen, but just in case
         if thread_id not in self.conversation_histories:
             self.conversation_histories[thread_id] = []
-            logging.info(f"Conversation history initialized for thread {thread_id}")
+            logging.info(
+                f"on_message: Conversation history initialized for thread {thread_id}"
+            )
 
-        # Append the message to the conversation history
-        self.conversation_histories[thread_id].append(
-            {"role": "user", "content": message.content}
-        )
+        # Determine the role based on the sender
+        role = "user" if message.author != self.bot.user else "assistant"
 
-        # Only generate a response if the message is from a user
-        if message.author != self.bot.user:
-            try:
-                # Serialize conversation history to JSON
-                json_history = json.dumps(self.conversation_histories[thread_id])
+        # Serialize the current conversation history to JSON
+        json_history = json.dumps(self.conversation_histories[thread_id])
+
+        try:
+            # Only generate a response if the message is from a user
+            if role == "user":
                 response = await self.chat(
                     ctx=message.thread,
                     prompt=message.content,
                     message_history=json_history,
                 )
-                await message.thread.send(response)
-            except Exception as e:
-                logging.error(f"Error during chat attempt: {e}", exc_info=True)
+                sent_message = await message.thread.send(response)
+
+                # Append both the user's message and the bot's response to the conversation history
+                self.conversation_histories[thread_id].append(
+                    {"role": "user", "content": message.content}
+                )
+                self.conversation_histories[thread_id].append(
+                    {"role": "assistant", "content": sent_message.content}
+                )
+        except Exception as e:
+            logging.error(f"Error during chat attempt: {e}", exc_info=True)
+
+    @commands.Cog.listener()
+    async def on_thread_create(self, thread):
+        logging.info(f"New thread created: {thread.name}")
+
+        # Ignore threads sent by the bot itself or not within a thread
+        if thread.author == self.bot.user or thread is None:
+            return
+
+        # Ensure activation in threads specifically for ChatGPT interactions
+        if "ChatGPT" not in thread.name:
+            return
+
+        # Initialize conversation history for the thread if not already present
+        if thread.id not in self.conversation_histories:
+            self.conversation_histories[thread.id] = []
+            logging.info(
+                f"on_thread_create: Conversation history initialized for thread {thread.id}"
+            )
 
     @slash_command(
         name="chat",
