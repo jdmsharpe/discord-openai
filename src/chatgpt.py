@@ -46,33 +46,30 @@ class ChatGPT(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        # Ignore messages sent by the bot itself
-        if message.author == self.bot.user:
+        # Ignore messages sent by the bot itself or not within a thread
+        if message.author == self.bot.user or message.thread is None:
             return
 
-        # Check if the message is in a thread
-        if message.thread is not None:
-            # Get the thread ID
-            thread_id = message.thread.id
+        # Retrieve the thread ID
+        thread_id = message.thread.id
 
-            # If this is the first message in the thread, initialize the conversation history
-            if thread_id not in self.conversation_histories:
-                self.conversation_histories[thread_id] = []
+        # Initialize conversation history for the thread if not already present
+        if thread_id not in self.conversation_histories:
+            self.conversation_histories[thread_id] = []
 
-            # Determine the role based on the sender
-            role = "assistant" if message.author == self.bot.user else "user"
+        # Log message details, assuming it's from the user
+        logging.info(
+            f"Message received in thread {thread_id} from {message.author}: {message.content}"
+        )
 
-            # Add the message to the conversation history
-            self.conversation_histories[thread_id].append(
-                {"role": role, "content": message.content}
-            )
+        # Append the message to the conversation history
+        self.conversation_histories[thread_id].append(
+            {"role": "user", "content": message.content}
+        )
 
-            # If the message was sent by a user, generate a response using the conversation history
-            if role == "user":
-                response = self.chat(self.conversation_histories[thread_id])
-
-                # Send the response in the thread
-                await message.thread.send(response)
+        # Generate and send response if the message is from a user
+        response = await self.chat(self.conversation_histories[thread_id])
+        await message.thread.send(response)
 
     @slash_command(
         name="chat",
@@ -97,8 +94,8 @@ class ChatGPT(commands.Cog):
         ],
     )
     @option(
-        "messages",
-        description="A list of messages comprising the conversation so far. JSON format required.",
+        "message_history",
+        description="A list of messages comprising the conversation so far. JSON format as string required.",
         required=False,
         type=str,
     )
