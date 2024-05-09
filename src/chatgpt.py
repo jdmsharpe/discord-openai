@@ -68,25 +68,26 @@ class ChatGPT(commands.Cog):
         # Determine the role based on the sender
         role = "user" if message.author != self.bot.user else "assistant"
 
-        # Serialize the current conversation history to JSON
-        json_history = json.dumps(self.conversation_histories[thread_id])
-
         try:
-            # Only generate a response if the message is from a user
+            # Only attempt to generate a response if the message is from a user
             if role == "user":
-                response = await self.chat(
-                    ctx=message.thread,
-                    prompt=message.content,
-                    message_history=json_history,
-                )
-                sent_message = await message.thread.send(response)
-
-                # Append both the user's message and the bot's response to the conversation history
+                # Append the user's message to the conversation history
                 self.conversation_histories[thread_id].append(
                     {"role": "user", "content": message.content}
                 )
+                logging.info(
+                    f"on_message: Conversation history updated with user message for thread {thread_id}"
+                )
+                response = openai.chat.completions.create(
+                    messages=self.conversation_histories[thread_id],
+                    model="gpt-4-turbo",  # Default for now
+                )
+                sent_message = await message.thread.send(response)
                 self.conversation_histories[thread_id].append(
                     {"role": "assistant", "content": sent_message.content}
+                )
+                logging.info(
+                    f"on_message: Conversation history updated with assistant message for thread {thread_id}"
                 )
         except Exception as e:
             logging.error(f"Error during chat attempt: {e}", exc_info=True)
@@ -132,19 +133,12 @@ class ChatGPT(commands.Cog):
             OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
         ],
     )
-    @option(
-        "message_history",
-        description="A list of messages comprising the conversation so far. JSON format as string required.",
-        required=False,
-        type=str,
-    )
     async def chat(
         self,
         ctx: ApplicationContext,
         prompt: str,
         personality: str = "You are a helpful assistant.",
         model: str = "gpt-4-turbo",
-        message_history: str = None,
     ):
         """
         Creates a model response for the given chat conversation.
@@ -157,19 +151,12 @@ class ChatGPT(commands.Cog):
               [model endpoint compatibility](https://platform.openai.com/docs/models/model-endpoint-compatibility)
               table for details on which models work with the Chat API.
         """
-        await ctx.defer(
-            ephemeral=True
-        )  # Handle defer differently based on command or message context
+        await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
         try:
-            # Parse the messages string into a list of dictionaries
-            message_list = json.loads(message_history) if message_history else []
-
-            # Create the final input from the prompt, personality, and message list
             messages = [
                 {"role": "system", "content": personality},
                 {"role": "user", "content": prompt},
-            ] + message_list
-
+            ]
             response = openai.chat.completions.create(
                 messages=messages,
                 model=model,
