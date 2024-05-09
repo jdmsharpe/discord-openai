@@ -96,7 +96,7 @@ class ChatGPT(commands.Cog):
         logging.info(f"New thread created: {thread.name}")
 
         # Ignore threads sent by the bot itself or not within a thread
-        if thread.author == self.bot.user or thread is None:
+        if thread.owner == self.bot.user or thread is None:
             return
 
         # Ensure activation in threads specifically for ChatGPT interactions
