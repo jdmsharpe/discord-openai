@@ -51,6 +51,10 @@ class ChatGPT(commands.Cog):
         if message.author == self.bot.user or message.thread is None:
             return
 
+        # Ensure activation in threads specifically for ChatGPT interactions
+        if "ChatGPT" not in message.thread.name:
+            return
+
         # Retrieve the thread ID
         thread_id = message.thread.id
 
@@ -59,22 +63,24 @@ class ChatGPT(commands.Cog):
             self.conversation_histories[thread_id] = []
             logging.info(f"Conversation history initialized for thread {thread_id}")
 
-        # Log message details, assuming it's from the user
-        logging.info(
-            f"Message received in thread {thread_id} from {message.author}: {message.content}"
-        )
-
         # Append the message to the conversation history
         self.conversation_histories[thread_id].append(
             {"role": "user", "content": message.content}
         )
 
-        try:
-            # Generate and send response if the message is from a user
-            response = await self.chat(self.conversation_histories[thread_id])
-            await message.thread.send(response)
-        except Exception as e:
-            logging.error(f"Error during chat attempt: {e}", exc_info=True)
+        # Only generate a response if the message is from a user
+        if message.author != self.bot.user:
+            try:
+                # Serialize conversation history to JSON
+                json_history = json.dumps(self.conversation_histories[thread_id])
+                response = await self.chat(
+                    ctx=message.thread,
+                    prompt=message.content,
+                    message_history=json_history,
+                )
+                await message.thread.send(response)
+            except Exception as e:
+                logging.error(f"Error during chat attempt: {e}", exc_info=True)
 
     @slash_command(
         name="chat",
@@ -123,7 +129,9 @@ class ChatGPT(commands.Cog):
               [model endpoint compatibility](https://platform.openai.com/docs/models/model-endpoint-compatibility)
               table for details on which models work with the Chat API.
         """
-        await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
+        await ctx.defer(
+            ephemeral=True
+        )  # Handle defer differently based on command or message context
         try:
             # Parse the messages string into a list of dictionaries
             message_list = json.loads(message_history) if message_history else []

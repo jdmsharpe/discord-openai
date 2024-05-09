@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 import unittest
 import config.auth  # imported for ChatGPT class dependency
 from chatgpt import ChatGPT
