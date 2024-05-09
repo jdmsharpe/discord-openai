@@ -46,6 +46,8 @@ class ChatGPT(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        logging.info(f"Message received: {message.content}")
+
         # Ignore messages sent by the bot itself or not within a thread
         if message.author == self.bot.user or message.thread is None:
             return
@@ -56,6 +58,7 @@ class ChatGPT(commands.Cog):
         # Initialize conversation history for the thread if not already present
         if thread_id not in self.conversation_histories:
             self.conversation_histories[thread_id] = []
+            logging.info(f"Conversation history initialized for thread {thread_id}")
 
         # Log message details, assuming it's from the user
         logging.info(
@@ -67,9 +70,12 @@ class ChatGPT(commands.Cog):
             {"role": "user", "content": message.content}
         )
 
-        # Generate and send response if the message is from a user
-        response = await self.chat(self.conversation_histories[thread_id])
-        await message.thread.send(response)
+        try:
+            # Generate and send response if the message is from a user
+            response = await self.chat(self.conversation_histories[thread_id])
+            await message.thread.send(response)
+        except Exception as e:
+            logging.error(f"Error during chat attempt: {e}", exc_info=True)
 
     @slash_command(
         name="chat",

@@ -39,6 +39,41 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
     async def test_text_to_speech_command(self):
         pass # Complete this test case
 
+    async def test_chat_command_with_personality(self):
+        embed = await self.bot.chat("Hello", personality="You are a friendly assistant.")
+        self.assertIn("Hello, World!", embed.description)
+        self.assertEqual("You are a friendly assistant.", embed.fields[0].value)
+
+    async def test_chat_command_with_model(self):
+        embed = await self.bot.chat("Hello", model="gpt-3.5-turbo-0125")
+        self.assertIn("Hello, World!", embed.description)
+        self.assertEqual("gpt-3.5-turbo-0125", embed.fields[1].value)
+
+    async def test_chat_command_with_message_history(self):
+        message_history = '[{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello!"}]'
+        embed = await self.bot.chat("How are you?", message_history=message_history)
+        self.assertIn("Hello, World!", embed.description)
+        self.assertEqual(message_history, embed.fields[2].value)
+
+    async def test_generate_image_command_with_model(self):
+        embed = await self.bot.generate_image("Create a sunset image", model="dall-e-2")
+        self.assertEqual("image.png", embed.file)
+        self.assertEqual("dall-e-2", embed.fields[0].value)
+
+    async def test_generate_image_command_with_n(self):
+        embed = await self.bot.generate_image("Create a sunset image", n=3)
+        self.assertEqual("image.png", embed.file)
+        self.assertEqual(3, embed.fields[1].value)
+
+    async def test_text_to_speech_command_with_model(self):
+        embed = await self.bot.text_to_speech("Hello", model="tts-1-hd")
+        self.assertEqual("tts-1-hd", embed.fields[0].value)
+        self.assertEqual("mp3", embed.fields[1].value)
+
+    async def test_text_to_speech_command_with_voice(self):
+        embed = await self.bot.text_to_speech("Hello", voice="echo")
+        self.assertEqual("echo", embed.fields[2].value)
+        self.assertEqual("mp3", embed.fields[1].value)
 
 if __name__ == "__main__":
     unittest.main()
