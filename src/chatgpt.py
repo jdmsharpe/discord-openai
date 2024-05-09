@@ -44,55 +44,6 @@ class ChatGPT(commands.Cog):
             logging.error(f"Error during command synchronization: {e}", exc_info=True)
 
     @commands.Cog.listener()
-    async def on_message(self, message):
-        logging.info(f"Message received: {message.content}")
-
-        # Ignore messages not within a thread
-        if message.thread is None:
-            return
-
-        # Ensure activation in threads specifically for ChatGPT interactions
-        if "ChatGPT" not in message.thread.name:
-            return
-
-        # Retrieve the thread ID
-        thread_id = message.thread.id
-
-        # Should not happen, but just in case
-        if thread_id not in self.conversation_histories:
-            self.conversation_histories[thread_id] = []
-            logging.info(
-                f"on_message: Conversation history initialized for thread {thread_id}"
-            )
-
-        # Determine the role based on the sender
-        role = "user" if message.author != self.bot.user else "assistant"
-
-        try:
-            # Only attempt to generate a response if the message is from a user
-            if role == "user":
-                # Append the user's message to the conversation history
-                self.conversation_histories[thread_id].append(
-                    {"role": "user", "content": message.content}
-                )
-                logging.info(
-                    f"on_message: Conversation history updated with user message for thread {thread_id}"
-                )
-                response = openai.chat.completions.create(
-                    messages=self.conversation_histories[thread_id],
-                    model="gpt-4-turbo",  # Default for now
-                )
-                sent_message = await message.thread.send(response)
-                self.conversation_histories[thread_id].append(
-                    {"role": "assistant", "content": sent_message.content}
-                )
-                logging.info(
-                    f"on_message: Conversation history updated with assistant message for thread {thread_id}"
-                )
-        except Exception as e:
-            logging.error(f"Error during chat attempt: {e}", exc_info=True)
-
-    @commands.Cog.listener()
     async def on_thread_create(self, thread):
         logging.info(f"New thread created: {thread.name}")
 
@@ -110,6 +61,50 @@ class ChatGPT(commands.Cog):
             logging.info(
                 f"on_thread_create: Conversation history initialized for thread {thread.id}"
             )
+
+    @commands.Cog.listener()
+    async def on_thread_update(self, _, after):
+        logging.info(
+            f"on_thread_update: Thread {after.id} was updated with message: {after.last_message.content}"
+        )
+
+        # Ensure activation in threads specifically for ChatGPT interactions
+        if "ChatGPT" not in after.thread.name:
+            return
+
+        # Should not happen, but just in case
+        if after.id not in self.conversation_histories:
+            self.conversation_histories[after.id] = []
+            logging.info(
+                f"on_thread_update: Conversation history initialized for thread {after.id}"
+            )
+
+        # Determine the role based on the sender
+        role = "user" if after.last_message.author != self.bot.user else "assistant"
+
+        try:
+            # Only attempt to generate a response if the message is from a user
+            if role == "user":
+                # Append the user's message to the conversation history
+                self.conversation_histories[after.id].append(
+                    {"role": "user", "content": after.last_message.content}
+                )
+                logging.info(
+                    f"on_thread_update: Conversation history updated with user message for thread {after.id}"
+                )
+                response = openai.chat.completions.create(
+                    messages=self.conversation_histories[after.id],
+                    model="gpt-4-turbo",  # Default for now
+                )
+                sent_message = await after.send(response)
+                self.conversation_histories[after.id].append(
+                    {"role": "assistant", "content": sent_message.content}
+                )
+                logging.info(
+                    f"on_thread_update: Conversation history updated with assistant message for thread {after.id}"
+                )
+        except Exception as e:
+            logging.error(f"Error during chat attempt: {e}", exc_info=True)
 
     @slash_command(
         name="chat",
