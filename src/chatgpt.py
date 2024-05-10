@@ -415,7 +415,7 @@ class ChatGPT(commands.Cog):
 
         # style parameter is not supported for DALL-E 2
         if model != "dall-e-2" or style is not None:
-            image_params["style"] = style
+            image_params.style = style
 
         try:
             response = openai.images.generate(**image_params.to_dict())
