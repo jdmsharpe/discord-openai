@@ -70,27 +70,40 @@ class ChatGPT(commands.Cog):
         role = "user" if message.author != self.bot.user else "assistant"
         # Only attempt to generate a response if the message is from a user
         if role == "user":
-            # Append the user's message to the conversation history
-            try:
-                self.conversation_histories[message.channel.id].append(
-                    {"role": "user", "content": message.content}
-                )
-                logging.info(
-                    f"on_message: Conversation history updated with user message for thread {message.channel.id}"
-                )
-                response = openai.chat.completions.create(
-                    messages=self.conversation_histories[message.channel.id],
-                    model="gpt-4-turbo",  # Default for now
-                )
-                sent_message = await message.reply(response)
-                self.conversation_histories[message.channel.id].append(
-                    {"role": "assistant", "content": sent_message.content}
-                )
-                logging.info(
-                    f"on_message: Conversation history updated with assistant message for thread {message.channel.id}"
-                )
-            except Exception as e:
-                logging.error(f"Error during chat attempt: {e}", exc_info=True)
+            # Simulate typing while processing
+            async with message.channel.typing():
+                # Append the user's message to the conversation history
+                try:
+                    self.conversation_histories[message.channel.id].append(
+                        {"role": "user", "content": message.content}
+                    )
+                    logging.info(
+                        f"on_message: Conversation history updated with user message for thread {message.channel.id}"
+                    )
+                    response = openai.chat.completions.create(
+                        messages=self.conversation_histories[message.channel.id],
+                        model="gpt-4-turbo",  # Default for now
+                    )
+                    response_text = (
+                        response.choices[0].message.content
+                        if response.choices
+                        else "No response."
+                    )
+                    await message.reply(
+                        embed=Embed(
+                            title="ChatGPT Text Generation",
+                            description=f"**Prompt:**\n{message.content}\n\n**Response:**\n{response_text}",
+                            color=Colour.blue(),
+                        )
+                    )
+                    self.conversation_histories[message.channel.id].append(
+                        {"role": "assistant", "content": response_text}
+                    )
+                    logging.info(
+                        f"on_message: Conversation history updated with assistant message for thread {message.channel.id}"
+                    )
+                except Exception as e:
+                    logging.error(f"Error during chat attempt: {e}", exc_info=True)
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread):
