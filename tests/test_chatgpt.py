@@ -1,22 +1,26 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 import unittest
 import config.auth  # imported for ChatGPT class dependency
 from chatgpt import ChatGPT
-from discord import ApplicationContext, Bot, Embed
-
+from discord import ApplicationContext, Bot, Embed, Intents, Message, Thread
 
 class TestChatGPT(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.bot = MagicMock(Bot)
-
-        # Setting up the ChatGPT cog
+        # Setting up the bot with the ChatGPT cog
+        intents = Intents.default()
+        intents.presences = False
+        intents.members = True
+        intents.message_content = True
+        intents.guilds = True
+        self.bot = Bot(intents=intents)
         self.bot.add_cog(ChatGPT(bot=self.bot))
+        self.bot.owner_id = 1234567890
 
         # Properly setting up mocks for the command functions and context
+        self.bot.sync_commands = AsyncMock()
         self.bot.chat = AsyncMock()
         self.bot.generate_image = AsyncMock()
         self.bot.text_to_speech = AsyncMock()
-        self.ctx = AsyncMock(ApplicationContext)
 
         # Setting up specific return values for the mock calls
         mock_chat_embed = MagicMock(Embed)
@@ -31,6 +35,10 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
         mock_text_to_speech_embed.file = "alloy_speech.mp3"
         self.bot.text_to_speech.return_value = mock_text_to_speech_embed
 
+    async def test_on_ready(self):
+        await self.bot.on_ready()
+        self.bot.sync_commands.assert_called_once()
+
     async def test_chat_command(self):
         embed = await self.bot.chat("Hello")
         self.assertIn("Hello, World!", embed.description)
@@ -42,6 +50,11 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
     async def test_text_to_speech_command(self):
         embed = await self.bot.text_to_speech("Hello")
         self.assertEqual("alloy_speech.mp3", embed.file)
+
+    async def test_on_ready(self):
+        await self.bot.cogs["ChatGPT"].on_ready()
+        self.bot.sync_commands.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

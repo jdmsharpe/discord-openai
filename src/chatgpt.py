@@ -42,20 +42,13 @@ class ChatGPT(commands.Cog):
         Event listener that runs when the bot is ready.
         Logs bot details and attempts to synchronize commands.
         """
-        logging.info(f"Logged in as {self.bot.user} (ID: {self.bot.user.id})")
+        logging.info(f"Logged in as {self.bot.user} (ID: {self.bot.owner_id})")
         logging.info(f"Attempting to sync commands for guilds: {GUILD_IDS}")
         try:
             await self.bot.sync_commands()
             logging.info("Commands synchronized successfully.")
         except Exception as e:
             logging.error(f"Error during command synchronization: {e}", exc_info=True)
-
-    async def keep_typing(self, channel):
-        """
-        Coroutine to keep the typing indicator alive in a channel.
-        """
-        async with channel.typing():
-            await asyncio.sleep(10)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -157,14 +150,12 @@ class ChatGPT(commands.Cog):
         thread_params = ChatCompletionParameters(
             model="gpt-4-turbo", thread_owner=thread.owner
         )
-        args = thread.name.split("-")[1:]  # Get the arguments after 'ChatGPT'
+        args = thread.name.split("/")[1:]  # Get the arguments after 'ChatGPT'
 
         # Parse the arguments
         try:
             if len(args) > 0:
-                thread_params.model = (
-                    "gpt-3.5-turbo-0125" if args[0] == "3.5" else "gpt-4-turbo"
-                )
+                thread_params.model = args[0]
             if len(args) > 1:
                 thread_params.frequency_penalty = float(args[1])
             if len(args) > 2:
@@ -192,16 +183,22 @@ class ChatGPT(commands.Cog):
                 await thread.send(
                     embed=Embed(
                         title="ChatGPT Thread Conversation Started",
-                        description=f"**Model:** {thread_params.model}\n**Frequency Penalty:** {thread_params.frequency_penalty}\n \
-                        **Presence Penalty:** {thread_params.presence_penalty}\n**Temperature:** {thread_params.temperature}\n \
-                        **Nucleus Sampling** {thread_params.top_p}\n\nPlease see https://platform.openai.com/docs/guides/text-generation/completions-api \
-                            for more information on these parameters. They can be entered sequentially as arguments in the thread name delimited by hyphens.",
+                        description=f"**Model:** {thread_params.model}\n\
+                        **Frequency Penalty:** {thread_params.frequency_penalty}\n\
+                        **Presence Penalty:** {thread_params.presence_penalty}\n\
+                        **Temperature:** {thread_params.temperature}\n\
+                        **Nucleus Sampling** {thread_params.top_p}\n\n\
+                            Please see https://platform.openai.com/docs/guides/text-generation/parameter-details \
+                            for more information on these parameters. They can be entered sequentially as arguments \
+                            in the thread name delimited by forward slashes.",
                         color=Colour.green(),
                     )
                 )
 
             except Exception as e:
-                logging.error(f"Error sending message to thread: {e}", exc_info=True)
+                await thread.send(
+                    embed=Embed(title="Error", description=str(e), color=Colour.red())
+                )
 
     @slash_command(
         name="chat",
