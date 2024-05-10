@@ -1,12 +1,13 @@
 import aiohttp
+import asyncio
 import logging
 import io
 import openai
 from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
 from discord import ApplicationContext, Colour, Embed, File, Thread
-import json
 from pathlib import Path
+from util import ChatCompletionParameters
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
@@ -27,6 +28,8 @@ class ChatGPT(commands.Cog):
 
         # Dictionary to store conversation history for each thread
         self.conversation_histories = {}
+        # Dictionary to store the chat completion parameters for each thread
+        self.thread_parameters = {}
 
     # Added for debugging purposes
     @commands.Cog.listener()
@@ -43,70 +46,94 @@ class ChatGPT(commands.Cog):
         except Exception as e:
             logging.error(f"Error during command synchronization: {e}", exc_info=True)
 
+    async def keep_typing(self, channel):
+        """
+        Coroutine to keep the typing indicator alive in a channel.
+        """
+        while True:
+            await channel.typing()
+            await asyncio.sleep(10)  # Resend typing indicator every 10 seconds
+
     @commands.Cog.listener()
     async def on_message(self, message):
-        logging.info(
-            f"on_message: Message received: {message.content} (in channel {message.channel.name})"
-        )
-
+        """
+        Event listener that runs when a message is sent.
+        Generates a response using ChatGPT when a user message is detected in a thread.
+        """
         # Ignore messages not sent in a thread
         if not isinstance(message.channel, Thread):
-            logging.info("on_message: Message not in a thread")
             return
 
-        # Ensure activation in threads specifically for ChatGPT interactions
+        # Ensure activation in threads specifically for AI interactions
         if "ChatGPT" not in message.channel.name:
-            logging.info("on_message: Message not in a ChatGPT thread")
             return
 
         # Should not happen, but just in case
         if message.channel.id not in self.conversation_histories:
             self.conversation_histories[message.channel.id] = []
+            self.thread_parameters[message.channel.id] = ChatCompletionParameters()
             logging.info(
-                f"on_message: Conversation history initialized for thread {message.channel.id}"
+                f"on_message: Conversation history and thread parameters initialized for thread {message.channel.id}"
             )
 
+        # Ignore messages sent by other users in thread
+        if (
+            message.author != self.thread_parameters[message.channel.id].thread_owner
+            and message.author != self.bot.user
+        ):
+            return
+
         # Determine the role based on the sender
-        role = "user" if message.author != self.bot.user else "assistant"
+        role = (
+            "user"
+            if message.author == self.thread_parameters[message.channel.id].thread_owner
+            else "assistant"
+        )
         # Only attempt to generate a response if the message is from a user
         if role == "user":
-            # Simulate typing while processing
-            async with message.channel.typing():
+            # Append the user's message to the conversation history
+            try:
+                # Start typing and keep it alive until the response is ready
+                typing_task = asyncio.create_task(self.keep_typing(message.channel))
+
                 # Append the user's message to the conversation history
-                try:
-                    self.conversation_histories[message.channel.id].append(
-                        {"role": "user", "content": message.content}
+                self.conversation_histories[message.channel.id].append(
+                    {"role": "user", "content": message.content}
+                )
+                response = openai.chat.completions.create(
+                    messages=self.conversation_histories[message.channel.id],
+                    model="gpt-4-turbo",  # Default for now
+                )
+                response_text = (
+                    response.choices[0].message.content
+                    if response.choices
+                    else "No response."
+                )
+
+                # Stop the typing indicator
+                typing_task.cancel()
+
+                await message.reply(
+                    embed=Embed(
+                        title="ChatGPT Text Generation - Conversation",
+                        description=f"**Response:**\n{response_text}",
+                        color=Colour.blue(),
                     )
-                    logging.info(
-                        f"on_message: Conversation history updated with user message for thread {message.channel.id}"
-                    )
-                    response = openai.chat.completions.create(
-                        messages=self.conversation_histories[message.channel.id],
-                        model="gpt-4-turbo",  # Default for now
-                    )
-                    response_text = (
-                        response.choices[0].message.content
-                        if response.choices
-                        else "No response."
-                    )
-                    await message.reply(
-                        embed=Embed(
-                            title="ChatGPT Text Generation",
-                            description=f"**Prompt:**\n{message.content}\n\n**Response:**\n{response_text}",
-                            color=Colour.blue(),
-                        )
-                    )
-                    self.conversation_histories[message.channel.id].append(
-                        {"role": "assistant", "content": response_text}
-                    )
-                    logging.info(
-                        f"on_message: Conversation history updated with assistant message for thread {message.channel.id}"
-                    )
-                except Exception as e:
-                    logging.error(f"Error during chat attempt: {e}", exc_info=True)
+                )
+
+                # Append the API response to the conversation history
+                self.conversation_histories[message.channel.id].append(
+                    {"role": "assistant", "content": response_text}
+                )
+            except Exception as e:
+                logging.error(f"Error during chat attempt: {e}", exc_info=True)
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread):
+        """
+        Event listener that runs when a thread is created.
+        Initializes conversation history and parameters for the thread.
+        """
         logging.info(f"New thread created: {thread.name}")
 
         # Ignore threads sent by the bot itself or not within a thread
@@ -117,11 +144,35 @@ class ChatGPT(commands.Cog):
         if "ChatGPT" not in thread.name:
             return
 
-        # Initialize conversation history for the thread if not already present
-        if thread.id not in self.conversation_histories:
+        thread_params = ChatCompletionParameters(
+            model="gpt-4-turbo", thread_owner=thread.owner
+        )
+        args = thread.name.split("-")[1:]  # Get the arguments after 'ChatGPT'
+
+        # Parse the arguments
+        try:
+            if len(args) > 0:
+                thread_params.model = args[0]
+            if len(args) > 1:
+                thread_params.frequency_penalty = float(args[1])
+            if len(args) > 2:
+                thread_params.presence_penalty = float(args[2])
+            if len(args) > 3:
+                thread_params.temperature = float(args[3])
+            if len(args) > 4:
+                thread_params.top_p = float(args[4])
+        except ValueError:
+            logging.error("Invalid parameters in thread name. Using default values.")
+
+        # Initialize conversation history and thread parameters
+        if (
+            thread.id not in self.conversation_histories
+            or thread.id not in self.thread_parameters
+        ):
             self.conversation_histories[thread.id] = []
+            self.thread_parameters[thread.id] = thread_params
             logging.info(
-                f"on_thread_create: Conversation history initialized for thread {thread.id}"
+                f"on_thread_create: Conversation history and thread parameters initialized for thread {thread.id}"
             )
 
     @slash_command(
@@ -181,7 +232,7 @@ class ChatGPT(commands.Cog):
             )
             await ctx.followup.send(
                 embed=Embed(
-                    title="ChatGPT Text Generation",
+                    title="ChatGPT Text Generation - One-Time Response",
                     description=f"**Prompt:**\n{prompt}\n\n**Response:**\n{response_text}",
                     color=Colour.blue(),
                 )
