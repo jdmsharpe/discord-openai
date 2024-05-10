@@ -62,6 +62,7 @@ class ImageGenerationParameters:
             "style": self.style,
         }
 
+
 class TextToSpeechParameters:
     def __init__(
         self,
@@ -71,19 +72,17 @@ class TextToSpeechParameters:
         response_format: str = "mp3",
         speed: float = 1.0,
     ):
-        self.prompt = prompt
+        self.input = input
         self.model = model
-        self.n = n
-        self.quality = quality
-        self.size = size
-        self.style = style
+        self.voice = voice
+        self.response_format = response_format
+        self.speed = speed
 
     def to_dict(self):
         return {
-            "prompt": self.prompt,
+            "input": self.input,
             "model": self.model,
-            "n": self.n,
-            "quality": self.quality,
-            "size": self.size,
-            "style": self.style,
+            "voice": self.voice,
+            "response_format": self.response_format,
+            "speed": self.speed,
         }

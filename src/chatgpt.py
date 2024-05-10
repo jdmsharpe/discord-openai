@@ -54,9 +54,8 @@ class ChatGPT(commands.Cog):
         """
         Coroutine to keep the typing indicator alive in a channel.
         """
-        while True:
-            await channel.typing()
-            await asyncio.sleep(10)  # Resend typing indicator every 10 seconds
+        async with channel.typing():
+            await asyncio.sleep(10)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -191,7 +190,7 @@ class ChatGPT(commands.Cog):
                     embed=Embed(
                         title="ChatGPT Thread Conversation Started",
                         description=f"**Model:** {thread_params.model}\n**Frequency Penalty:** {thread_params.frequency_penalty}\n \
-                        **Presence Penalty:** {thread_params.presence_penalty}\n**Temperature:** {thread_params.temperature}\n, \
+                        **Presence Penalty:** {thread_params.presence_penalty}\n**Temperature:** {thread_params.temperature}\n \
                         **Nucleus Sampling** {thread_params.top_p}\n\nPlease see https://platform.openai.com/docs/guides/text-generation/completions-api \
                             for more information on these parameters and how to set them.",
                         color=Colour.green(),
