@@ -50,7 +50,7 @@ class ChatGPT(commands.Cog):
         )
 
         # Ignore messages not sent in a thread
-        if message.channel is not Thread:
+        if not isinstance(message.channel, Thread):
             logging.info("on_message: Message not in a thread")
             return
 
