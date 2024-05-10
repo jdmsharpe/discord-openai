@@ -51,10 +51,12 @@ class ChatGPT(commands.Cog):
 
         # Ignore messages not sent in a thread
         if message.channel is not Thread:
+            logging.info("on_message: Message not in a thread")
             return
 
         # Ensure activation in threads specifically for ChatGPT interactions
         if "ChatGPT" not in message.channel.name:
+            logging.info("on_message: Message not in a ChatGPT thread")
             return
 
         # Should not happen, but just in case
