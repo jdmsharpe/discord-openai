@@ -179,16 +179,21 @@ class ChatGPT(commands.Cog):
                 f"on_thread_create: Conversation history and thread parameters initialized for thread {thread.id}"
             )
 
-            thread.send(
-                Embed(
-                    title="ChatGPT Thread Conversation Started",
-                    description=f"**Model:** {thread_params.model}\n**Frequency Penalty:** {thread_params.frequency_penalty}\n \
-                    **Presence Penalty:** {thread_params.presence_penalty}\n**Temperature:** {thread_params.temperature}\n, \
-                    **Nucleus Sampling** {thread_params.top_p}\n\nPlease see https://platform.openai.com/docs/guides/text-generation/completions-api \
-                        for more information on these parameters and how to set them.",
-                    color=Colour.green(),
+            # Send a message to the thread to indicate the conversation has started
+            try:
+                await thread.send(
+                    Embed(
+                        title="ChatGPT Thread Conversation Started",
+                        description=f"**Model:** {thread_params.model}\n**Frequency Penalty:** {thread_params.frequency_penalty}\n \
+                        **Presence Penalty:** {thread_params.presence_penalty}\n**Temperature:** {thread_params.temperature}\n, \
+                        **Nucleus Sampling** {thread_params.top_p}\n\nPlease see https://platform.openai.com/docs/guides/text-generation/completions-api \
+                            for more information on these parameters and how to set them.",
+                        color=Colour.green(),
+                    )
                 )
-            )
+
+            except Exception as e:
+                logging.error(f"Error sending message to thread: {e}", exc_info=True)
 
     @slash_command(
         name="chat",
