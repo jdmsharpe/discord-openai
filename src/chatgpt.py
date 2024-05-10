@@ -195,7 +195,7 @@ class ChatGPT(commands.Cog):
                         description=f"**Model:** {thread_params.model}\n**Frequency Penalty:** {thread_params.frequency_penalty}\n \
                         **Presence Penalty:** {thread_params.presence_penalty}\n**Temperature:** {thread_params.temperature}\n \
                         **Nucleus Sampling** {thread_params.top_p}\n\nPlease see https://platform.openai.com/docs/guides/text-generation/completions-api \
-                            for more information on these parameters and how to set them.",
+                            for more information on these parameters. They can be entered sequentially as arguments in the thread name delimited by hyphens.",
                         color=Colour.green(),
                     )
                 )
