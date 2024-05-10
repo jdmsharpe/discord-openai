@@ -29,6 +29,7 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
         self.bot.generate_image.return_value = mock_image_embed
 
         mock_text_to_speech_embed = MagicMock(Embed)
+        mock_text_to_speech_embed.file = "alloy_speech.mp3"
         self.bot.text_to_speech.return_value = mock_text_to_speech_embed
 
     async def test_chat_command(self):
@@ -40,7 +41,8 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("image.png", embed.file)
 
     async def test_text_to_speech_command(self):
-        pass # Complete this test case
+        embed = await self.bot.text_to_speech("Hello")
+        self.assertEqual("alloy_speech.mp3", embed.file)
 
 if __name__ == "__main__":
     unittest.main()

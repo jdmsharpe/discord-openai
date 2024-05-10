@@ -7,7 +7,11 @@ from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
 from discord import ApplicationContext, Colour, Embed, File, Thread
 from pathlib import Path
-from util import ChatCompletionParameters
+from util import (
+    ChatCompletionParameters,
+    ImageGenerationParameters,
+    TextToSpeechParameters,
+)
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
@@ -29,7 +33,7 @@ class ChatGPT(commands.Cog):
         # Dictionary to store conversation history for each thread
         self.conversation_histories = {}
         # Dictionary to store the chat completion parameters for each thread
-        self.thread_parameters = {}
+        self.thread_params = {}
 
     # Added for debugging purposes
     @commands.Cog.listener()
@@ -68,41 +72,41 @@ class ChatGPT(commands.Cog):
         if "ChatGPT" not in message.channel.name:
             return
 
-        # Should not happen, but just in case
-        if message.channel.id not in self.conversation_histories:
-            self.conversation_histories[message.channel.id] = []
-            self.thread_parameters[message.channel.id] = ChatCompletionParameters()
-            logging.info(
-                f"on_message: Conversation history and thread parameters initialized for thread {message.channel.id}"
-            )
-
         # Ignore messages sent by other users in thread
         if (
-            message.author != self.thread_parameters[message.channel.id].thread_owner
+            message.author != self.thread_params[message.channel.id].thread_owner
             and message.author != self.bot.user
         ):
             return
 
+        # Should not happen, but just in case
+        if message.channel.id not in self.conversation_histories:
+            self.conversation_histories[message.channel.id] = []
+            self.thread_params[message.channel.id] = ChatCompletionParameters(
+                model="gpt-4-turbo", thread_owner=message.author
+            )
+            logging.info(
+                f"on_message: Conversation history and thread parameters initialized for thread {message.channel.id}"
+            )
+
         # Determine the role based on the sender
         role = (
             "user"
-            if message.author == self.thread_parameters[message.channel.id].thread_owner
+            if message.author == self.thread_params[message.channel.id].thread_owner
             else "assistant"
         )
         # Only attempt to generate a response if the message is from a user
         if role == "user":
-            # Append the user's message to the conversation history
+            # Start typing and keep it alive until the response is ready
+            typing_task = asyncio.create_task(self.keep_typing(message.channel))
             try:
-                # Start typing and keep it alive until the response is ready
-                typing_task = asyncio.create_task(self.keep_typing(message.channel))
-
                 # Append the user's message to the conversation history
                 self.conversation_histories[message.channel.id].append(
                     {"role": "user", "content": message.content}
                 )
                 response = openai.chat.completions.create(
                     messages=self.conversation_histories[message.channel.id],
-                    model="gpt-4-turbo",  # Default for now
+                    model=self.thread_params[message.channel.id].model,
                 )
                 response_text = (
                     response.choices[0].message.content
@@ -110,12 +114,9 @@ class ChatGPT(commands.Cog):
                     else "No response."
                 )
 
-                # Stop the typing indicator
-                typing_task.cancel()
-
                 await message.reply(
                     embed=Embed(
-                        title="ChatGPT Text Generation - Conversation",
+                        title="ChatGPT Text Generation - Thread Conversation",
                         description=f"**Response:**\n{response_text}",
                         color=Colour.blue(),
                     )
@@ -127,6 +128,9 @@ class ChatGPT(commands.Cog):
                 )
             except Exception as e:
                 logging.error(f"Error during chat attempt: {e}", exc_info=True)
+            finally:
+                # Ensure the typing indicator is stopped
+                typing_task.cancel()
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread):
@@ -167,12 +171,23 @@ class ChatGPT(commands.Cog):
         # Initialize conversation history and thread parameters
         if (
             thread.id not in self.conversation_histories
-            or thread.id not in self.thread_parameters
+            or thread.id not in self.thread_params
         ):
             self.conversation_histories[thread.id] = []
-            self.thread_parameters[thread.id] = thread_params
+            self.thread_params[thread.id] = thread_params
             logging.info(
                 f"on_thread_create: Conversation history and thread parameters initialized for thread {thread.id}"
+            )
+
+            thread.send(
+                Embed(
+                    title="ChatGPT Thread Conversation Started",
+                    description=f"**Model:** {thread_params.model}\n**Frequency Penalty:** {thread_params.frequency_penalty}\n \
+                    **Presence Penalty:** {thread_params.presence_penalty}\n**Temperature:** {thread_params.temperature}\n, \
+                    **Nucleus Sampling** {thread_params.top_p}\n\nPlease see https://platform.openai.com/docs/guides/text-generation/completions-api \
+                        for more information on these parameters and how to set them.",
+                    color=Colour.green(),
+                )
             )
 
     @slash_command(
@@ -208,23 +223,29 @@ class ChatGPT(commands.Cog):
         Creates a model response for the given chat conversation.
 
         Args:
-          messages: A list of messages comprising the conversation so far.
-              [Example Python code](https://cookbook.openai.com/examples/how_to_format_inputs_to_chatgpt_models).
+          prompt: The prompt to generate a response for.
+
+          personality: The role you want the model to emulate. This can be a description of a persona,
+              like "You are a helpful assistant." The maximum length is 1000 characters.
 
           model: ID of the model to use. See the
               [model endpoint compatibility](https://platform.openai.com/docs/models/model-endpoint-compatibility)
               table for details on which models work with the Chat API.
         """
-        await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
+        # Acknowledge the interaction immediately - reply can take some time
+        await ctx.defer()
+
+        # Initialize parameters for the chat completions API
+        chat_params = ChatCompletionParameters(
+            messages=messages, model=model, thread_owner=ctx.author
+        )
+
         try:
             messages = [
                 {"role": "system", "content": personality},
                 {"role": "user", "content": prompt},
             ]
-            response = openai.chat.completions.create(
-                messages=messages,
-                model=model,
-            )
+            response = openai.chat.completions.create(**chat_params.to_dict())
             response_text = (
                 response.choices[0].message.content
                 if response.choices
@@ -237,6 +258,7 @@ class ChatGPT(commands.Cog):
                     color=Colour.blue(),
                 )
             )
+
         except Exception as e:
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
@@ -361,7 +383,16 @@ class ChatGPT(commands.Cog):
             return
 
         if model == "dall-e-2" and quality == "hd":
-            error_message = "The `hd` quality is only supported for DALL-E 3."
+            error_message = "The `hd` quality option is only supported for DALL-E 3."
+            await ctx.followup.send(
+                embed=Embed(
+                    title="Error", description=error_message, color=Colour.red()
+                )
+            )
+            return
+
+        if model == "dall-e-2" and style is not None:
+            error_message = "The `style` parameter is only supported for DALL-E 3."
             await ctx.followup.send(
                 embed=Embed(
                     title="Error", description=error_message, color=Colour.red()
@@ -370,20 +401,14 @@ class ChatGPT(commands.Cog):
             return
 
         # Initialize parameters for the image generation API
-        image_params = {
-            "prompt": prompt,
-            "model": model,
-            "n": n,
-            "quality": quality,
-            "size": size,
-        }
+        image_params = ImageGenerationParameters(prompt, model, n, quality, size, style)
 
         # style parameter is not supported for DALL-E 2
         if model != "dall-e-2" or style is not None:
             image_params["style"] = style
 
         try:
-            response = openai.images.generate(**image_params)
+            response = openai.images.generate(**image_params.to_dict())
             image_urls = [data.url for data in response.data]
             if image_urls:
                 image_files = []
@@ -405,6 +430,7 @@ class ChatGPT(commands.Cog):
                     color=Colour.blue(),
                 )
                 await ctx.followup.send(embed=embed, files=image_files)
+
         except Exception as e:
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
@@ -491,16 +517,16 @@ class ChatGPT(commands.Cog):
           speed: The speed of the generated audio. Select a value from `0.25` to `4.0`. `1.0` is
               the default.
         """
-        await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
+        # Acknowledge the interaction immediately - reply can take some time
+        await ctx.defer()
+
+        # Initialize parameters for the text-to-speech API
+        text_to_speech_params = TextToSpeechParameters(
+            input, model, voice, response_format, speed
+        )
+
         try:
-            # Generate spoken audio from input text
-            response = openai.audio.speech.create(
-                input=input,
-                model=model,
-                voice=voice,
-                response_format=response_format,
-                speed=speed,
-            )
+            response = openai.audio.speech.create(**text_to_speech_params.to_dict())
 
             # Path where the audio file will be saved
             speech_file_path = (
@@ -517,10 +543,12 @@ class ChatGPT(commands.Cog):
                 color=Colour.green(),
             )
             await ctx.followup.send(embed=embed, file=File(speech_file_path))
+
         except Exception as e:
             await ctx.followup.send(
                 embed=Embed(title="Error", description=str(e), color=Colour.red())
             )
+
         finally:
             # Delete the audio file after sending
             speech_file_path.unlink(missing_ok=True)
