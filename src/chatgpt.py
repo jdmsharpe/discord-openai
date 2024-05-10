@@ -401,14 +401,9 @@ class ChatGPT(commands.Cog):
             )
             return
 
+        # Strip style parameter if model is DALL-E 2
         if model == "dall-e-2" and style is not None:
-            error_message = "The `style` parameter is only supported for DALL-E 3."
-            await ctx.followup.send(
-                embed=Embed(
-                    title="Error", description=error_message, color=Colour.red()
-                )
-            )
-            return
+            style = None
 
         # Initialize parameters for the image generation API
         image_params = ImageGenerationParameters(prompt, model, n, quality, size, style)
