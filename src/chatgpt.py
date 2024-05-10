@@ -97,8 +97,10 @@ class ChatGPT(commands.Cog):
         )
         # Only attempt to generate a response if the message is from a user
         if role == "user":
+
             # Start typing and keep it alive until the response is ready
             typing_task = asyncio.create_task(self.keep_typing(message.channel))
+
             try:
                 # Append the user's message to the conversation history
                 self.conversation_histories[message.channel.id].append(
@@ -126,8 +128,10 @@ class ChatGPT(commands.Cog):
                 self.conversation_histories[message.channel.id].append(
                     {"role": "assistant", "content": response_text}
                 )
+
             except Exception as e:
                 logging.error(f"Error during chat attempt: {e}", exc_info=True)
+
             finally:
                 # Ensure the typing indicator is stopped
                 typing_task.cancel()
@@ -156,7 +160,9 @@ class ChatGPT(commands.Cog):
         # Parse the arguments
         try:
             if len(args) > 0:
-                thread_params.model = args[0]
+                thread_params.model = (
+                    "gpt-3.5-turbo-0125" if args[0] == "3.5" else "gpt-4-turbo"
+                )
             if len(args) > 1:
                 thread_params.frequency_penalty = float(args[1])
             if len(args) > 2:
@@ -182,7 +188,7 @@ class ChatGPT(commands.Cog):
             # Send a message to the thread to indicate the conversation has started
             try:
                 await thread.send(
-                    Embed(
+                    embed=Embed(
                         title="ChatGPT Thread Conversation Started",
                         description=f"**Model:** {thread_params.model}\n**Frequency Penalty:** {thread_params.frequency_penalty}\n \
                         **Presence Penalty:** {thread_params.presence_penalty}\n**Temperature:** {thread_params.temperature}\n, \
