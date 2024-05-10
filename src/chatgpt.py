@@ -96,44 +96,47 @@ class ChatGPT(commands.Cog):
         )
         # Only attempt to generate a response if the message is from a user
         if role == "user":
+            # Default response text - to be overwritten by
+            title = "ChatGPT Text Generation - Thread Conversation"
+            description = ""
+            color = Colour.blue()
 
-            # Start typing and keep it alive until the response is ready
-            typing_task = asyncio.create_task(self.keep_typing(message.channel))
-
-            try:
-                # Append the user's message to the conversation history
-                self.conversation_histories[message.channel.id].append(
-                    {"role": "user", "content": message.content}
-                )
-                response = openai.chat.completions.create(
-                    messages=self.conversation_histories[message.channel.id],
-                    model=self.thread_params[message.channel.id].model,
-                )
-                response_text = (
-                    response.choices[0].message.content
-                    if response.choices
-                    else "No response."
-                )
-
-                await message.reply(
-                    embed=Embed(
-                        title="ChatGPT Text Generation - Thread Conversation",
-                        description=f"**Response:**\n{response_text}",
-                        color=Colour.blue(),
+            # Send a typing indicator to indicate the bot is processing the message
+            async with message.channel.typing():
+                try:
+                    # Append the user's message to the conversation history
+                    self.conversation_histories[message.channel.id].append(
+                        {"role": "user", "content": message.content}
                     )
+                    response = openai.chat.completions.create(
+                        messages=self.conversation_histories[message.channel.id],
+                        model=self.thread_params[message.channel.id].model,
+                    )
+                    response_text = (
+                        response.choices[0].message.content
+                        if response.choices
+                        else "No response."
+                    )
+
+                    # Now that response is generated, add that to description and conversation history
+                    description = f"**Response:**\n{response_text}"
+                    self.conversation_histories[message.channel.id].append(
+                        {"role": "assistant", "content": response_text}
+                    )
+
+                except Exception as e:
+                    title = "Error"
+                    description = str(e)
+                    color = Colour.red()
+
+            # Send the assembled response to the thread
+            await message.reply(
+                embed=Embed(
+                    title=title,
+                    description=description,
+                    color=color,
                 )
-
-                # Append the API response to the conversation history
-                self.conversation_histories[message.channel.id].append(
-                    {"role": "assistant", "content": response_text}
-                )
-
-            except Exception as e:
-                logging.error(f"Error during chat attempt: {e}", exc_info=True)
-
-            finally:
-                # Ensure the typing indicator is stopped
-                typing_task.cancel()
+            )
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread):
@@ -550,7 +553,7 @@ class ChatGPT(commands.Cog):
             embed = Embed(
                 title="Text to Speech Conversion",
                 description=f"**Text:** {input}\n**Voice:** {voice}",
-                color=Colour.green(),
+                color=Colour.blue(),
             )
             await ctx.followup.send(embed=embed, file=File(speech_file_path))
 
