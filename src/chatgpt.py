@@ -408,10 +408,6 @@ class ChatGPT(commands.Cog):
         # Initialize parameters for the image generation API
         image_params = ImageGenerationParameters(prompt, model, n, quality, size, style)
 
-        # style parameter is not supported for DALL-E 2
-        if model != "dall-e-2" or style is not None:
-            image_params.style = style
-
         try:
             response = openai.images.generate(**image_params.to_dict())
             image_urls = [data.url for data in response.data]
