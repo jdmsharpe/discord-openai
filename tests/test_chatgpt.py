@@ -3,7 +3,6 @@ import unittest
 import config.auth  # imported for ChatGPT class dependency
 from chatgpt import ChatGPT
 from discord import ApplicationContext, Bot, Embed
-from pathlib import Path
 
 
 class TestChatGPT(unittest.IsolatedAsyncioTestCase):
