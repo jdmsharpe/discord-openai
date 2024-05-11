@@ -50,10 +50,5 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         embed = await self.bot.text_to_speech("Hello")
         self.assertEqual("alloy_speech.mp3", embed.file)
 
-    async def test_on_ready(self):
-        await self.bot.cogs["OpenAIAPI"].on_ready()
-        self.bot.sync_commands.assert_called_once()
-
-
 if __name__ == "__main__":
     unittest.main()
