@@ -22,7 +22,7 @@ Starting a thread with `/thread name:<name> message:<message>` with a value for 
 + You can add additional parameters (developer API options) to the name field in order, separated by forward slashes (`/`) as delimiters.
 + Accepted arguments after the initial `ChatGPT` string are `model`, `frequency_penalty`, `presence_penalty`, `temperature`, and `top_p` (AKA "Nucleus Sampling").
 + An example value for the thread name (also the default) is `ChatGPT/gpt-4-turbo/0.0/0.0/0.0/0.0`.
-+ The model will take the `message` value for the initial prompt.
++ The model will take the `message` value for the initial prompt, and reply within the newly created thread.
 + Any further response from the thread creator within the thread will be interpreted as a reply to the model's last output.
 
 For more information on these thread parameters, please see [this OpenAI API doc on them](https://platform.openai.com/docs/guides/text-generation/parameter-details). Please also see the [helpful OpenAI API guide doc splash page](https://platform.openai.com/docs/overview) for further reference and information.
