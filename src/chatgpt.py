@@ -50,6 +50,14 @@ class ChatGPT(commands.Cog):
         except Exception as e:
             logging.error(f"Error during command synchronization: {e}", exc_info=True)
 
+    async def keep_typing(self, channel):
+        """
+        Coroutine to keep the typing indicator alive in a channel.
+        """
+        while True:
+            await channel.typing()
+            await asyncio.sleep(5)  # Resend typing indicator every 5 seconds
+
     @commands.Cog.listener()
     async def on_message(self, message):
         """
@@ -94,42 +102,47 @@ class ChatGPT(commands.Cog):
             description = ""
             color = Colour.blue()
 
-            # Send a typing indicator to indicate the bot is processing the message
-            async with message.channel.typing():
-                try:
-                    # Append the user's message to the conversation history
-                    self.conversation_histories[message.channel.id].append(
-                        {"role": "user", "content": message.content}
-                    )
-                    response = openai.chat.completions.create(
-                        messages=self.conversation_histories[message.channel.id],
-                        model=self.thread_params[message.channel.id].model,
-                    )
-                    response_text = (
-                        response.choices[0].message.content
-                        if response.choices
-                        else "No response."
-                    )
+            # Start typing and keep it alive until the response is ready
+            typing_task = asyncio.create_task(self.keep_typing(message.channel))
 
-                    # Now that response is generated, add that to description and conversation history
-                    description = f"**Response:**\n{response_text}"
-                    self.conversation_histories[message.channel.id].append(
-                        {"role": "assistant", "content": response_text}
-                    )
-
-                except Exception as e:
-                    title = "Error"
-                    description = str(e)
-                    color = Colour.red()
-
-            # Send the assembled response to the thread
-            await message.reply(
-                embed=Embed(
-                    title=title,
-                    description=description,
-                    color=color,
+            try:
+                # Append the user's message to the conversation history
+                self.conversation_histories[message.channel.id].append(
+                    {"role": "user", "content": message.content}
                 )
-            )
+                response = openai.chat.completions.create(
+                    messages=self.conversation_histories[message.channel.id],
+                    model=self.thread_params[message.channel.id].model,
+                )
+                response_text = (
+                    response.choices[0].message.content
+                    if response.choices
+                    else "No response."
+                )
+
+                # Now that response is generated, add that to description and conversation history
+                description = f"**Response:**\n{response_text}"
+                self.conversation_histories[message.channel.id].append(
+                    {"role": "assistant", "content": response_text}
+                )
+
+            except Exception as e:
+                title = "Error"
+                description = str(e)
+                color = Colour.red()
+
+            finally:
+                # Send the assembled response to the thread
+                await message.reply(
+                    embed=Embed(
+                        title=title,
+                        description=description,
+                        color=color,
+                    )
+                )
+
+                # Stop typing
+                typing_task.cancel()
 
     @commands.Cog.listener()
     async def on_thread_create(self, thread):
