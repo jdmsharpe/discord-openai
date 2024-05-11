@@ -281,9 +281,7 @@ class OpenAIAPI(commands.Cog):
             {"role": "system", "content": personality},
             {"role": "user", "content": prompt},
         ]
-        chat_params = ChatCompletionParameters(
-            messages=messages, model=model, thread_owner=ctx.author
-        )
+        chat_params = ChatCompletionParameters(messages=messages, model=model)
 
         try:
             response = openai.chat.completions.create(**chat_params.to_dict())
