@@ -16,10 +16,10 @@ from util import (
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 
-class ChatGPT(commands.Cog):
+class OpenAIAPI(commands.Cog):
     def __init__(self, bot):
         """
-        Initialize the ChatGPT class.
+        Initialize the OpenAIAPI class.
 
         Args:
             bot: The bot instance.
@@ -62,7 +62,7 @@ class ChatGPT(commands.Cog):
     async def on_message(self, message):
         """
         Event listener that runs when a message is sent.
-        Generates a response using ChatGPT when a user message is detected in a thread.
+        Generates a response using chat completion API when a new message from the thread owner is detected.
         """
         # Ignore messages not sent in a thread
         if not isinstance(message.channel, Thread):
@@ -97,7 +97,7 @@ class ChatGPT(commands.Cog):
         )
         # Only attempt to generate a response if the message is from a user
         if role == "user":
-            # Default response text - to be overwritten by
+            # Default response will be overwritten
             title = "ChatGPT Text Generation - Thread Conversation"
             description = ""
             color = Colour.blue()

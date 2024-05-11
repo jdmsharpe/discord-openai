@@ -1,19 +1,18 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import unittest
-import config.auth  # imported for ChatGPT class dependency
-from chatgpt import ChatGPT
-from discord import ApplicationContext, Bot, Embed, Intents, Message, Thread
+import config.auth  # imported for OpenAIAPI class dependency
+from openai_api import OpenAIAPI
+from discord import Bot, Embed, Intents
 
-class TestChatGPT(unittest.IsolatedAsyncioTestCase):
+class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        # Setting up the bot with the ChatGPT cog
+        # Setting up the bot with the OpenAIAPI cog
         intents = Intents.default()
         intents.presences = False
         intents.members = True
         intents.message_content = True
-        intents.guilds = True
         self.bot = Bot(intents=intents)
-        self.bot.add_cog(ChatGPT(bot=self.bot))
+        self.bot.add_cog(OpenAIAPI(bot=self.bot))
         self.bot.owner_id = 1234567890
 
         # Properly setting up mocks for the command functions and context
@@ -52,7 +51,7 @@ class TestChatGPT(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("alloy_speech.mp3", embed.file)
 
     async def test_on_ready(self):
-        await self.bot.cogs["ChatGPT"].on_ready()
+        await self.bot.cogs["OpenAIAPI"].on_ready()
         self.bot.sync_commands.assert_called_once()
 
 
