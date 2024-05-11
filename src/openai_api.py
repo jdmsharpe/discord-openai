@@ -401,7 +401,8 @@ class OpenAIAPI(commands.Cog):
               Natural causes the model to produce more natural, less hyper-real looking
               images. This param is only supported for `dall-e-3`.
         """
-        await ctx.defer()  # Acknowledge the interaction immediately - reply can take some time
+        # Acknowledge the interaction immediately - reply can take some time
+        await ctx.defer()
 
         # Guard clauses for model-specific constraints
         if (model == "dall-e-2" and n > 10) or (model == "dall-e-3" and n > 1):
