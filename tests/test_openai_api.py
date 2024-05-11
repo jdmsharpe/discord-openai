@@ -35,7 +35,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.bot.text_to_speech.return_value = mock_text_to_speech_embed
 
     async def test_on_ready(self):
-        await self.bot.on_ready()
+        await self.bot.cogs["OpenAIAPI"].on_ready()
         self.bot.sync_commands.assert_called_once()
 
     async def test_chat_command(self):
