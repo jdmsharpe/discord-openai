@@ -47,11 +47,11 @@ jobs:
         load: true  # Ensure the image is loaded into the Docker daemon
         context: .
         file: ./Dockerfile.test
-        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/discord-openai-bot:latest
+        tags: discord-openai-bot-test:latest
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache
 
     - name: Run Docker container to execute tests
-      run: docker run ${{ secrets.DOCKER_HUB_USERNAME }}/discord-openai-bot-test:latest
+      run: docker run discord-openai-bot-test:latest
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
