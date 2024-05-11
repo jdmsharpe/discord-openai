@@ -355,8 +355,8 @@ class ChatGPT(commands.Cog):
             OptionChoice(name="256x256", value="256x256"),
             OptionChoice(name="512x512", value="512x512"),
             OptionChoice(name="1024x1024", value="1024x1024"),
-            OptionChoice(name="1024x1792 (landscape)", value="1024x1792"),
-            OptionChoice(name="1792x1024 (portrait)", value="1792x1024"),
+            OptionChoice(name="1024x1792 (portrait)", value="1024x1792"),
+            OptionChoice(name="1792x1024 (landscape)", value="1792x1024"),
         ],
     )
     @option(
