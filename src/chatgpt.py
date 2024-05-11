@@ -129,6 +129,12 @@ class ChatGPT(commands.Cog):
             except Exception as e:
                 title = "Error"
                 description = str(e)
+                if (
+                    hasattr(e, "error")
+                    and isinstance(e.error, dict)
+                    and "message" in e.error
+                ):
+                    description = e.error["message"]
                 color = Colour.red()
 
             finally:
@@ -209,8 +215,20 @@ class ChatGPT(commands.Cog):
                 )
 
             except Exception as e:
+                error_message = str(e)
+                if (
+                    hasattr(e, "error")
+                    and isinstance(e.error, dict)
+                    and "message" in e.error
+                ):
+                    error_message = e.error["message"]
+
                 await thread.send(
-                    embed=Embed(title="Error", description=str(e), color=Colour.red())
+                    embed=Embed(
+                        title="Error",
+                        description=error_message,
+                        color=Colour.red(),
+                    )
                 )
 
     @slash_command(
@@ -283,8 +301,20 @@ class ChatGPT(commands.Cog):
             )
 
         except Exception as e:
+            error_message = str(e)
+            if (
+                hasattr(e, "error")
+                and isinstance(e.error, dict)
+                and "message" in e.error
+            ):
+                error_message = e.error["message"]
+
             await ctx.followup.send(
-                embed=Embed(title="Error", description=str(e), color=Colour.red())
+                embed=Embed(
+                    title="Error",
+                    description=error_message,
+                    color=Colour.red(),
+                )
             )
 
     @slash_command(
@@ -446,8 +476,20 @@ class ChatGPT(commands.Cog):
                 await ctx.followup.send(embed=embed, files=image_files)
 
         except Exception as e:
+            error_message = str(e)
+            if (
+                hasattr(e, "error")
+                and isinstance(e.error, dict)
+                and "message" in e.error
+            ):
+                error_message = e.error["message"]
+
             await ctx.followup.send(
-                embed=Embed(title="Error", description=str(e), color=Colour.red())
+                embed=Embed(
+                    title="Error",
+                    description=error_message,
+                    color=Colour.red(),
+                )
             )
 
     @slash_command(
@@ -559,8 +601,20 @@ class ChatGPT(commands.Cog):
             await ctx.followup.send(embed=embed, file=File(speech_file_path))
 
         except Exception as e:
+            error_message = str(e)
+            if (
+                hasattr(e, "error")
+                and isinstance(e.error, dict)
+                and "message" in e.error
+            ):
+                error_message = e.error["message"]
+
             await ctx.followup.send(
-                embed=Embed(title="Error", description=str(e), color=Colour.red())
+                embed=Embed(
+                    title="Error",
+                    description=error_message,
+                    color=Colour.red(),
+                )
             )
 
         finally:
