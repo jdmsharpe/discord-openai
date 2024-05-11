@@ -13,12 +13,19 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 Please also check out the official OpenAI Discord bot [here](https://github.com/openai/gpt-discord-bot/tree/main).
 
 ### Commands
-+ **chat** - Creates a model response for the given chat conversation.
-+ **generate_image** - Creates image(s) given a prompt.
-+ **text_to_speech** - Generates lifelike spoken audio from the input text.
-+ **More to come**
++ `/chat <prompt>` - Creates a model response for the given prompt.
++ `/generate_image <prompt>` - Creates image(s) given a prompt.
++ `/text_to_speech <prompt>` - Generates lifelike spoken audio from the prompt.
 
-Please see the [helpful OpenAI API guide doc](https://platform.openai.com/docs/guides/) for further reference and information.
+### Thread Functionality
+Starting a thread with `/thread name:<name> message:<message>` with a value for `name` that includes the string `ChatGPT` (case-sensitive) will start a conversation with a model. The model will keep track of the conversation history and remember past inputs.
++ You can add additional parameters (developer API options) to the name field in order, separated by forward slashes (`/`) as delimiters.
++ Accepted arguments after the initial `ChatGPT` string are `model`, `frequency_penalty`, `presence_penalty`, `temperature`, and `top_p` (AKA "Nucleus Sampling").
++ An example value for the thread name (also the default) is `ChatGPT/gpt-4-turbo/0.0/0.0/0.0/0.0`.
++ The model will take the `message` value for the initial prompt.
++ Any further response from the thread creator within the thread will be interpreted as a reply to the model's last output.
+
+For more information on these thread parameters, please see [this OpenAI API doc on them](https://platform.openai.com/docs/guides/text-generation/parameter-details). Please also see the [helpful OpenAI API guide doc splash page](https://platform.openai.com/docs/overview) for further reference and information.
 
 ### UI
 
@@ -43,6 +50,8 @@ Please see the [helpful OpenAI API guide doc](https://platform.openai.com/docs/g
 ## How to use it?
 + <a href="https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D.">**Create a Discord Bot** and invite it to your Discord server</a>
 + Note that this bot needs the following Discord bot permissions to function correctly: ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/92645355-827e-46a1-9140-cd56898e09c2)
++ Alongside the following intents: ![image](https://github.com/jdmsharpe/discord-chatgpt/assets/55511821/533b7a14-8174-43fa-999d-4bd6533cbc02)
+
 
 ### Build and Run with Docker (Recommended)
 #### Build and run the image locally
