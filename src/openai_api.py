@@ -277,15 +277,15 @@ class OpenAIAPI(commands.Cog):
         await ctx.defer()
 
         # Initialize parameters for the chat completions API
+        messages = [
+            {"role": "system", "content": personality},
+            {"role": "user", "content": prompt},
+        ]
         chat_params = ChatCompletionParameters(
             messages=messages, model=model, thread_owner=ctx.author
         )
 
         try:
-            messages = [
-                {"role": "system", "content": personality},
-                {"role": "user", "content": prompt},
-            ]
             response = openai.chat.completions.create(**chat_params.to_dict())
             response_text = (
                 response.choices[0].message.content
