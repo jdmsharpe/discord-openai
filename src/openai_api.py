@@ -192,7 +192,7 @@ class OpenAIAPI(commands.Cog):
                     )
 
                     # Assemble the response
-                    embeds = [Embed(title="ChatGPT Conversation", color=Colour.blue())]
+                    embeds = [Embed(title="ChatGPT Conversation", color=Colour.green())]
                     embeds[0].add_field(
                         name="Prompt", value=message.content, inline=False
                     )
@@ -401,7 +401,7 @@ class OpenAIAPI(commands.Cog):
             )
 
             # Assemble the response
-            embeds = [Embed(title="ChatGPT Conversation", color=Colour.blue())]
+            embeds = [Embed(title="ChatGPT Conversation", color=Colour.green())]
             embeds[0].add_field(
                 name="Conversation Started",
                 value=f"**Model:** {model}\n**Persona:** {persona}",
