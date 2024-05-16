@@ -29,10 +29,13 @@ class ButtonView(View):
         # End the conversation
         if self.conversation_id in self.cog.conversation_histories:
             del self.cog.conversation_histories[self.conversation_id]
-        await interaction.response.send_message("Conversation finished.", ephemeral=True)
+        await interaction.response.send_message(
+            "Conversation finished.", ephemeral=True
+        )
         # Disable the button
         button.disabled = True
         await interaction.message.edit(view=self)
+
 
 class OpenAIAPI(commands.Cog):
     def __init__(self, bot):
@@ -273,22 +276,20 @@ class OpenAIAPI(commands.Cog):
         await ctx.defer()
 
         # Initialize parameters for the chat completions API
-        params = (
-            ChatCompletionParameters(
-                messages=[
-                    {"role": "system", "content": {"type": "text", "text": persona}},
-                    {"role": "user", "content": {"type": "text", "text": prompt}},
-                ],
-                model=model,
-                persona=persona,
-                frequency_penalty=frequency_penalty,
-                presence_penalty=presence_penalty,
-                seed=seed,
-                temperature=temperature,
-                top_p=top_p,
-                conversation_starter=ctx.author,
-                conversation_id=ctx.interaction.id,
-            ),
+        params = ChatCompletionParameters(
+            messages=[
+                {"role": "system", "content": {"type": "text", "text": persona}},
+                {"role": "user", "content": {"type": "text", "text": prompt}},
+            ],
+            model=model,
+            persona=persona,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            seed=seed,
+            temperature=temperature,
+            top_p=top_p,
+            conversation_starter=ctx.author,
+            conversation_id=ctx.interaction.id,
         )
 
         try:
@@ -374,9 +375,6 @@ class OpenAIAPI(commands.Cog):
             )
             self.conversation_histories[ctx.interaction.id] = params
 
-            # Stop typing
-            typing_task.cancel()
-
         except Exception as e:
             error_message = str(e)
             if (
@@ -393,6 +391,11 @@ class OpenAIAPI(commands.Cog):
                     color=Colour.red(),
                 )
             )
+
+        finally:
+            # Stop typing
+            if typing_task is not None:
+                typing_task.cancel()
 
     @slash_command(
         name="generate_image",
