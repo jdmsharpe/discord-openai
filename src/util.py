@@ -4,7 +4,7 @@ from typing import List, Optional
 class ChatCompletionParameters:
     def __init__(
         self,
-        messages: List[str] = [],
+        messages: List[dict] = [],
         model: str = "gpt-4o",
         persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
