@@ -131,7 +131,7 @@ class OpenAIAPI(commands.Cog):
                         "content": {"type": "text", "text": message.content},
                     }
 
-                    if len(message.attachments) > 0 and message.attachments[0] is not None:
+                    if message.attachments[0] is not None and len(message.attachments) > 0:
                         # If the message contains attachments, append the attachment URLs to the prompt
                         for attachment in message.attachments:
                             content["content"].append(
@@ -331,7 +331,7 @@ class OpenAIAPI(commands.Cog):
                 "content": {"type": "text", "text": prompt},
             }
 
-            if len(ctx.message.attachments) > 0 and ctx.message.attachments[0] is not None:
+            if ctx.message.attachments[0] is not None and len(ctx.message.attachments) > 0:
                 # If the message contains attachments, append the attachment URLs to the prompt
                 for attachment in ctx.message.attachments:
                     content["content"].append(
