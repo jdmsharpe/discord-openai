@@ -343,15 +343,19 @@ class OpenAIAPI(commands.Cog):
 
             content = {
                 "role": "user",
-                "content": [{"type": "text", "text": prompt}],
+                "content": [
+                    {"type": "text", "text": prompt}
+                ],
             }
 
-            if attachment:
+            if attachment is not None:
                 # If the message contains an attachment, append the attachment URL to the prompt
                 content["content"].append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": {attachment.url}},
+                        "image_url": {
+                            "url": attachment.url
+                        }
                     }
                 )
 
