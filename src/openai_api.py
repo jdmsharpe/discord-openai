@@ -292,6 +292,8 @@ class OpenAIAPI(commands.Cog):
             conversation_id=ctx.interaction.id,
         )
 
+        typing_task = None
+
         try:
             # Update initial response description based on input parameters
             description = ""
@@ -316,7 +318,7 @@ class OpenAIAPI(commands.Cog):
             )
 
             # Send conversation acknowledgement
-            await ctx.send_response(
+            await ctx.send(
                 embed=Embed(
                     title="ChatGPT Conversation Started",
                     description=description,
