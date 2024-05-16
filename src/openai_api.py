@@ -196,7 +196,7 @@ class OpenAIAPI(commands.Cog):
                     embeds[0].add_field(
                         name="Prompt", value=message.content, inline=False
                     )
-                    self.append_response_embeds(embeds, response_text)
+                    append_response_embeds(embeds, response_text)
 
                 except Exception as e:
                     description = str(e)
@@ -408,7 +408,7 @@ class OpenAIAPI(commands.Cog):
                 inline=False,
             )
             embeds[0].add_field(name="Prompt", value=prompt, inline=False)
-            self.append_response_embeds(embeds, response_text)
+            append_response_embeds(embeds, response_text)
             view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
