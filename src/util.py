@@ -15,6 +15,7 @@ class ChatCompletionParameters:
         top_p: Optional[float] = None,
         conversation_starter: Optional[str] = None,
         conversation_id: Optional[str] = None,
+        conversation_channel: Optional[str] = None,
     ):
         self.messages = messages
         self.model = model
@@ -26,6 +27,7 @@ class ChatCompletionParameters:
         self.top_p = top_p
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
+        self.conversation_channel = conversation_channel
 
     def to_dict(self):
         # Create a copy of messages to avoid mutating original list

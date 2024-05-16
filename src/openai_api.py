@@ -114,6 +114,10 @@ class OpenAIAPI(commands.Cog):
             ):
                 return
 
+            # Ignore messages not in the same channel as the conversation
+            if message.channel_id != conversation.conversation_channel:
+                return
+
             # Should not happen, but just in case
             if (
                 conversation.conversation_id not in self.conversation_histories.keys()
@@ -123,6 +127,7 @@ class OpenAIAPI(commands.Cog):
                     model="gpt-4o",
                     conversation_starter=message.author,
                     conversation_id=message.id,
+                    conversation_channel=message.channel_id,
                 )
                 logging.info(
                     f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
@@ -300,12 +305,14 @@ class OpenAIAPI(commands.Cog):
         await ctx.defer()
 
         for conversation in self.conversation_histories.values():
-            if conversation.conversation_starter == ctx.author:
+            if (
+                conversation.conversation_starter == ctx.author
+                and conversation.conversation_channel == ctx.channel_id
+            ):
                 await ctx.send_followup(
                     embed=Embed(
                         title="Error",
-                        description="You already have an active conversation. Please finish it before starting a new one, \
-                            or else you will have multiple conversations running simultaneously.",
+                        description="You already have an active conversation in this channel. Please finish it before starting a new one.",
                         color=Colour.red(),
                     )
                 )
@@ -326,6 +333,7 @@ class OpenAIAPI(commands.Cog):
             top_p=top_p,
             conversation_starter=ctx.author,
             conversation_id=ctx.interaction.id,
+            conversation_channel=ctx.channel_id,
         )
 
         try:
