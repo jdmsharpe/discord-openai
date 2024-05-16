@@ -52,9 +52,9 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 ## How to use it?
 + <a href="https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D.">**Create a Discord Bot** and invite it to your Discord server</a>
-+ Note that this bot needs the following Discord bot permissions to function correctly: ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/92645355-827e-46a1-9140-cd56898e09c2)
-+ Alongside the following intents: ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/533b7a14-8174-43fa-999d-4bd6533cbc02)
-
++ Note that this bot needs the following Discord bot permissions integer to function correctly: `397821737984`
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/87e33ec0-e496-4835-9526-4eaa1e980f7f)
++ Alongside the following intents: ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/b0e2d96a-769b-471c-91ad-ef2f2dc54f13)
 
 ### Build and Run with Docker (Recommended)
 #### Build and run the image locally
