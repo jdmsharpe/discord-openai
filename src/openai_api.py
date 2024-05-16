@@ -27,21 +27,33 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 
 class ButtonView(View):
-    def __init__(self, cog, conversation_id):
-        super().__init__()
+    def __init__(self, cog, conversation_starter, conversation_id):
+        super().__init__(timeout=None)
         self.cog = cog
+        self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
 
     @button(label="Finish", style=ButtonStyle.danger)
     async def finish_button(self, button: Button, interaction: Interaction):
+        # Check if the interaction user is the one who started the conversation
+        if interaction.user != self.starter:
+            await interaction.response.send_message(
+                "You are not allowed to end this conversation.", ephemeral=True
+            )
+            return
+
         # End the conversation
         if self.conversation_id in self.cog.conversation_histories:
             del self.cog.conversation_histories[self.conversation_id]
+            button.disabled = True  # Disable the button
+
+            # Update all messages with this view to reflect the button's new state
+            for msg in self.cog.messages_with_views[self.conversation_id]:
+                await msg.edit(view=self)
+
             await interaction.response.send_message(
-                content="Conversation finished.", view=None
+                "Conversation finished.", ephemeral=True
             )
-            button.disabled = True
-            await interaction.message.edit(view=self)
         else:
             await interaction.response.send_message(
                 "No active conversation found or it's already finished.", ephemeral=True
@@ -185,7 +197,7 @@ class OpenAIAPI(commands.Cog):
                 finally:
                     # Assemble and send the response
                     embed = Embed(title=title, description=description, color=color)
-                    view = ButtonView(self, message.id)
+                    view = ButtonView(self, message.author, message.id)
                     await message.reply(embed=embed, view=view)
 
                     # Stop typing
@@ -216,7 +228,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "attachment",
-        description="Attachment to append to the prompt. (default: none)",
+        description="Attachment to append to the prompt. Only images are supported. (default: none)",
         required=False,
         type=Attachment,
     )
@@ -275,6 +287,8 @@ class OpenAIAPI(commands.Cog):
           model: ID of the model to use. See the
               [model endpoint compatibility](https://platform.openai.com/docs/models/model-endpoint-compatibility)
               table for details on which models work with the Chat API.
+
+          attachment: An image attachment to append to the prompt. Only images are supported.
 
           (Advanced) frequency_penalty: Controls how much the model should repeat itself.
 
@@ -367,7 +381,7 @@ class OpenAIAPI(commands.Cog):
                 else "No response."
             )
 
-            view = ButtonView(self, ctx.interaction.id)
+            view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
             await ctx.send(
