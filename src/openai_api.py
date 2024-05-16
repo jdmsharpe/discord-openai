@@ -136,11 +136,6 @@ class OpenAIAPI(commands.Cog):
             )
             # Only attempt to generate a response if the message is from a user
             if role == "user":
-                # Default response will be overwritten
-                title = "ChatGPT Text Generation - Thread Conversation"
-                description = ""
-                color = Colour.blue()
-
                 # Start typing and keep it alive until the response is ready
                 typing_task = asyncio.create_task(self.keep_typing(message.channel))
 
@@ -178,8 +173,12 @@ class OpenAIAPI(commands.Cog):
                         }
                     )
 
+                    # Assemble the response
+                    embed = Embed(title="ChatGPT Conversation", color=Colour.blue())
+                    embed.add_field(name="Prompt", value=message.content, inline=False)
+                    embed.add_field(name="Response", value=response_text, inline=False)
+
                 except Exception as e:
-                    title = "Error"
                     description = str(e)
                     if (
                         hasattr(e, "error")
@@ -187,14 +186,12 @@ class OpenAIAPI(commands.Cog):
                         and "message" in e.error
                     ):
                         description = e.error["message"]
-                    color = Colour.red()
+
+                    embed = Embed(
+                        title="Error", description=description, color=Colour.red()
+                    )
 
                 finally:
-                    # Assemble and send the response
-                    embed = Embed(title=title, color=Colour.blue())
-                    embed.add_field(name="Prompt", value=message.content, inline=False)
-                    embed.add_field(name="Response", value=response_text, inline=False)
-                    embed = Embed(title=title, description=description, color=color)
                     await message.reply(embed=embed)
 
                     # Stop typing
@@ -301,6 +298,18 @@ class OpenAIAPI(commands.Cog):
         """
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
+
+        for conversation in self.conversation_histories.values():
+            if conversation.conversation_starter == ctx.author:
+                await ctx.send_followup(
+                    embed=Embed(
+                        title="Error",
+                        description="You already have an active conversation. Please finish it before starting a new one, \
+                            or else you will have multiple conversations running simultaneously.",
+                        color=Colour.red(),
+                    )
+                )
+                return
 
         # Initialize parameters for the chat completions API
         params = ChatCompletionParameters(
