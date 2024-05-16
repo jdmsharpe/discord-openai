@@ -149,9 +149,7 @@ class OpenAIAPI(commands.Cog):
                             )
 
                     # Append the user's message to the conversation history
-                    conversation.messages.append(
-                        {"role": "user", "content": content},
-                    )
+                    conversation.messages.append(content)
 
                     # API call
                     response = openai.chat.completions.create(**conversation.to_dict())
