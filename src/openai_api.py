@@ -36,7 +36,7 @@ class ButtonView(View):
     @button(label="Finish", style=ButtonStyle.danger)
     async def finish_button(self, button: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
-        if interaction.user != self.starter:
+        if interaction.user != self.conversation_starter:
             await interaction.response.send_message(
                 "You are not allowed to end this conversation.", ephemeral=True
             )
@@ -322,8 +322,8 @@ class OpenAIAPI(commands.Cog):
             conversation_id=ctx.interaction.id,
         )
 
-        # Start typing and keep it alive until the response is ready
-        typing_task = asyncio.create_task(self.keep_typing(ctx.channel))
+        # # Start typing and keep it alive until the response is ready
+        # typing_task = asyncio.create_task(self.keep_typing(ctx.channel))
 
         try:
             # Update initial response description based on input parameters
@@ -417,9 +417,9 @@ class OpenAIAPI(commands.Cog):
                 )
             )
 
-        finally:
-            # Stop typing
-            typing_task.cancel()
+        # finally:
+        #     # Stop typing
+        #     typing_task.cancel()
 
     @slash_command(
         name="generate_image",
