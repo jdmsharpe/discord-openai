@@ -287,7 +287,7 @@ class OpenAIAPI(commands.Cog):
                 temperature=temperature,
                 top_p=top_p,
                 conversation_starter=ctx.author,
-                conversation_id=ctx.message.id,
+                conversation_id=ctx.interaction.id,
             ),
         )
 
@@ -341,7 +341,7 @@ class OpenAIAPI(commands.Cog):
             # Append the user's message to the conversation history
             params.messages.append(content)
             logging.info(
-                f"converse: Conversation history and parameters initialized for interaction ID {ctx.message.id}."
+                f"converse: Conversation history and parameters initialized for interaction ID {ctx.interaction.id}."
             )
 
             # API call
@@ -355,7 +355,7 @@ class OpenAIAPI(commands.Cog):
             # Start typing and keep it alive until the response is ready
             typing_task = asyncio.create_task(self.keep_typing(ctx.message.channel))
 
-            view = ButtonView(self, ctx.message.id)
+            view = ButtonView(self, ctx.interaction.id)
 
             # Send response
             await ctx.send_followup(
@@ -372,7 +372,7 @@ class OpenAIAPI(commands.Cog):
                     "content": {"type": "text", "text": response_text},
                 }
             )
-            self.conversation_histories[ctx.message.id] = params
+            self.conversation_histories[ctx.interaction.id] = params
 
             # Stop typing
             typing_task.cancel()
