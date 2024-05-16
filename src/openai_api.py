@@ -85,6 +85,8 @@ class OpenAIAPI(commands.Cog):
 
         # Dictionary to store conversation histories for each converse interaction
         self.conversation_histories = {}
+        # Dictionary to store UI views for each conversation
+        self.views = {}
 
     async def keep_typing(self, channel):
         """
@@ -142,6 +144,7 @@ class OpenAIAPI(commands.Cog):
                     conversation_id=message.id,
                     conversation_channel=message.channel.id,
                 )
+                self.views[message.author] = ButtonView(self, message.author, message.id)
                 logging.info(
                     f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
                 )
@@ -214,7 +217,14 @@ class OpenAIAPI(commands.Cog):
                     ]
 
                 finally:
-                    await message.reply(embeds=embeds)
+                    await message.reply(
+                        embeds=embeds,
+                        view=(
+                            self.views[message.author]
+                            if message.author in self.views
+                            else None
+                        ),
+                    )
 
                     # Stop typing
                     typing_task.cancel()
@@ -409,12 +419,12 @@ class OpenAIAPI(commands.Cog):
             )
             embeds[0].add_field(name="Prompt", value=prompt, inline=False)
             append_response_embeds(embeds, response_text)
-            view = ButtonView(self, ctx.author, ctx.interaction.id)
+            self.views[ctx.author] = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
             await ctx.send_followup(
                 embeds=embeds,
-                view=view,
+                view=self.views[ctx.author],
             )
             params.messages.append(
                 {
