@@ -83,7 +83,7 @@ class OpenAIAPI(commands.Cog):
         if message.channel.id not in self.conversation_histories:
             self.conversation_histories[message.channel.id] = []
             self.thread_params[message.channel.id] = ChatCompletionParameters(
-                model="gpt-4-turbo", thread_owner=message.author
+                model="gpt-4o", thread_owner=message.author
             )
             logging.info(
                 f"on_message: Conversation history and thread parameters initialized for thread {message.channel.id}"
@@ -167,7 +167,7 @@ class OpenAIAPI(commands.Cog):
             return
 
         thread_params = ChatCompletionParameters(
-            model="gpt-4-turbo", thread_owner=thread.owner
+            model="gpt-4o", thread_owner=thread.owner
         )
         args = thread.name.split("/")[1:]  # Get the arguments after 'ChatGPT'
 
@@ -244,13 +244,14 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models (default: gpt-4-turbo)",
+        description="Choose from the following GPT models (default: gpt-4o)",
         required=False,
         choices=[
             OptionChoice(name="GPT-3.5 Turbo", value="gpt-3.5-turbo-0125"),
             OptionChoice(name="GPT-3.5 Turbo 16k", value="gpt-3.5-turbo-16k"),
             OptionChoice(name="GPT-4", value="gpt-4"),
-            OptionChoice(name="GPT-4 Turbo/GPT-4o", value="gpt-4-turbo"),
+            OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
+            OptionChoice(name="GPT-4 Omni", value="gpt-4o"),
         ],
     )
     async def chat(
@@ -258,7 +259,7 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         personality: str = "You are a helpful assistant.",
-        model: str = "gpt-4-turbo",
+        model: str = "gpt-4o",
     ):
         """
         Creates a model response for the given chat conversation.
