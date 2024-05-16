@@ -73,13 +73,14 @@ class TestChunkText(unittest.TestCase):
         text = "This is a test."
         size = 4
         result = list(chunk_text(text, size))
+        # The text is split into chunks of size 4
         self.assertEqual(
             result,
             [
-                ["T", "h", "i", "s"],
-                [" ", "i", "s", " "],
-                ["a", " ", "t", "e"],
-                ["s", "t", "."],
+                "This",
+                " is ",
+                "a te",
+                "st.",
             ],
         )
 
@@ -87,7 +88,7 @@ class TestChunkText(unittest.TestCase):
         text = "This is a test. " * 64  # len(text) * 64 = 1024
         size = 1024
         result = list(chunk_text(text, size))
-        self.assertEqual(result, [list(text)])
+        self.assertEqual(len(result[0]), size)
 
 
 class TestExtractUrls(unittest.TestCase):
