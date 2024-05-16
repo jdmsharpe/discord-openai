@@ -105,7 +105,7 @@ class TextToSpeechParameters:
 def chunk_text(text, size):
     """Yield successive size chunks from text."""
     for i in range(0, len(text), size):
-        yield text[i : i + size]
+        yield list(text[i : i + size])
 
 
 def extract_urls(text):

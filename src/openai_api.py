@@ -19,9 +19,9 @@ from pathlib import Path
 from typing import Optional
 from util import (
     ChatCompletionParameters,
-    chunk_text,
     ImageGenerationParameters,
     TextToSpeechParameters,
+    chunk_text,
 )
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
@@ -180,15 +180,20 @@ class OpenAIAPI(commands.Cog):
                     )
 
                     # Assemble the response
-                    embed = Embed(title="ChatGPT Conversation", color=Colour.blue())
-                    embed.add_field(name="Prompt", value=message.content, inline=False)
+                    embeds = [Embed(title="ChatGPT Conversation", color=Colour.blue())]
+                    embeds[0].add_field(
+                        name="Prompt", value=message.content, inline=False
+                    )
+
                     for index, chunk in enumerate(
-                        chunk_text(response_text, 1024), start=1
+                        chunk_text(response_text, 2048), start=1
                     ):
-                        embed.add_field(
-                            name=f"Response (Part {index})",
-                            value=chunk,
-                            inline=False,
+                        embeds.append(
+                            Embed(
+                                title=f"Response Part {index}",
+                                description=chunk,
+                                color=Colour.blue(),
+                            )
                         )
 
                 except Exception as e:
@@ -200,12 +205,14 @@ class OpenAIAPI(commands.Cog):
                     ):
                         description = e.error["message"]
 
-                    embed = Embed(
-                        title="Error", description=description, color=Colour.red()
-                    )
+                    embeds[
+                        Embed(
+                            title="Error", description=description, color=Colour.red()
+                        )
+                    ]
 
                 finally:
-                    await message.reply(embed=embed)
+                    await message.reply(embeds=embeds)
 
                     # Stop typing
                     typing_task.cancel()
@@ -391,24 +398,29 @@ class OpenAIAPI(commands.Cog):
                 else "No response."
             )
 
-            embed = Embed(title="ChatGPT Conversation", color=Colour.blue())
-            embed.add_field(
+            # Assemble the response
+            embeds = [Embed(title="ChatGPT Conversation", color=Colour.blue())]
+            embeds[0].add_field(
                 name="Conversation Started",
                 value=f"**Model:** {model}\n**Persona:** {persona}",
                 inline=False,
             )
-            embed.add_field(name="Prompt", value=prompt, inline=False)
-            for index, chunk in enumerate(chunk_text(response_text, 1024), start=1):
-                embed.add_field(
-                    name=f"Response (Part {index})",
-                    value=chunk,
-                    inline=False,
+            embeds[0].add_field(name="Prompt", value=prompt, inline=False)
+
+            # Discord has a limit of 2048 characters per description, so split the response
+            for index, chunk in enumerate(chunk_text(response_text, 2048), start=1):
+                embeds.append(
+                    Embed(
+                        title=f"Response Part {index}",
+                        description=chunk,
+                        color=Colour.blue(),
+                    )
                 )
             view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
             await ctx.send_followup(
-                embed=embed,
+                embeds=embeds,
                 view=view,
             )
             params.messages.append(

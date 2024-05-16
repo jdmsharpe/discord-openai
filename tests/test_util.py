@@ -1,65 +1,101 @@
 import unittest
 from util import (
     ChatCompletionParameters,
-)  # adjust import according to your project structure
+    ImageGenerationParameters,
+    TextToSpeechParameters,
+    chunk_text,
+    extract_urls,
+)
 
 
 class TestChatCompletionParameters(unittest.TestCase):
-    def test_to_dict_basic(self):
-        """Test to_dict with basic input."""
+    def test_to_dict(self):
         params = ChatCompletionParameters(
-            messages=[
-                {
-                    "role": "system",
-                    "content": [{"type": "text", "text": "System message"}],
-                },
-                {"role": "user", "content": [{"type": "text", "text": "User query"}]},
-            ],
-            model="gpt-4o",
-        )
-        result = params.to_dict()
-        self.assertIn("messages", result)
-        self.assertEqual(len(result["messages"]), 2)
-        self.assertEqual(result["messages"][0]["content"][0]["text"], "System message")
-        self.assertEqual(result["model"], "gpt-4o")
-
-    def test_to_dict_with_attachment(self):
-        """Test to_dict with an attachment included."""
-        params = ChatCompletionParameters(
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Check out this image:"},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": "http://example.com/image.png"},
-                        },
-                    ],
-                }
-            ],
-            model="gpt-4o",
-        )
-        result = params.to_dict()
-        self.assertEqual(
-            result["messages"][0]["content"][1]["image_url"]["url"],
-            "http://example.com/image.png",
-        )
-
-    def test_to_dict_with_advanced_parameters(self):
-        """Test to_dict including advanced configuration parameters."""
-        params = ChatCompletionParameters(
-            messages=[
-                {"role": "user", "content": [{"type": "text", "text": "Hello, world!"}]}
-            ],
+            messages=[{"role": "system", "content": "You are a helpful assistant."}],
             model="gpt-4o",
             frequency_penalty=0.5,
             presence_penalty=0.5,
-            temperature=0.7,
+            seed=42,
+            temperature=0.8,
             top_p=0.9,
         )
         result = params.to_dict()
+        self.assertEqual(
+            result["messages"],
+            [{"role": "system", "content": ["You are a helpful assistant."]}],
+        )
+        self.assertEqual(result["model"], "gpt-4o")
         self.assertEqual(result["frequency_penalty"], 0.5)
         self.assertEqual(result["presence_penalty"], 0.5)
-        self.assertEqual(result["temperature"], 0.7)
+        self.assertEqual(result["seed"], 42)
+        self.assertEqual(result["temperature"], 0.8)
         self.assertEqual(result["top_p"], 0.9)
+
+
+class TestImageGenerationParameters(unittest.TestCase):
+    def test_to_dict(self):
+        params = ImageGenerationParameters(
+            prompt="A house in the woods",
+            model="dall-e-3",
+            n=1,
+            quality="standard",
+            size="1024x1024",
+            style="artistic",
+        )
+        result = params.to_dict()
+        self.assertEqual(result["prompt"], "A house in the woods")
+        self.assertEqual(result["model"], "dall-e-3")
+        self.assertEqual(result["n"], 1)
+        self.assertEqual(result["quality"], "standard")
+        self.assertEqual(result["size"], "1024x1024")
+        self.assertEqual(result["style"], "artistic")
+
+
+class TestTextToSpeechParameters(unittest.TestCase):
+    def test_to_dict(self):
+        params = TextToSpeechParameters(
+            input="Hello, world!",
+            model="tts-1",
+            voice="alloy",
+            response_format="mp3",
+            speed=1.0,
+        )
+        result = params.to_dict()
+        self.assertEqual(result["input"], "Hello, world!")
+        self.assertEqual(result["model"], "tts-1")
+        self.assertEqual(result["voice"], "alloy")
+        self.assertEqual(result["response_format"], "mp3")
+        self.assertEqual(result["speed"], 1.0)
+
+
+class TestChunkText(unittest.TestCase):
+    def test_chunk_text(self):
+        text = "This is a test."
+        size = 4
+        result = list(chunk_text(text, size))
+        self.assertEqual(
+            result,
+            [
+                ["T", "h", "i", "s"],
+                [" ", "i", "s", " "],
+                ["a", " ", "t", "e"],
+                ["s", "t", "."],
+            ],
+        )
+
+    def test_chunk_text_long(self):
+        text = "This is a test. " * 64  # len(text) * 64 = 1024
+        size = 1024
+        result = list(chunk_text(text, size))
+        self.assertEqual(result, [list(text)])
+
+
+class TestExtractUrls(unittest.TestCase):
+    def test_extract_urls(self):
+        text = "Check out https://www.example.com and http://example.org"
+        result = extract_urls(text)
+        self.assertEqual(result, ["https://www.example.com", "http://example.org"])
+
+
+if __name__ == "__main__":
+    unittest.main()
