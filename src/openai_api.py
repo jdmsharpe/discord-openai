@@ -115,7 +115,7 @@ class OpenAIAPI(commands.Cog):
                 return
 
             # Ignore messages not in the same channel as the conversation
-            if message.channel_id != conversation.conversation_channel:
+            if message.channel.id != conversation.conversation_channel:
                 return
 
             # Should not happen, but just in case
@@ -127,7 +127,7 @@ class OpenAIAPI(commands.Cog):
                     model="gpt-4o",
                     conversation_starter=message.author,
                     conversation_id=message.id,
-                    conversation_channel=message.channel_id,
+                    conversation_channel=message.channel.id,
                 )
                 logging.info(
                     f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
