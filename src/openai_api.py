@@ -29,7 +29,7 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 def append_response_embeds(embeds, response_text):
     # Ensure each chunk is no larger than 4096 characters (max Discord embed description length)
-    for index, chunk in enumerate(chunk_text(response_text, 4096), start=1):
+    for index, chunk in enumerate(chunk_text(response_text), start=1):
         embeds.append(
             Embed(
                 title=f"Response Part {index}",
