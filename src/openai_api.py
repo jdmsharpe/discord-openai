@@ -373,7 +373,7 @@ class OpenAIAPI(commands.Cog):
                 inline=False,
             )
             embed.add_field(name="Prompt", value=prompt, inline=False)
-            embed.add_field(name="Response", value=response.text, inline=False)
+            embed.add_field(name="Response", value=response_text, inline=False)
             view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
