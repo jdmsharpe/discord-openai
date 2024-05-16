@@ -31,13 +31,12 @@ class ChatCompletionParameters:
         # Create a copy of messages to avoid mutating original list
         messages_copy = [msg.copy() for msg in self.messages]
         for message in messages_copy:
-            if 'content' in message:
+            if "content" in message:
                 # Ensure content is a list of dictionaries if not already
-                if not isinstance(message['content'], list):
-                    message['content'] = [message['content']]
+                if not isinstance(message["content"], list):
+                    message["content"] = [message["content"]]
 
-        # Log the payload for debugging
-        payload = {
+        return {
             "messages": messages_copy,
             "model": self.model,
             "frequency_penalty": self.frequency_penalty,
@@ -46,9 +45,6 @@ class ChatCompletionParameters:
             "temperature": self.temperature,
             "top_p": self.top_p,
         }
-        logging.debug(f"API Request Payload: {payload}")
-
-        return payload
 
 
 class ImageGenerationParameters:

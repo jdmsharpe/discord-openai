@@ -139,15 +139,12 @@ class OpenAIAPI(commands.Cog):
                         "content": {"type": "text", "text": message.content},
                     }
 
-                    if message is not None and message.attachments[0] is not None:
-                        # If the message contains attachments, append the attachment URLs to the prompt
+                    if message.attachments is not None and len(message.attachments) > 0:
                         for attachment in message.attachments:
-                            content["content"].append(
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": {attachment.url}},
-                                }
-                            )
+                            content["content"].append({
+                                "type": "image_url",
+                                "image_url": {"url": attachment.url}
+                            })
 
                     # Append the user's message to the conversation history
                     conversation.messages.append({"role": "user", "content": content})
@@ -371,7 +368,7 @@ class OpenAIAPI(commands.Cog):
             view = ButtonView(self, ctx.interaction.id)
 
             # Send response
-            await ctx.send_followup(
+            await ctx.send(
                 embed=Embed(
                     title="ChatGPT Text Generation",
                     description=f"**Prompt:**\n{prompt}\n\n**Response:**\n{response_text}",
@@ -396,7 +393,7 @@ class OpenAIAPI(commands.Cog):
             ):
                 error_message = e.error["message"]
 
-            await ctx.send_followup(
+            await ctx.send(
                 embed=Embed(
                     title="Error",
                     description=error_message,
