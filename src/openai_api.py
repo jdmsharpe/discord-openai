@@ -3,7 +3,15 @@ import asyncio
 import logging
 import io
 import openai
-from discord import ApplicationContext, ButtonStyle, Colour, Embed, File, Interaction
+from discord import (
+    ApplicationContext,
+    Attachment,
+    ButtonStyle,
+    Colour,
+    Embed,
+    File,
+    Interaction,
+)
 from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
 from discord.ui import button, Button, View
@@ -131,7 +139,7 @@ class OpenAIAPI(commands.Cog):
                         "content": {"type": "text", "text": message.content},
                     }
 
-                    if message.attachments[0] is not None and len(message.attachments) > 0:
+                    if message is not None and message.attachments[0] is not None:
                         # If the message contains attachments, append the attachment URLs to the prompt
                         for attachment in message.attachments:
                             content["content"].append(
@@ -206,6 +214,12 @@ class OpenAIAPI(commands.Cog):
         ],
     )
     @option(
+        "attachment",
+        description="Attachment to append to the prompt. (default: none)",
+        required=False,
+        type=Attachment,
+    )
+    @option(
         "frequency_penalty",
         description="(Advanced) Controls how much the model should repeat itself. (default: 0.0)",
         required=False,
@@ -241,6 +255,7 @@ class OpenAIAPI(commands.Cog):
         prompt: str,
         persona: str = "You are a helpful assistant.",
         model: str = "gpt-4o",
+        attachment: Optional[Attachment] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         seed: Optional[int] = None,
@@ -331,15 +346,14 @@ class OpenAIAPI(commands.Cog):
                 "content": {"type": "text", "text": prompt},
             }
 
-            if ctx.message.attachments[0] is not None and len(ctx.message.attachments) > 0:
-                # If the message contains attachments, append the attachment URLs to the prompt
-                for attachment in ctx.message.attachments:
-                    content["content"].append(
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": {attachment.url}},
-                        }
-                    )
+            if attachment:
+                # If the message contains an attachment, append the attachment URL to the prompt
+                content["content"].append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": {attachment.url}},
+                    }
+                )
 
             # Append the user's message to the conversation history
             params.messages.append(content)
