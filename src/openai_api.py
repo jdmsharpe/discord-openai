@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Optional
 from util import (
     ChatCompletionParameters,
+    chunk_text,
     ImageGenerationParameters,
     TextToSpeechParameters,
 )
@@ -181,7 +182,14 @@ class OpenAIAPI(commands.Cog):
                     # Assemble the response
                     embed = Embed(title="ChatGPT Conversation", color=Colour.blue())
                     embed.add_field(name="Prompt", value=message.content, inline=False)
-                    embed.add_field(name="Response", value=response_text, inline=False)
+                    for index, chunk in enumerate(
+                        chunk_text(response_text, 1024), start=1
+                    ):
+                        embed.add_field(
+                            name=f"Response (Part {index + 1})",
+                            value=chunk,
+                            inline=False,
+                        )
 
                 except Exception as e:
                     description = str(e)
@@ -390,7 +398,14 @@ class OpenAIAPI(commands.Cog):
                 inline=False,
             )
             embed.add_field(name="Prompt", value=prompt, inline=False)
-            embed.add_field(name="Response", value=response_text, inline=False)
+            for index, chunk in enumerate(
+                        chunk_text(response_text, 1024), start=1
+                    ):
+                        embed.add_field(
+                            name=f"Response (Part {index + 1})",
+                            value=chunk,
+                            inline=False,
+                        )
             view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response

@@ -100,3 +100,8 @@ class TextToSpeechParameters:
             "response_format": self.response_format,
             "speed": self.speed,
         }
+
+def chunk_text(text, size):
+    """Yield successive size chunks from text."""
+    for i in range(0, len(text), size):
+        yield text[i:i + size]
