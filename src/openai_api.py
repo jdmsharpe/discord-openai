@@ -305,7 +305,8 @@ class OpenAIAPI(commands.Cog):
             conversation_id=ctx.interaction.id,
         )
 
-        typing_task = None
+        # Start typing and keep it alive until the response is ready
+        typing_task = asyncio.create_task(self.keep_typing(ctx.channel))
 
         try:
             # Update initial response description based on input parameters
@@ -363,9 +364,6 @@ class OpenAIAPI(commands.Cog):
                 else "No response."
             )
 
-            # Start typing and keep it alive until the response is ready
-            typing_task = asyncio.create_task(self.keep_typing(ctx.channel))
-
             view = ButtonView(self, ctx.interaction.id)
 
             # Send response
@@ -385,10 +383,6 @@ class OpenAIAPI(commands.Cog):
             )
             self.conversation_histories[ctx.interaction.id] = params
 
-            # Stop typing
-            if typing_task is not None:
-                typing_task.cancel()
-
         except Exception as e:
             error_message = str(e)
             if (
@@ -406,9 +400,9 @@ class OpenAIAPI(commands.Cog):
                 )
             )
 
+        finally:
             # Stop typing
-            if typing_task is not None:
-                typing_task.cancel()
+            typing_task.cancel()
 
     @slash_command(
         name="generate_image",
