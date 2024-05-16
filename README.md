@@ -33,7 +33,7 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 <div align="center">
 
-![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/00315f6c-aebd-4ae1-bc35-f24a1ad01a2b)
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/588d33fa-084d-46ae-bc19-96a299813c4c)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/99e81595-b30f-40b5-b8ac-2a9c8cc49948)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/e69242d0-acdc-42af-be66-794c95d81af7)
 
