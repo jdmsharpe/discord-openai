@@ -94,8 +94,8 @@ class OpenAIAPI(commands.Cog):
         Coroutine to keep the typing indicator alive in a channel.
         """
         while True:
-            await channel.typing()
-            await asyncio.sleep(5)  # Resend typing indicator every 5 seconds
+            async with channel.typing():
+                await asyncio.sleep(5)  # Resend typing indicator every 5 seconds
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -398,14 +398,12 @@ class OpenAIAPI(commands.Cog):
                 inline=False,
             )
             embed.add_field(name="Prompt", value=prompt, inline=False)
-            for index, chunk in enumerate(
-                        chunk_text(response_text, 1024), start=1
-                    ):
-                        embed.add_field(
-                            name=f"Response (Part {index + 1})",
-                            value=chunk,
-                            inline=False,
-                        )
+            for index, chunk in enumerate(chunk_text(response_text, 1024), start=1):
+                embed.add_field(
+                    name=f"Response (Part {index + 1})",
+                    value=chunk,
+                    inline=False,
+                )
             view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
