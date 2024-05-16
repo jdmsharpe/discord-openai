@@ -5,24 +5,29 @@ class ChatCompletionParameters:
     def __init__(
         self,
         messages: List[str] = [],
-        model: str = "gpt-4-turbo",
+        model: str = "gpt-4o",
+        persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         seed: Optional[int] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
-        thread_owner: Optional[str] = None,
+        conversation_starter: Optional[str] = None,
+        conversation_id: Optional[str] = None,
     ):
         self.messages = messages
         self.model = model
+        self.persona = persona
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
         self.seed = seed
         self.temperature = temperature
         self.top_p = top_p
-        self.thread_owner = thread_owner
+        self.conversation_starter = conversation_starter
+        self.conversation_id = conversation_id
 
     def to_dict(self):
+        # Drop values unsupported by API
         return {
             "messages": self.messages,
             "model": self.model,
@@ -31,7 +36,6 @@ class ChatCompletionParameters:
             "seed": self.seed,
             "temperature": self.temperature,
             "top_p": self.top_p,
-            "thread_owner": self.thread_owner,
         }
 
 
@@ -66,7 +70,7 @@ class ImageGenerationParameters:
 class TextToSpeechParameters:
     def __init__(
         self,
-        input: str,
+        input: str = "",
         model: str = "tts-1",
         voice: str = "alloy",
         response_format: str = "mp3",

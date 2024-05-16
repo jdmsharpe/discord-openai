@@ -3,10 +3,12 @@ import asyncio
 import logging
 import io
 import openai
+from discord import ApplicationContext, ButtonStyle, Colour, Embed, File, Interaction
 from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
-from discord import ApplicationContext, Colour, Embed, File, Thread
+from discord.ui import button, Button, View
 from pathlib import Path
+from typing import Optional
 from util import (
     ChatCompletionParameters,
     ImageGenerationParameters,
@@ -15,6 +17,22 @@ from util import (
 
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
+
+class ButtonView(View):
+    def __init__(self, cog, conversation_id):
+        super().__init__()
+        self.cog = cog
+        self.conversation_id = conversation_id
+
+    @button(label="Finish", style=ButtonStyle.danger)
+    async def finish_button(self, button: Button, interaction: Interaction):
+        # End the conversation
+        if self.conversation_id in self.cog.conversation_histories:
+            del self.cog.conversation_histories[self.conversation_id]
+        await interaction.response.send_message("Conversation finished.", ephemeral=True)
+        # Disable the button
+        button.disabled = True
+        await interaction.message.edit(view=self)
 
 class OpenAIAPI(commands.Cog):
     def __init__(self, bot):
@@ -30,10 +48,8 @@ class OpenAIAPI(commands.Cog):
         self.bot = bot
         openai.api_key = OPENAI_API_KEY
 
-        # Dictionary to store conversation history for each thread
+        # Dictionary to store conversation histories for each converse interaction
         self.conversation_histories = {}
-        # Dictionary to store the chat completion parameters for each thread
-        self.thread_params = {}
 
     # Added for debugging purposes
     @commands.Cog.listener()
@@ -62,178 +78,110 @@ class OpenAIAPI(commands.Cog):
     async def on_message(self, message):
         """
         Event listener that runs when a message is sent.
-        Generates a response using chat completion API when a new message from the thread owner is detected.
+        Generates a response using chat completion API when a new message from the conversation author is detected.
         """
-        # Ignore messages not sent in a thread
-        if not isinstance(message.channel, Thread):
+        # Ignore messages from the bot itself
+        if message.author == self.bot.user:
             return
 
-        # Ensure activation in threads specifically for AI interactions
-        if "ChatGPT" not in message.channel.name:
-            return
+        for conversation in self.conversation_histories.values():
+            # Ignore messages not from the conversation starter or from another user
+            if (
+                message.author != conversation.conversation_starter
+                and message.author != self.bot.user
+            ):
+                return
 
-        # Ignore messages sent by other users in thread
-        if (
-            message.author != self.thread_params[message.channel.id].thread_owner
-            and message.author != self.bot.user
-        ):
-            return
+            # Should not happen, but just in case
+            if (
+                conversation.conversation_id not in self.conversation_histories.keys()
+                or conversation.conversation_id is None
+            ):
+                self.conversation_histories[message.id] = ChatCompletionParameters(
+                    model="gpt-4o",
+                    conversation_starter=message.author,
+                    conversation_id=message.id,
+                )
+                logging.info(
+                    f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
+                )
 
-        # Should not happen, but just in case
-        if message.channel.id not in self.conversation_histories:
-            self.conversation_histories[message.channel.id] = []
-            self.thread_params[message.channel.id] = ChatCompletionParameters(
-                model="gpt-4o", thread_owner=message.author
+            # Determine the role based on the sender
+            role = (
+                "user"
+                if message.author == conversation.conversation_starter
+                else "assistant"
             )
-            logging.info(
-                f"on_message: Conversation history and thread parameters initialized for thread {message.channel.id}"
-            )
+            # Only attempt to generate a response if the message is from a user
+            if role == "user":
+                # Default response will be overwritten
+                title = "ChatGPT Text Generation - Thread Conversation"
+                description = ""
+                color = Colour.blue()
 
-        # Determine the role based on the sender
-        role = (
-            "user"
-            if message.author == self.thread_params[message.channel.id].thread_owner
-            else "assistant"
-        )
-        # Only attempt to generate a response if the message is from a user
-        if role == "user":
-            # Default response will be overwritten
-            title = "ChatGPT Text Generation - Thread Conversation"
-            description = ""
-            color = Colour.blue()
+                # Start typing and keep it alive until the response is ready
+                typing_task = asyncio.create_task(self.keep_typing(message.channel))
 
-            # Start typing and keep it alive until the response is ready
-            typing_task = asyncio.create_task(self.keep_typing(message.channel))
+                try:
+                    content = {
+                        "role": "user",
+                        "content": {"type": "text", "text": message.content},
+                    }
 
-            try:
-                # Append the user's message to the conversation history
-                self.conversation_histories[message.channel.id].append(
-                    {"role": "user", "content": message.content}
-                )
-                response = openai.chat.completions.create(
-                    messages=self.conversation_histories[message.channel.id],
-                    model=self.thread_params[message.channel.id].model,
-                )
-                response_text = (
-                    response.choices[0].message.content
-                    if response.choices
-                    else "No response."
-                )
+                    if len(message.attachments) > 0:
+                        # If the message contains attachments, append the attachment URLs to the prompt
+                        for attachment in message.attachments:
+                            content["content"].append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": {attachment.url}},
+                                }
+                            )
 
-                # Now that response is generated, add that to description and conversation history
-                description = f"**Response:**\n{response_text}"
-                self.conversation_histories[message.channel.id].append(
-                    {"role": "assistant", "content": response_text}
-                )
-
-            except Exception as e:
-                title = "Error"
-                description = str(e)
-                if (
-                    hasattr(e, "error")
-                    and isinstance(e.error, dict)
-                    and "message" in e.error
-                ):
-                    description = e.error["message"]
-                color = Colour.red()
-
-            finally:
-                # Send the assembled response to the thread
-                await message.reply(
-                    embed=Embed(
-                        title=title,
-                        description=description,
-                        color=color,
+                    # Append the user's message to the conversation history
+                    conversation.messages.append({"role": "user", "content": content})
+                    response = openai.chat.completions.create(
+                        messages=conversation.messages,
+                        model=conversation.model,
                     )
-                )
-
-                # Stop typing
-                typing_task.cancel()
-
-    @commands.Cog.listener()
-    async def on_thread_create(self, thread):
-        """
-        Event listener that runs when a thread is created.
-        Initializes conversation history and parameters for the thread.
-        """
-        logging.info(f"New thread created: {thread.name}")
-
-        # Ignore threads sent by the bot itself or not within a thread
-        if thread.owner == self.bot.user or thread is None:
-            return
-
-        # Ensure activation in threads specifically for ChatGPT interactions
-        if "ChatGPT" not in thread.name:
-            return
-
-        thread_params = ChatCompletionParameters(
-            model="gpt-4o", thread_owner=thread.owner
-        )
-        args = thread.name.split("/")[1:]  # Get the arguments after 'ChatGPT'
-
-        # Parse the arguments
-        try:
-            if len(args) > 0:
-                thread_params.model = args[0]
-            if len(args) > 1:
-                thread_params.frequency_penalty = float(args[1])
-            if len(args) > 2:
-                thread_params.presence_penalty = float(args[2])
-            if len(args) > 3:
-                thread_params.temperature = float(args[3])
-            if len(args) > 4:
-                thread_params.top_p = float(args[4])
-        except ValueError:
-            logging.error("Invalid parameters in thread name. Using default values.")
-
-        # Initialize conversation history and thread parameters
-        if (
-            thread.id not in self.conversation_histories
-            or thread.id not in self.thread_params
-        ):
-            self.conversation_histories[thread.id] = []
-            self.thread_params[thread.id] = thread_params
-            logging.info(
-                f"on_thread_create: Conversation history and thread parameters initialized for thread {thread.id}"
-            )
-
-            # Send a message to the thread to indicate the conversation has started
-            try:
-                await thread.send(
-                    embed=Embed(
-                        title="ChatGPT Thread Conversation Started",
-                        description=f"**Model:** {thread_params.model}\n\
-                        **Frequency Penalty:** {thread_params.frequency_penalty}\n\
-                        **Presence Penalty:** {thread_params.presence_penalty}\n\
-                        **Temperature:** {thread_params.temperature}\n\
-                        **Nucleus Sampling** {thread_params.top_p}\n\n\
-                            Please see https://platform.openai.com/docs/guides/text-generation/parameter-details \
-                            for more information on these parameters. They can be entered sequentially as arguments \
-                            in the thread name delimited by forward slashes.",
-                        color=Colour.green(),
+                    response_text = (
+                        response.choices[0].message.content
+                        if response.choices
+                        else "No response."
                     )
-                )
 
-            except Exception as e:
-                error_message = str(e)
-                if (
-                    hasattr(e, "error")
-                    and isinstance(e.error, dict)
-                    and "message" in e.error
-                ):
-                    error_message = e.error["message"]
-
-                await thread.send(
-                    embed=Embed(
-                        title="Error",
-                        description=error_message,
-                        color=Colour.red(),
+                    # Now that response is generated, add that to description and conversation history
+                    description = f"**Response:**\n{response_text}"
+                    conversation.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": {"type": "text", "text": response_text},
+                        }
                     )
-                )
+
+                except Exception as e:
+                    title = "Error"
+                    description = str(e)
+                    if (
+                        hasattr(e, "error")
+                        and isinstance(e.error, dict)
+                        and "message" in e.error
+                    ):
+                        description = e.error["message"]
+                    color = Colour.red()
+
+                finally:
+                    # Assemble and send the response
+                    embed = Embed(title=title, description=description, color=color)
+                    view = ButtonView(self, message.id)
+                    await message.reply(embed=embed, view=view)
+
+                    # Stop typing
+                    typing_task.cancel()
 
     @slash_command(
-        name="chat",
-        description="Creates a model response for the given chat conversation.",
+        name="converse",
+        description="Starts a conversation with a model.",
         guild_ids=GUILD_IDS,
     )
     @option("prompt", description="Prompt", required=True)
@@ -254,12 +202,47 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="GPT-4 Omni", value="gpt-4o"),
         ],
     )
-    async def chat(
+    @option(
+        "frequency_penalty",
+        description="(Advanced) Controls how much the model should repeat itself. (default: 0.0)",
+        required=False,
+        type=float,
+    )
+    @option(
+        "presence_penalty",
+        description="(Advanced) Controls how much the model should talk about the prompt. (default: not set)",
+        required=False,
+        type=float,
+    )
+    @option(
+        "seed",
+        description="(Advanced) Seed for deterministic outputs. (default: not set)",
+        required=False,
+        type=int,
+    )
+    @option(
+        "temperature",
+        description="(Advanced) Controls the randomness of the model. Set this or top_p, but not both. (default: not set)",
+        required=False,
+        type=float,
+    )
+    @option(
+        "top_p",
+        description="(Advanced) Nucleus sampling. Set this or temperature, but not both. (default: not set)",
+        required=False,
+        type=float,
+    )
+    async def converse(
         self,
         ctx: ApplicationContext,
         prompt: str,
-        personality: str = "You are a helpful assistant.",
+        persona: str = "You are a helpful assistant.",
         model: str = "gpt-4o",
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        seed: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
     ):
         """
         Creates a model response for the given chat conversation.
@@ -267,36 +250,132 @@ class OpenAIAPI(commands.Cog):
         Args:
           prompt: The prompt to generate a response for.
 
-          personality: The role you want the model to emulate. This can be a description of a persona,
-              like "You are a helpful assistant." The maximum length is 1000 characters.
+          persona: The persona you want the model to emulate as a description. For example,
+              "You are a helpful assistant." The maximum length is 1000 characters.
 
           model: ID of the model to use. See the
               [model endpoint compatibility](https://platform.openai.com/docs/models/model-endpoint-compatibility)
               table for details on which models work with the Chat API.
+
+          (Advanced) frequency_penalty: Controls how much the model should repeat itself.
+
+          (Advanced) presence_penalty: Controls how much the model should talk about the prompt.
+
+          (Advanced) seed: Seed for deterministic outputs.
+
+          (Advanced) temperature: Controls the randomness of the model.
+
+          (Advanced) top_p: Nucleus sampling.
+
+          Please see https://platform.openai.com/docs/guides/text-generation for more information on advanced parameters.
         """
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
 
         # Initialize parameters for the chat completions API
-        messages = [
-            {"role": "system", "content": personality},
-            {"role": "user", "content": prompt},
-        ]
+        params = (
+            ChatCompletionParameters(
+                messages=[
+                    {"role": "system", "content": {"type": "text", "text": persona}},
+                    {"role": "user", "content": {"type": "text", "text": prompt}},
+                ],
+                model=model,
+                persona=persona,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                seed=seed,
+                temperature=temperature,
+                top_p=top_p,
+                conversation_starter=ctx.author,
+                conversation_id=ctx.message.id,
+            ),
+        )
 
         try:
-            response = openai.chat.completions.create(messages=messages, model=model)
+            # Update initial response description based on input parameters
+            description = ""
+            description += f"**Model:** {params.model}\n"
+            description += f"**Persona:** {params.persona}\n"
+            description += (
+                f"**Frequency Penalty:** {params.frequency_penalty}\n"
+                if params.frequency_penalty
+                else ""
+            )
+            description += (
+                f"**Presence Penalty:** {params.presence_penalty}\n"
+                if params.presence_penalty
+                else ""
+            )
+            description += f"**Seed:** {params.seed}\n" if params.seed else ""
+            description += (
+                f"**Temperature:** {params.temperature}\n" if params.temperature else ""
+            )
+            description += (
+                f"**Nucleus Sampling:** {params.top_p}\n" if params.top_p else ""
+            )
+
+            # Send conversation acknowledgement
+            await ctx.send_response(
+                embed=Embed(
+                    title="ChatGPT Conversation Started",
+                    description=description,
+                    color=Colour.green(),
+                )
+            )
+
+            content = {
+                "role": "user",
+                "content": {"type": "text", "text": prompt},
+            }
+
+            if len(ctx.message.attachments) > 0:
+                # If the message contains attachments, append the attachment URLs to the prompt
+                for attachment in ctx.message.attachments:
+                    content["content"].append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": {attachment.url}},
+                        }
+                    )
+
+            # Append the user's message to the conversation history
+            params.messages.append(content)
+            logging.info(
+                f"converse: Conversation history and parameters initialized for interaction ID {ctx.message.id}."
+            )
+
+            # API call
+            response = openai.chat.completions.create(**params.to_dict())
             response_text = (
                 response.choices[0].message.content
                 if response.choices
                 else "No response."
             )
-            await ctx.followup.send(
+
+            # Start typing and keep it alive until the response is ready
+            typing_task = asyncio.create_task(self.keep_typing(ctx.message.channel))
+
+            view = ButtonView(self, ctx.message.id)
+
+            # Send response
+            await ctx.send_followup(
                 embed=Embed(
-                    title="ChatGPT Text Generation - One-Time Response",
+                    title="ChatGPT Text Generation",
                     description=f"**Prompt:**\n{prompt}\n\n**Response:**\n{response_text}",
                     color=Colour.blue(),
-                )
+                ),
+                view=view,
             )
+            params.messages.append(
+                {
+                    "role": "assistant",
+                    "content": {"type": "text", "text": response_text},
+                }
+            )
+            self.conversation_histories[ctx.message.id] = params
+
+            # Stop typing
+            typing_task.cancel()
 
         except Exception as e:
             error_message = str(e)
@@ -307,7 +386,7 @@ class OpenAIAPI(commands.Cog):
             ):
                 error_message = e.error["message"]
 
-            await ctx.followup.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="Error",
                     description=error_message,
@@ -409,7 +488,7 @@ class OpenAIAPI(commands.Cog):
             error_message = (
                 "The maximum number of images for DALL-E 2 is 10 and for DALL-E 3 is 1."
             )
-            await ctx.followup.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="Error", description=error_message, color=Colour.red()
                 )
@@ -418,7 +497,7 @@ class OpenAIAPI(commands.Cog):
 
         if model == "dall-e-2" and (size == "1024x1792" or size == "1792x1024"):
             error_message = "The DALL-E 2 model only supports `256x256`, `512x512`, or `1024x1024` image size."
-            await ctx.followup.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="Error", description=error_message, color=Colour.red()
                 )
@@ -427,7 +506,7 @@ class OpenAIAPI(commands.Cog):
 
         if model == "dall-e-3" and (size == "256x256" or size == "512x512"):
             error_message = "The DALL-E 3 model only supports `1024x1024`, `1792x1024`, or `1024x1792` image size."
-            await ctx.followup.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="Error", description=error_message, color=Colour.red()
                 )
@@ -436,7 +515,7 @@ class OpenAIAPI(commands.Cog):
 
         if model == "dall-e-2" and quality == "hd":
             error_message = "The `hd` quality option is only supported for DALL-E 3."
-            await ctx.followup.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="Error", description=error_message, color=Colour.red()
                 )
@@ -459,7 +538,7 @@ class OpenAIAPI(commands.Cog):
                     async with aiohttp.ClientSession() as session:
                         async with session.get(url) as resp:
                             if resp.status != 200:
-                                await ctx.followup.send("Could not download file...")
+                                await ctx.send_followup("Could not download file...")
                                 continue  # Skip this iteration and proceed with the next image
                             data = io.BytesIO(await resp.read())
                             image_files.append(File(data, f"image{idx}.png"))
@@ -472,7 +551,7 @@ class OpenAIAPI(commands.Cog):
                     description=f"**Prompt:**\n{prompt}",
                     color=Colour.blue(),
                 )
-                await ctx.followup.send(embed=embed, files=image_files)
+                await ctx.send_followup(embed=embed, files=image_files)
 
         except Exception as e:
             error_message = str(e)
@@ -483,7 +562,7 @@ class OpenAIAPI(commands.Cog):
             ):
                 error_message = e.error["message"]
 
-            await ctx.followup.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="Error",
                     description=error_message,
@@ -597,7 +676,7 @@ class OpenAIAPI(commands.Cog):
                 description=f"**Text:** {input}\n**Voice:** {voice}",
                 color=Colour.blue(),
             )
-            await ctx.followup.send(embed=embed, file=File(speech_file_path))
+            await ctx.send_followup(embed=embed, file=File(speech_file_path))
 
         except Exception as e:
             error_message = str(e)
@@ -608,7 +687,7 @@ class OpenAIAPI(commands.Cog):
             ):
                 error_message = e.error["message"]
 
-            await ctx.followup.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="Error",
                     description=error_message,
