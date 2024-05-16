@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 
 
@@ -27,9 +28,17 @@ class ChatCompletionParameters:
         self.conversation_id = conversation_id
 
     def to_dict(self):
-        # Drop values unsupported by API
-        return {
-            "messages": self.messages,
+        # Create a copy of messages to avoid mutating original list
+        messages_copy = [msg.copy() for msg in self.messages]
+        for message in messages_copy:
+            if 'content' in message:
+                # Ensure content is a list of dictionaries if not already
+                if not isinstance(message['content'], list):
+                    message['content'] = [message['content']]
+
+        # Log the payload for debugging
+        payload = {
+            "messages": messages_copy,
             "model": self.model,
             "frequency_penalty": self.frequency_penalty,
             "presence_penalty": self.presence_penalty,
@@ -37,6 +46,9 @@ class ChatCompletionParameters:
             "temperature": self.temperature,
             "top_p": self.top_p,
         }
+        logging.debug(f"API Request Payload: {payload}")
+
+        return payload
 
 
 class ImageGenerationParameters:
