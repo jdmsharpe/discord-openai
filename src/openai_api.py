@@ -47,10 +47,6 @@ class ButtonView(View):
             del self.cog.conversation_histories[self.conversation_id]
             button.disabled = True  # Disable the button
 
-            # Update all messages with this view to reflect the button's new state
-            for msg in self.cog.messages_with_views[self.conversation_id]:
-                await msg.edit(view=self)
-
             await interaction.response.send_message(
                 "Conversation finished.", ephemeral=True
             )
@@ -384,7 +380,7 @@ class OpenAIAPI(commands.Cog):
             view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
-            await ctx.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="ChatGPT Text Generation",
                     description=f"**Prompt:**\n{prompt}\n\n**Response:**\n{response_text}",
@@ -409,7 +405,7 @@ class OpenAIAPI(commands.Cog):
             ):
                 error_message = e.error["message"]
 
-            await ctx.send(
+            await ctx.send_followup(
                 embed=Embed(
                     title="Error",
                     description=error_message,
