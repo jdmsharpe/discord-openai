@@ -15,17 +15,15 @@ Please also check out the official OpenAI Discord bots:
 + [dallify-discord-bot](https://github.com/openai/dallify-discord-bot) (image generation).
 
 ### Commands
-+ `/chat <prompt>` - Creates a model response for the given prompt.
++ `/converse <prompt>` - Starts a conversation with a model given an initial prompt.
 + `/generate_image <prompt>` - Creates image(s) given a prompt.
-+ `/text_to_speech <prompt>` - Generates lifelike spoken audio from the prompt.
++ `/text_to_speech <prompt>` - Generates lifelike spoken audio given a prompt.
 
-### Thread Functionality
-Starting a thread with `/thread name:<name> message:<message>` with a value for `name` that includes the string `ChatGPT` (case-sensitive) will start a conversation with a model. The model will keep track of the conversation history and remember past inputs.
-+ You can add additional parameters (developer API options) to the name field in order, separated by forward slashes (`/`) as delimiters.
-+ Accepted arguments after the initial `ChatGPT` string are `model`, `frequency_penalty`, `presence_penalty`, `temperature`, and `top_p` (AKA "Nucleus Sampling").
-+ An example value for the thread name (also the default) is `ChatGPT/gpt-4-turbo/0.0/0.0/0.0/0.0`.
-+ The model will take the `message` value for the initial prompt, and reply within the newly created thread.
-+ Any further response from the thread creator within the thread will be interpreted as a reply to the model's last output.
+### Converse Functionality
+Starting a conversation with `/converse <prompt>` will start a conversation with a model. The model will keep track of the conversation history and remember past inputs.
++ Any further response from the conversation starter within the same channel will be interpreted as a reply to the model's last output.
++ This allows for multiple concurrent conversations if the user separates each into its own separate Discord thread.
++ Image attachments are accepted (up to 10). The model can analyze them. See [the following OpenAI guide](https://platform.openai.com/docs/guides/vision) for info on how this works.
 
 For more information on these thread parameters, please see [this OpenAI API doc on them](https://platform.openai.com/docs/guides/text-generation/parameter-details). Please also see the [helpful OpenAI API guide doc splash page](https://platform.openai.com/docs/overview) for further reference and information.
 
@@ -33,7 +31,7 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 <div align="center">
 
-![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/20d6af48-699c-40e7-be62-d62f1256744e)
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/588d33fa-084d-46ae-bc19-96a299813c4c)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/99e81595-b30f-40b5-b8ac-2a9c8cc49948)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/e69242d0-acdc-42af-be66-794c95d81af7)
 
@@ -43,7 +41,8 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 <div align="center">
 
-![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/563968fe-caeb-4a0f-bd27-625839c251c7)
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/47a96010-02d8-4dfc-b317-4009b926da1e)
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/3907ac6b-4bb6-4bfa-9b97-68912ceed517)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/d5e0758e-f9d5-4ca6-bdb4-bea33c5065a3)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/c5992fac-3372-4c99-81f1-93c7fbda1d0e)
 
@@ -51,9 +50,9 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 ## How to use it?
 + <a href="https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D.">**Create a Discord Bot** and invite it to your Discord server</a>
-+ Note that this bot needs the following Discord bot permissions to function correctly: ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/92645355-827e-46a1-9140-cd56898e09c2)
-+ Alongside the following intents: ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/533b7a14-8174-43fa-999d-4bd6533cbc02)
-
++ Note that this bot needs the following Discord bot permissions integer to function correctly: `397821737984`
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/87e33ec0-e496-4835-9526-4eaa1e980f7f)
++ Alongside the following intents: ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/b0e2d96a-769b-471c-91ad-ef2f2dc54f13)
 
 ### Build and Run with Docker (Recommended)
 #### Build and run the image locally
