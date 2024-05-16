@@ -1,4 +1,4 @@
-import logging
+import re
 from typing import List, Optional
 
 
@@ -101,7 +101,14 @@ class TextToSpeechParameters:
             "speed": self.speed,
         }
 
+
 def chunk_text(text, size):
     """Yield successive size chunks from text."""
     for i in range(0, len(text), size):
-        yield text[i:i + size]
+        yield text[i : i + size]
+
+
+def extract_urls(text):
+    url_pattern = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+    urls = re.findall(url_pattern, text)
+    return urls

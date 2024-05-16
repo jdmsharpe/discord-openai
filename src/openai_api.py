@@ -186,7 +186,7 @@ class OpenAIAPI(commands.Cog):
                         chunk_text(response_text, 1024), start=1
                     ):
                         embed.add_field(
-                            name=f"Response (Part {index + 1})",
+                            name=f"Response (Part {index})",
                             value=chunk,
                             inline=False,
                         )
@@ -400,7 +400,7 @@ class OpenAIAPI(commands.Cog):
             embed.add_field(name="Prompt", value=prompt, inline=False)
             for index, chunk in enumerate(chunk_text(response_text, 1024), start=1):
                 embed.add_field(
-                    name=f"Response (Part {index + 1})",
+                    name=f"Response (Part {index})",
                     value=chunk,
                     inline=False,
                 )
