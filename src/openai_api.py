@@ -74,6 +74,25 @@ class OpenAIAPI(commands.Cog):
         # Dictionary to store conversation histories for each converse interaction
         self.conversation_histories = {}
 
+    def append_response_embeds(embeds, response_text):
+        # Ensure each chunk is no larger than 4096 characters (max Discord embed description length)
+        for index, chunk in enumerate(chunk_text(response_text, 4096), start=1):
+            embeds.append(
+                Embed(
+                    title=f"Response Part {index}",
+                    description=chunk,
+                    color=Colour.blue(),
+                )
+            )
+
+    async def keep_typing(self, channel):
+        """
+        Coroutine to keep the typing indicator alive in a channel.
+        """
+        while True:
+            async with channel.typing():
+                await asyncio.sleep(5)  # Resend typing indicator every 5 seconds
+
     # Added for debugging purposes
     @commands.Cog.listener()
     async def on_ready(self):
@@ -88,14 +107,6 @@ class OpenAIAPI(commands.Cog):
             logging.info("Commands synchronized successfully.")
         except Exception as e:
             logging.error(f"Error during command synchronization: {e}", exc_info=True)
-
-    async def keep_typing(self, channel):
-        """
-        Coroutine to keep the typing indicator alive in a channel.
-        """
-        while True:
-            async with channel.typing():
-                await asyncio.sleep(5)  # Resend typing indicator every 5 seconds
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -184,17 +195,7 @@ class OpenAIAPI(commands.Cog):
                     embeds[0].add_field(
                         name="Prompt", value=message.content, inline=False
                     )
-
-                    for index, chunk in enumerate(
-                        chunk_text(response_text, 2048), start=1
-                    ):
-                        embeds.append(
-                            Embed(
-                                title=f"Response Part {index}",
-                                description=chunk,
-                                color=Colour.blue(),
-                            )
-                        )
+                    self.append_response_embeds(embeds, response_text)
 
                 except Exception as e:
                     description = str(e)
@@ -406,16 +407,7 @@ class OpenAIAPI(commands.Cog):
                 inline=False,
             )
             embeds[0].add_field(name="Prompt", value=prompt, inline=False)
-
-            # Discord has a limit of 2048 characters per description, so split the response
-            for index, chunk in enumerate(chunk_text(response_text, 2048), start=1):
-                embeds.append(
-                    Embed(
-                        title=f"Response Part {index}",
-                        description=chunk,
-                        color=Colour.blue(),
-                    )
-                )
+            self.append_response_embeds(embeds, response_text)
             view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
