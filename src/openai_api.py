@@ -37,12 +37,15 @@ class ButtonView(View):
         # End the conversation
         if self.conversation_id in self.cog.conversation_histories:
             del self.cog.conversation_histories[self.conversation_id]
-        await interaction.response.send_message(
-            "Conversation finished.", ephemeral=True
-        )
-        # Disable the button
-        button.disabled = True
-        await interaction.message.edit(view=self)
+            await interaction.response.send_message(
+                content="Conversation finished.", view=None
+            )
+            button.disabled = True
+            await interaction.message.edit(view=self)
+        else:
+            await interaction.response.send_message(
+                "No active conversation found or it's already finished.", ephemeral=True
+            )
 
 
 class OpenAIAPI(commands.Cog):
