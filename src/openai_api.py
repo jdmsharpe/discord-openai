@@ -343,7 +343,7 @@ class OpenAIAPI(commands.Cog):
 
             content = {
                 "role": "user",
-                "content": {"type": "text", "text": prompt},
+                "content": [{"type": "text", "text": prompt}],
             }
 
             if attachment:
@@ -362,7 +362,7 @@ class OpenAIAPI(commands.Cog):
             )
 
             # API call
-            response = openai.chat.completions.create(**params.to_dict())
+            response = openai.create    #chat.completions.create(**params.to_dict())
             response_text = (
                 response.choices[0].message.content
                 if response.choices
