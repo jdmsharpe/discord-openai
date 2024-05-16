@@ -197,7 +197,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option("prompt", description="Prompt", required=True)
     @option(
-        "personality",
+        "persona",
         description="What role you want the model to emulate. (default: You are a helpful assistant.)",
         required=False,
     )
