@@ -362,7 +362,7 @@ class OpenAIAPI(commands.Cog):
             )
 
             # API call
-            response = openai.create    #chat.completions.create(**params.to_dict())
+            response = openai.chat.completions.create(**params.to_dict())
             response_text = (
                 response.choices[0].message.content
                 if response.choices
