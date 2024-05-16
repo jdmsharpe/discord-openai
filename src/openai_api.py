@@ -92,7 +92,7 @@ class OpenAIAPI(commands.Cog):
         """
         while True:
             async with channel.typing():
-                await asyncio.sleep(5)  # Resend typing indicator every 5 seconds
+                await asyncio.sleep(2.5)  # Resend typing indicator every 2.5 seconds
 
     # Added for debugging purposes
     @commands.Cog.listener()
