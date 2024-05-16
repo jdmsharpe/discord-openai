@@ -32,7 +32,7 @@ def append_response_embeds(embeds, response_text):
     for index, chunk in enumerate(chunk_text(response_text), start=1):
         embeds.append(
             Embed(
-                title=f"Response Part {index}",
+                title=f"Response (Part {index})",
                 description=chunk,
                 color=Colour.blue(),
             )
