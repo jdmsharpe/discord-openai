@@ -170,8 +170,7 @@ class OpenAIAPI(commands.Cog):
                         else "No response."
                     )
 
-                    # Now that response is generated, add that to description and conversation history
-                    description = f"**Prompt:**\n{message.content}\n\n**Response:**\n{response_text}"
+                    # Now that response is generated, add that to conversation history
                     conversation.messages.append(
                         {
                             "role": "assistant",
@@ -192,9 +191,11 @@ class OpenAIAPI(commands.Cog):
 
                 finally:
                     # Assemble and send the response
+                    embed = Embed(title=title, color=Colour.blue())
+                    embed.add_field(name="Prompt", value=message.content, inline=False)
+                    embed.add_field(name="Response", value=response_text, inline=False)
                     embed = Embed(title=title, description=description, color=color)
-                    view = ButtonView(self, message.author, message.id)
-                    await message.reply(embed=embed, view=view)
+                    await message.reply(embed=embed)
 
                     # Stop typing
                     typing_task.cancel()
@@ -318,9 +319,6 @@ class OpenAIAPI(commands.Cog):
             conversation_id=ctx.interaction.id,
         )
 
-        # # Start typing and keep it alive until the response is ready
-        # typing_task = asyncio.create_task(self.keep_typing(ctx.channel))
-
         try:
             # Update initial response description based on input parameters
             description = ""
@@ -342,15 +340,6 @@ class OpenAIAPI(commands.Cog):
             )
             description += (
                 f"**Nucleus Sampling:** {params.top_p}\n" if params.top_p else ""
-            )
-
-            # Send conversation acknowledgement
-            await ctx.send(
-                embed=Embed(
-                    title="ChatGPT Conversation Started",
-                    description=description,
-                    color=Colour.green(),
-                )
             )
 
             content = {
@@ -377,15 +366,19 @@ class OpenAIAPI(commands.Cog):
                 else "No response."
             )
 
+            embed = Embed(title="ChatGPT Conversation", color=Colour.blue())
+            embed.add_field(
+                name="Conversation Started",
+                value=f"**Model:** {model}\n**Persona:** {persona}",
+                inline=False,
+            )
+            embed.add_field(name="Prompt", value=prompt, inline=False)
+            embed.add_field(name="Response", value=response.text, inline=False)
             view = ButtonView(self, ctx.author, ctx.interaction.id)
 
             # Send response
             await ctx.send_followup(
-                embed=Embed(
-                    title="ChatGPT Text Generation",
-                    description=f"**Prompt:**\n{prompt}\n\n**Response:**\n{response_text}",
-                    color=Colour.blue(),
-                ),
+                embed=embed,
                 view=view,
             )
             params.messages.append(
@@ -394,6 +387,8 @@ class OpenAIAPI(commands.Cog):
                     "content": {"type": "text", "text": response_text},
                 }
             )
+
+            # Store the conversation history as a new entry in the dictionary
             self.conversation_histories[ctx.interaction.id] = params
 
         except Exception as e:
@@ -412,10 +407,6 @@ class OpenAIAPI(commands.Cog):
                     color=Colour.red(),
                 )
             )
-
-        # finally:
-        #     # Stop typing
-        #     typing_task.cancel()
 
     @slash_command(
         name="generate_image",
