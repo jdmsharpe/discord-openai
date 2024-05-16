@@ -154,10 +154,7 @@ class OpenAIAPI(commands.Cog):
                     )
 
                     # API call
-                    response = openai.chat.completions.create(
-                        messages=conversation.messages,
-                        model=conversation.model,
-                    )
+                    response = openai.chat.completions.create(**conversation.to_dict())
                     response_text = (
                         response.choices[0].message.content
                         if response.choices
