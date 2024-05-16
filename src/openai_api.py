@@ -366,7 +366,7 @@ class OpenAIAPI(commands.Cog):
             )
 
             # Start typing and keep it alive until the response is ready
-            typing_task = asyncio.create_task(self.keep_typing(ctx.message.channel))
+            typing_task = asyncio.create_task(self.keep_typing(ctx.channel))
 
             view = ButtonView(self, ctx.interaction.id)
 
