@@ -27,6 +27,18 @@ from util import (
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 
+def append_response_embeds(embeds, response_text):
+    # Ensure each chunk is no larger than 4096 characters (max Discord embed description length)
+    for index, chunk in enumerate(chunk_text(response_text, 4096), start=1):
+        embeds.append(
+            Embed(
+                title=f"Response Part {index}",
+                description=chunk,
+                color=Colour.blue(),
+            )
+        )
+
+
 class ButtonView(View):
     def __init__(self, cog, conversation_starter, conversation_id):
         super().__init__(timeout=None)
@@ -73,17 +85,6 @@ class OpenAIAPI(commands.Cog):
 
         # Dictionary to store conversation histories for each converse interaction
         self.conversation_histories = {}
-
-    def append_response_embeds(embeds, response_text):
-        # Ensure each chunk is no larger than 4096 characters (max Discord embed description length)
-        for index, chunk in enumerate(chunk_text(response_text, 4096), start=1):
-            embeds.append(
-                Embed(
-                    title=f"Response Part {index}",
-                    description=chunk,
-                    color=Colour.blue(),
-                )
-            )
 
     async def keep_typing(self, channel):
         """
