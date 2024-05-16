@@ -136,18 +136,24 @@ class OpenAIAPI(commands.Cog):
                 try:
                     content = {
                         "role": "user",
-                        "content": {"type": "text", "text": message.content},
+                        "content": [{"type": "text", "text": message.content}],
                     }
 
                     if message.attachments is not None and len(message.attachments) > 0:
                         for attachment in message.attachments:
-                            content["content"].append({
-                                "type": "image_url",
-                                "image_url": {"url": attachment.url}
-                            })
+                            content["content"].append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": attachment.url},
+                                }
+                            )
 
                     # Append the user's message to the conversation history
-                    conversation.messages.append({"role": "user", "content": content})
+                    conversation.messages.append(
+                        {"role": "user", "content": content},
+                    )
+
+                    # API call
                     response = openai.chat.completions.create(
                         messages=conversation.messages,
                         model=conversation.model,
@@ -159,7 +165,7 @@ class OpenAIAPI(commands.Cog):
                     )
 
                     # Now that response is generated, add that to description and conversation history
-                    description = f"**Response:**\n{response_text}"
+                    description = f"**Prompt:**\n{message.content}\n\n**Response:**\n{response_text}"
                     conversation.messages.append(
                         {
                             "role": "assistant",
@@ -384,6 +390,10 @@ class OpenAIAPI(commands.Cog):
             )
             self.conversation_histories[ctx.interaction.id] = params
 
+            # Stop typing
+            if typing_task is not None:
+                typing_task.cancel()
+
         except Exception as e:
             error_message = str(e)
             if (
@@ -401,7 +411,6 @@ class OpenAIAPI(commands.Cog):
                 )
             )
 
-        finally:
             # Stop typing
             if typing_task is not None:
                 typing_task.cancel()
