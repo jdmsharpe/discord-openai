@@ -15,17 +15,15 @@ Please also check out the official OpenAI Discord bots:
 + [dallify-discord-bot](https://github.com/openai/dallify-discord-bot) (image generation).
 
 ### Commands
-+ `/converse <prompt>` - Creates a model response for the given prompt.
++ `/converse <prompt>` - Starts a conversation with a model given an initial prompt.
 + `/generate_image <prompt>` - Creates image(s) given a prompt.
-+ `/text_to_speech <prompt>` - Generates lifelike spoken audio from the prompt.
++ `/text_to_speech <prompt>` - Generates lifelike spoken audio given a prompt.
 
-### Thread Functionality
-Starting a thread with `/thread name:<name> message:<message>` with a value for `name` that includes the string `ChatGPT` (case-sensitive) will start a conversation with a model. The model will keep track of the conversation history and remember past inputs.
-+ You can add additional parameters (developer API options) to the name field in order, separated by forward slashes (`/`) as delimiters.
-+ Accepted arguments after the initial `ChatGPT` string are `model`, `frequency_penalty`, `presence_penalty`, `temperature`, and `top_p` (AKA "Nucleus Sampling").
-+ An example value for the thread name (also the default) is `ChatGPT/gpt-4-turbo/0.0/0.0/0.0/0.0`.
-+ The model will take the `message` value for the initial prompt, and reply within the newly created thread.
-+ Any further response from the thread creator within the thread will be interpreted as a reply to the model's last output.
+### Converse Functionality
+Starting a conversation with `/converse <prompt>` will start a conversation with a model. The model will keep track of the conversation history and remember past inputs.
++ Any further response from the conversation starter within the same channel will be interpreted as a reply to the model's last output.
++ This allows for multiple concurrent conversations if the user separates each into its own separate Discord thread.
++ Image attachments are accepted (up to 10). The model can analyze them. See [the following OpenAI guide](https://platform.openai.com/docs/guides/vision) for info on how this works.
 
 For more information on these thread parameters, please see [this OpenAI API doc on them](https://platform.openai.com/docs/guides/text-generation/parameter-details). Please also see the [helpful OpenAI API guide doc splash page](https://platform.openai.com/docs/overview) for further reference and information.
 
