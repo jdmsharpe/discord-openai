@@ -15,7 +15,7 @@ Please also check out the official OpenAI Discord bots:
 + [dallify-discord-bot](https://github.com/openai/dallify-discord-bot) (image generation).
 
 ### Commands
-+ `/chat <prompt>` - Creates a model response for the given prompt.
++ `/converse <prompt>` - Creates a model response for the given prompt.
 + `/generate_image <prompt>` - Creates image(s) given a prompt.
 + `/text_to_speech <prompt>` - Generates lifelike spoken audio from the prompt.
 
@@ -33,7 +33,7 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 <div align="center">
 
-![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/20d6af48-699c-40e7-be62-d62f1256744e)
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/00315f6c-aebd-4ae1-bc35-f24a1ad01a2b)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/99e81595-b30f-40b5-b8ac-2a9c8cc49948)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/e69242d0-acdc-42af-be66-794c95d81af7)
 
@@ -43,7 +43,8 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 <div align="center">
 
-![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/563968fe-caeb-4a0f-bd27-625839c251c7)
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/47a96010-02d8-4dfc-b317-4009b926da1e)
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/3907ac6b-4bb6-4bfa-9b97-68912ceed517)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/d5e0758e-f9d5-4ca6-bdb4-bea33c5065a3)
 ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/c5992fac-3372-4c99-81f1-93c7fbda1d0e)
 
