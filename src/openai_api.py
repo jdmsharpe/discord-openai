@@ -243,7 +243,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models (default: gpt-4o)",
+        description="Choose from the following GPT models. (default: gpt-4o)",
         required=False,
         choices=[
             OptionChoice(name="GPT-3.5 Turbo", value="gpt-3.5-turbo-0125"),
@@ -255,7 +255,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "attachment",
-        description="Attachment to append to the prompt. Only images are supported. (default: not set)",
+        description="Attachment to append to the prompt. Only images are supported at this time. (default: not set)",
         required=False,
         type=Attachment,
     )
@@ -465,13 +465,13 @@ class OpenAIAPI(commands.Cog):
 
     @slash_command(
         name="generate_image",
-        description="Generate image from prompt. Image URLs expire after 1 hour.",
+        description="Generates image from a prompt.",
         guild_ids=GUILD_IDS,
     )
     @option("prompt", description="Prompt", required=True)
     @option(
         "model",
-        description="Choose from the following DALL-E models (default: dall-e-3)",
+        description="Choose from the following DALL-E models. (default: dall-e-3)",
         required=False,
         choices=[
             OptionChoice(name="DALL-E 2", value="dall-e-2"),
@@ -480,13 +480,13 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "n",
-        description="Number of images to generate (default: 1)",
+        description="Number of images to generate. (default: 1)",
         required=False,
         type=int,
     )
     @option(
         "quality",
-        description="Quality of the image (default: standard)",
+        description="Quality of the image. (default: standard)",
         required=False,
         choices=[
             OptionChoice(name="Standard", value="standard"),
@@ -495,7 +495,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "size",
-        description="Size of the image (default: 1024x1024)",
+        description="Size of the image. (default: 1024x1024)",
         required=False,
         choices=[
             OptionChoice(name="256x256", value="256x256"),
@@ -641,17 +641,17 @@ class OpenAIAPI(commands.Cog):
 
     @slash_command(
         name="text_to_speech",
-        description="Generates audio from the input text.",
+        description="Generates lifelike audio from the input text.",
         guild_ids=GUILD_IDS,
     )
     @option(
         "input",
-        description="Text to convert to speech (max length 4096 characters)",
+        description="Text to convert to speech. (max length 4096 characters)",
         required=True,
     )
     @option(
         "model",
-        description="Choose from the following TTS models (default: tts-1)",
+        description="Choose from the following TTS models. (default: tts-1)",
         required=False,
         choices=[
             OptionChoice(name="tts-1", value="tts-1"),
@@ -660,7 +660,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "voice",
-        description="Choose a voice for the speech (default: alloy)",
+        description="The voice to use when generating the audio. (default: alloy)",
         required=False,
         choices=[
             OptionChoice(name="alloy", value="alloy"),
@@ -673,7 +673,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "response_format",
-        description="Choose the format of the audio (default: mp3)",
+        description="The format of the audio file output. (default: mp3)",
         required=False,
         choices=[
             OptionChoice(name="MP3", value="mp3"),
@@ -686,7 +686,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "speed",
-        description="Speed of the generated audio (default: 1.0)",
+        description="Speed of the generated audio. (default: 1.0)",
         required=False,
         type=float,
     )
