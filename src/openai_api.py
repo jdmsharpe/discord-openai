@@ -416,7 +416,7 @@ class OpenAIAPI(commands.Cog):
             embeds = [
                 Embed(
                     title="ChatGPT Conversation",
-                    url=[attachment.url if attachment is not None else None],
+                    url=attachment.url if attachment else None,
                     color=Colour.green(),
                 )
             ]
