@@ -144,7 +144,9 @@ class OpenAIAPI(commands.Cog):
                     conversation_id=message.id,
                     conversation_channel=message.channel.id,
                 )
-                self.views[message.author] = ButtonView(self, message.author, message.id)
+                self.views[message.author] = ButtonView(
+                    self, message.author, message.id
+                )
                 logging.info(
                     f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
                 )
@@ -411,7 +413,13 @@ class OpenAIAPI(commands.Cog):
             )
 
             # Assemble the response
-            embeds = [Embed(title="ChatGPT Conversation", color=Colour.green())]
+            embeds = [
+                Embed(
+                    title="ChatGPT Conversation",
+                    url=[attachment.url if attachment is not None else None],
+                    color=Colour.green(),
+                )
+            ]
             embeds[0].add_field(
                 name="Conversation Started",
                 value=f"**Model:** {model}\n**Persona:** {persona}",
