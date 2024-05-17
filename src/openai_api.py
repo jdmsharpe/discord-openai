@@ -2,7 +2,7 @@ import aiohttp
 import asyncio
 import logging
 import io
-import openai
+from openai import AsyncOpenAI
 from discord import (
     ApplicationContext,
     Attachment,
@@ -81,7 +81,7 @@ class OpenAIAPI(commands.Cog):
             level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
         )
         self.bot = bot
-        openai.api_key = OPENAI_API_KEY
+        self.openai = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
         # Dictionary to store conversation histories for each converse interaction
         self.conversation_histories = {}
@@ -181,7 +181,9 @@ class OpenAIAPI(commands.Cog):
                     conversation.messages.append(content)
 
                     # API call
-                    response = openai.chat.completions.create(**conversation.to_dict())
+                    response = await self.openai.chat.completions.create(
+                        **conversation.to_dict()
+                    )
                     response_text = (
                         response.choices[0].message.content
                         if response.choices
@@ -403,7 +405,7 @@ class OpenAIAPI(commands.Cog):
             )
 
             # API call
-            response = openai.chat.completions.create(**params.to_dict())
+            response = await self.openai.chat.completions.create(**params.to_dict())
             response_text = (
                 response.choices[0].message.content
                 if response.choices
@@ -597,7 +599,7 @@ class OpenAIAPI(commands.Cog):
         image_params = ImageGenerationParameters(prompt, model, n, quality, size, style)
 
         try:
-            response = openai.images.generate(**image_params.to_dict())
+            response = await self.openai.images.generate(**image_params.to_dict())
             image_urls = [data.url for data in response.data]
             if image_urls:
                 image_files = []
@@ -727,7 +729,9 @@ class OpenAIAPI(commands.Cog):
         )
 
         try:
-            response = openai.audio.speech.create(**text_to_speech_params.to_dict())
+            response = await self.openai.audio.speech.create(
+                **text_to_speech_params.to_dict()
+            )
 
             # Path where the audio file will be saved
             speech_file_path = (
