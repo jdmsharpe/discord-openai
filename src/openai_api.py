@@ -255,13 +255,13 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "attachment",
-        description="Attachment to append to the prompt. Only images are supported. (default: none)",
+        description="Attachment to append to the prompt. Only images are supported. (default: not set)",
         required=False,
         type=Attachment,
     )
     @option(
         "frequency_penalty",
-        description="(Advanced) Controls how much the model should repeat itself. (default: 0.0)",
+        description="(Advanced) Controls how much the model should repeat itself. (default: not set)",
         required=False,
         type=float,
     )
