@@ -418,6 +418,7 @@ class OpenAIAPI(commands.Cog):
                     color=Colour.green(),
                 ),
             ]
+            embeds[0].set_image(url=attachment.url) if attachment else None
             append_response_embeds(embeds, response_text)
             self.views[ctx.author] = ButtonView(self, ctx.author, ctx.interaction.id)
 
@@ -425,7 +426,6 @@ class OpenAIAPI(commands.Cog):
             await ctx.send_followup(
                 embeds=embeds,
                 view=self.views[ctx.author],
-                file=attachment.url if attachment is not None else None,
             )
             params.messages.append(
                 {
