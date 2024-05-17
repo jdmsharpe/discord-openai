@@ -197,10 +197,7 @@ class OpenAIAPI(commands.Cog):
                     )
 
                     # Assemble the response
-                    embeds = [Embed(title="ChatGPT Conversation", color=Colour.green())]
-                    embeds[0].add_field(
-                        name="Prompt", value=message.content, inline=False
-                    )
+                    embeds = []
                     append_response_embeds(embeds, response_text)
 
                 except Exception as e:
@@ -212,11 +209,11 @@ class OpenAIAPI(commands.Cog):
                     ):
                         description = e.error["message"]
 
-                    embeds[
+                    embeds.append(
                         Embed(
                             title="Error", description=description, color=Colour.red()
                         )
-                    ]
+                    )
 
                 finally:
                     await message.reply(
@@ -368,6 +365,7 @@ class OpenAIAPI(commands.Cog):
         try:
             # Update initial response description based on input parameters
             description = ""
+            description += f"**Prompt:** {prompt}\n"
             description += f"**Model:** {params.model}\n"
             description += f"**Persona:** {params.persona}\n"
             description += (
@@ -415,18 +413,11 @@ class OpenAIAPI(commands.Cog):
             # Assemble the response
             embeds = [
                 Embed(
-                    title="ChatGPT Conversation",
+                    title="Conversation Started",
+                    description=description,
                     color=Colour.green(),
-                )
+                ),
             ]
-            embeds[0].add_field(
-                name="Conversation Started",
-                value=f"**Model:** {model}\n**Persona:** {persona}",
-                inline=False,
-            )
-            embeds[0].add_field(name="Prompt", value=prompt, inline=False)
-            if attachment is not None:
-                embeds[0].set_image(url=attachment.url)
             append_response_embeds(embeds, response_text)
             self.views[ctx.author] = ButtonView(self, ctx.author, ctx.interaction.id)
 
@@ -434,6 +425,7 @@ class OpenAIAPI(commands.Cog):
             await ctx.send_followup(
                 embeds=embeds,
                 view=self.views[ctx.author],
+                file=attachment.url if attachment is not None else None,
             )
             params.messages.append(
                 {
