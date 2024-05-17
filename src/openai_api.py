@@ -32,7 +32,7 @@ def append_response_embeds(embeds, response_text):
     for index, chunk in enumerate(chunk_text(response_text), start=1):
         embeds.append(
             Embed(
-                title=f"Response (Part {index})",
+                title="Response" + f" (Part {index})" if index > 1 else "",
                 description=chunk,
                 color=Colour.blue(),
             )
@@ -420,7 +420,11 @@ class OpenAIAPI(commands.Cog):
             ]
             if attachment is not None:
                 embeds.append(
-                    Embed(title="Attachment", description=attachment.url, color=Colour.green())
+                    Embed(
+                        title="Attachment",
+                        description=attachment.url,
+                        color=Colour.green(),
+                    )
                 )
             append_response_embeds(embeds, response_text)
             self.views[ctx.author] = ButtonView(self, ctx.author, ctx.interaction.id)
