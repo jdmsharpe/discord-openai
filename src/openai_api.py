@@ -265,7 +265,7 @@ class OpenAIAPI(commands.Cog):
                 return
 
             # Ignore messages not in the same channel as the conversation
-            if message.channel.id != conversation.conversation_channel:
+            if message.channel.id != conversation.channel:
                 return
 
             # Should not happen, but just in case
@@ -277,7 +277,7 @@ class OpenAIAPI(commands.Cog):
                     model="gpt-4o",
                     conversation_starter=message.author,
                     conversation_id=message.id,
-                    conversation_channel=message.channel.id,
+                    channel_id=message.channel.id,
                 )
                 self.views[message.author] = ButtonView(
                     self, message.author, message.id
@@ -393,7 +393,7 @@ class OpenAIAPI(commands.Cog):
         for conversation in self.conversation_histories.values():
             if (
                 conversation.conversation_starter == ctx.author
-                and conversation.conversation_channel == ctx.channel_id
+                and conversation.channel == ctx.channel_id
             ):
                 await ctx.send_followup(
                     embed=Embed(
@@ -419,7 +419,7 @@ class OpenAIAPI(commands.Cog):
             top_p=top_p,
             conversation_starter=ctx.author,
             conversation_id=ctx.interaction.id,
-            conversation_channel=ctx.channel_id,
+            channel_id=ctx.channel_id,
         )
 
         try:

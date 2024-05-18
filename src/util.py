@@ -14,9 +14,9 @@ class ChatCompletionParameters:
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         conversation_starter: Optional[str] = None,
-        conversation_id: Optional[str] = None,
-        conversation_channel: Optional[str] = None,
-        conversation_paused: Optional[bool] = False,
+        conversation_id: Optional[int] = None,
+        channel_id: Optional[int] = None,
+        paused: Optional[bool] = False,
     ):
         self.messages = messages
         self.model = model
@@ -28,8 +28,8 @@ class ChatCompletionParameters:
         self.top_p = top_p
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
-        self.conversation_channel = conversation_channel
-        self.conversation_paused = conversation_paused
+        self.channel_id = channel_id
+        self.paused = paused
 
     def to_dict(self):
         # Create a copy of messages to avoid mutating original list
@@ -104,9 +104,9 @@ class TextToSpeechParameters:
         }
 
 
-def chunk_text(text, size = 4096):
+def chunk_text(text, size=4096):
     """Yield successive size chunks from text."""
-    return list(text[i: i + size] for i in range(0, len(text), size))
+    return list(text[i : i + size] for i in range(0, len(text), size))
 
 
 def extract_urls(text):
