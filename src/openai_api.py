@@ -68,11 +68,8 @@ class ButtonView(View):
             conversation.messages.pop()  # Remove the last assistant message
             conversation.messages.pop()  # Remove the last user message
 
-            # Get original message
-            original_response = await interaction.original_response()
-
             await self.cog.handle_new_message_in_conversation(
-                original_response, conversation
+                interaction.message, conversation
             )
         else:
             await interaction.response.send_message(
