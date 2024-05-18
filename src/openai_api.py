@@ -46,7 +46,7 @@ class ButtonView(View):
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
 
-    @button(label="Regenerate", style=ButtonStyle.green)
+    @button(emoji="🔄", style=ButtonStyle.green)
     async def regenerate_button(self, _: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
@@ -74,9 +74,13 @@ class ButtonView(View):
             await self.cog.handle_new_message_in_conversation(
                 original_response, conversation
             )
+        else:
+            await interaction.response.send_message(
+                "No active conversation found.", ephemeral=True
+            )
 
-    @button(label="Pause", style=ButtonStyle.gray)
-    async def pause_button(self, button: Button, interaction: Interaction):
+    @button(emoji="⏯️", style=ButtonStyle.gray)
+    async def play_pause_button(self, button: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
             await interaction.response.send_message(
@@ -92,9 +96,13 @@ class ButtonView(View):
             await interaction.response.send_message(
                 f"Conversation {status}. Press again to toggle.", ephemeral=True
             )
+        else:
+            await interaction.response.send_message(
+                "No active conversation found.", ephemeral=True
+            )
 
-    @button(label="Finish", style=ButtonStyle.blurple)
-    async def finish_button(self, button: Button, interaction: Interaction):
+    @button(emoji="⏹️", style=ButtonStyle.blurple)
+    async def stop_button(self, button: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
             await interaction.response.send_message(
@@ -106,6 +114,13 @@ class ButtonView(View):
         if self.conversation_id in self.cog.conversation_histories:
             del self.cog.conversation_histories[self.conversation_id]
             button.disabled = True  # Disable the button
+            await interaction.response.send_message(
+                "Conversation ended.", ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                "No active conversation found.", ephemeral=True
+            )
 
 
 class OpenAIAPI(commands.Cog):
