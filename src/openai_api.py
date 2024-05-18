@@ -95,7 +95,7 @@ class ButtonView(View):
                 f"Conversation {status}.", ephemeral=True
             )
             button.label = "Resume" if conversation.paused else "Pause"
-            button.refresh_state()
+            button.refresh_state(interaction)
         else:
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
