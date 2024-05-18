@@ -48,11 +48,11 @@ class ButtonView(View):
 
     @button(emoji="🔄", style=ButtonStyle.green)
     async def regenerate_button(self, _: Button, interaction: Interaction):
-        logging.debug("Regenerate button clicked.")
+        logging.info("Regenerate button clicked.")
         try:
             # Check if the interaction user is the one who started the conversation
             if interaction.user != self.conversation_starter:
-                logging.debug("User is not the conversation starter.")
+                logging.info("User is not the conversation starter.")
                 await interaction.response.send_message(
                     "You are not allowed to regenerate the response.", ephemeral=True
                 )
@@ -62,7 +62,9 @@ class ButtonView(View):
             if self.conversation_id in self.cog.conversation_histories:
                 conversation = self.cog.conversation_histories[self.conversation_id]
                 if len(conversation.messages) <= 2:
-                    logging.debug("Not enough messages in the conversation history to regenerate.")
+                    logging.info(
+                        "Not enough messages in the conversation history to regenerate."
+                    )
                     await interaction.response.send_message(
                         "Message cannot be regenerated. Please try a new slash command.",
                         ephemeral=True,
@@ -70,18 +72,23 @@ class ButtonView(View):
                     return
 
                 conversation.messages.pop()  # Remove the last assistant message
-                user_message = conversation.messages.pop()  # Use the last user message as prompt
+                user_message = (
+                    conversation.messages.pop()
+                )  # Use the last user message as prompt
 
                 # Get the message to which the button is attached
                 original_message = interaction.message
+                logging.info(f"Original message fetched: {original_message.content}")
 
-                logging.debug("Deferring interaction response.")
                 await interaction.response.defer(ephemeral=True)
-                await self.cog.handle_new_message_in_conversation(original_message, conversation)
-                logging.debug("Sending followup message for regeneration.")
-                await interaction.followup.send("Regenerating response...", ephemeral=True)
+                await self.cog.handle_new_message_in_conversation(
+                    original_message, conversation
+                )
+                await interaction.followup.send(
+                    "Regenerating response...", ephemeral=True
+                )
             else:
-                logging.debug("No active conversation found.")
+                logging.info("No active conversation found.")
                 await interaction.response.send_message(
                     "No active conversation found.", ephemeral=True
                 )
@@ -145,7 +152,7 @@ class OpenAIAPI(commands.Cog):
         """
         logging.basicConfig(
             level=logging.DEBUG,  # Capture all levels of logs
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
         self.logger = logging.getLogger(__name__)
         self.bot = bot
@@ -165,8 +172,13 @@ class OpenAIAPI(commands.Cog):
             conversation: The conversation object, which is of type ChatCompletionParameters.
         """
         # Determine the role based on the sender
+        self.logger.info(
+            "Handling new message in conversation {conversation.conversation_id}."
+        )
+        typing_task = None
+        embeds = []
+
         try:
-            self.logger.debug("Handling new message in conversation.")
             # Determine the role based on the sender
             role = (
                 "user"
@@ -174,7 +186,7 @@ class OpenAIAPI(commands.Cog):
                 else "assistant"
             )
             self.logger.debug(f"Determined role: {role}")
-            
+
             # Only attempt to generate a response if the message is from a user and the conversation is not paused
             if role == "user" and not conversation.paused:
                 self.logger.debug("Starting typing indicator.")
@@ -195,7 +207,9 @@ class OpenAIAPI(commands.Cog):
                                 "image_url": {"url": attachment.url},
                             }
                         )
-                self.logger.debug(f"Converted message to OpenAI input format: {content}")
+                self.logger.debug(
+                    f"Converted message to OpenAI input format: {content}"
+                )
 
                 # Append the user's message to the conversation history
                 conversation.messages.append(content)
@@ -220,26 +234,27 @@ class OpenAIAPI(commands.Cog):
                         "content": {"type": "text", "text": response_text},
                     }
                 )
-                self.logger.debug(f"Appended assistant response to conversation: {response_text}")
+                self.logger.debug(
+                    f"Appended assistant response to conversation: {response_text}"
+                )
 
                 # Assemble the response
-                embeds = []
                 append_response_embeds(embeds, response_text)
-                self.logger.debug("Assembled response embeds.")
 
             await message.reply(
                 embeds=embeds,
                 view=(
-                    self.views[message.author]
-                    if message.author in self.views
-                    else None
+                    self.views[message.author] if message.author in self.views else None
                 ),
             )
-            self.logger.debug("Replied with generated response.")
+            self.logger.info("Replied with generated response.")
 
         except Exception as e:
             description = str(e)
-            self.logger.error(f"Error in handle_new_message_in_conversation: {description}", exc_info=True)
+            self.logger.error(
+                f"Error in handle_new_message_in_conversation: {description}",
+                exc_info=True,
+            )
             if (
                 hasattr(e, "error")
                 and isinstance(e.error, dict)
@@ -247,12 +262,13 @@ class OpenAIAPI(commands.Cog):
             ):
                 description = e.error["message"]
 
-            await message.reply(embed=Embed(title="Error", description=description, color=Colour.red()))
-            self.logger.debug("Replied with error message.")
+            await message.reply(
+                embed=Embed(title="Error", description=description, color=Colour.red())
+            )
 
         finally:
-            # Stop typing
-            typing_task.cancel()
+            if typing_task:
+                typing_task.cancel()
 
     async def keep_typing(self, channel):
         """
@@ -275,7 +291,9 @@ class OpenAIAPI(commands.Cog):
             await self.bot.sync_commands()
             self.logger.info("Commands synchronized successfully.")
         except Exception as e:
-            self.logger.error(f"Error during command synchronization: {e}", exc_info=True)
+            self.logger.error(
+                f"Error during command synchronization: {e}", exc_info=True
+            )
 
     @commands.Cog.listener()
     async def on_message(self, message):
