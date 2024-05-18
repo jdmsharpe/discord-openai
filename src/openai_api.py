@@ -71,10 +71,11 @@ class ButtonView(View):
                     )
                     return
 
-                conversation.messages.pop()  # Remove the last assistant message
-                user_message = (
-                    conversation.messages.pop()
-                )  # Use the last user message as prompt
+                assistant_message = conversation.messages.pop()  # Remove the last assistant message
+                user_message = conversation.messages.pop() # Use the last user message as prompt
+
+                logging.info(f"Assistant message removed: {assistant_message}")
+                logging.info(f"User message used as prompt: {user_message}")
 
                 # Get the message to which the button is attached
                 original_message = interaction.message
