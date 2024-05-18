@@ -46,10 +46,13 @@ class ButtonView(View):
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
 
-    @button(emoji="🔄", style=ButtonStyle.green)
-    async def regenerate_button(self, _: Button, interaction: Interaction):
+@button(emoji="🔄", style=ButtonStyle.green)
+async def regenerate_button(self, _: Button, interaction: Interaction):
+    logging.debug("Regenerate button clicked.")
+    try:
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
+            logging.debug("User is not the conversation starter.")
             await interaction.response.send_message(
                 "You are not allowed to regenerate the response.", ephemeral=True
             )
@@ -59,6 +62,7 @@ class ButtonView(View):
         if self.conversation_id in self.cog.conversation_histories:
             conversation = self.cog.conversation_histories[self.conversation_id]
             if len(conversation.messages) <= 2:
+                logging.debug("Not enough messages in the conversation history to regenerate.")
                 await interaction.response.send_message(
                     "Message cannot be regenerated. Please try a new slash command.",
                     ephemeral=True,
@@ -66,15 +70,26 @@ class ButtonView(View):
                 return
 
             conversation.messages.pop()  # Remove the last assistant message
-            conversation.messages.pop()  # Remove the last user message
+            user_message = conversation.messages.pop()  # Use the last user message as prompt
 
-            await self.cog.handle_new_message_in_conversation(
-                interaction.message, conversation
-            )
+            # Get the message to which the button is attached
+            original_message = interaction.message
+
+            logging.debug("Deferring interaction response.")
+            await interaction.response.defer(ephemeral=True)
+            await self.cog.handle_new_message_in_conversation(original_message, conversation)
+            logging.debug("Sending followup message for regeneration.")
+            await interaction.followup.send("Regenerating response...", ephemeral=True)
         else:
+            logging.debug("No active conversation found.")
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
             )
+    except Exception as e:
+        logging.error(f"Error in regenerate_button: {str(e)}", exc_info=True)
+        await interaction.followup.send(
+            "An error occurred while regenerating the response.", ephemeral=True
+        )
 
     @button(emoji="⏯️", style=ButtonStyle.gray)
     async def play_pause_button(self, button: Button, interaction: Interaction):
