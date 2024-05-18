@@ -46,7 +46,7 @@ class ButtonView(View):
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
 
-    @button(label="Regenerate", style=ButtonStyle.blurple)
+    @button(label="Regenerate", style=ButtonStyle.green)
     async def regenerate_button(self, _: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
@@ -58,7 +58,7 @@ class ButtonView(View):
         # Modify the conversation history and regenerate the response
         if self.conversation_id in self.cog.conversation_histories:
             conversation = self.cog.conversation_histories[self.conversation_id]
-            if len(conversation.messages) <= 2 or conversation.conversation_id == interaction.id:
+            if len(conversation.messages) <= 2:
                 await interaction.response.send_message(
                     "Message cannot be regenerated. Please try a new slash command.",
                     ephemeral=True,
@@ -66,11 +66,9 @@ class ButtonView(View):
                 return
 
             conversation.messages.pop()  # Remove the last assistant message
-            user_message = (
-                conversation.messages.pop()
-            )  # Use the last user message as prompt
+            conversation.messages.pop()  # Remove the last user message
             await self.cog.handle_new_message_in_conversation(
-                user_message, conversation
+                self, interaction.original_message, conversation
             )
         else:
             await interaction.response.send_message(
@@ -101,7 +99,7 @@ class ButtonView(View):
                 "No active conversation found.", ephemeral=True
             )
 
-    @button(label="Finish", style=ButtonStyle.red)
+    @button(label="Finish", style=ButtonStyle.blurple)
     async def finish_button(self, button: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
@@ -144,6 +142,13 @@ class OpenAIAPI(commands.Cog):
         self.views = {}
 
     async def handle_new_message_in_conversation(self, message, conversation):
+        """
+        Handles a new message in an ongoing conversation.
+
+        Args:
+            message: The incoming Discord Message object.
+            conversation: The conversation object, which is of type ChatCompletionParameters.
+        """
         # Determine the role based on the sender
         role = (
             "user"
@@ -155,21 +160,22 @@ class OpenAIAPI(commands.Cog):
             # Start typing and keep it alive until the response is ready
             typing_task = asyncio.create_task(self.keep_typing(message.channel))
 
+            # Convert the Discord message to OpenAI input format
+            content = {
+                "role": role,
+                "content": [{"type": "text", "text": message.content}],
+            }
+
+            if message.attachments is not None and len(message.attachments) > 0:
+                for attachment in message.attachments:
+                    content["content"].append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": attachment.url},
+                        }
+                    )
+
             try:
-                content = {
-                    "role": "user",
-                    "content": [{"type": "text", "text": message.content}],
-                }
-
-                if message.attachments is not None and len(message.attachments) > 0:
-                    for attachment in message.attachments:
-                        content["content"].append(
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": attachment.url},
-                            }
-                        )
-
                 # Append the user's message to the conversation history
                 conversation.messages.append(content)
 
@@ -284,7 +290,7 @@ class OpenAIAPI(commands.Cog):
                     f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
                 )
 
-            await self.handle_new_message_in_conversation(message, conversation)
+            await self.handle_new_message_in_conversation(self, message, conversation)
 
     @slash_command(
         name="converse",
