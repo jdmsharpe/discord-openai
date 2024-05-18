@@ -173,7 +173,7 @@ class OpenAIAPI(commands.Cog):
         """
         # Determine the role based on the sender
         self.logger.info(
-            "Handling new message in conversation {conversation.conversation_id}."
+            f"Handling new message in conversation {conversation.conversation_id}."
         )
         typing_task = None
         embeds = []
@@ -199,7 +199,7 @@ class OpenAIAPI(commands.Cog):
                     "content": [{"type": "text", "text": message.content}],
                 }
 
-                if message.attachments is not None and len(message.attachments) > 0:
+                if message.attachments:
                     for attachment in message.attachments:
                         content["content"].append(
                             {
@@ -241,13 +241,26 @@ class OpenAIAPI(commands.Cog):
                 # Assemble the response
                 append_response_embeds(embeds, response_text)
 
-            await message.reply(
-                embeds=embeds,
-                view=(
-                    self.views[message.author] if message.author in self.views else None
-                ),
-            )
-            self.logger.info("Replied with generated response.")
+            if embeds:
+                await message.reply(
+                    embeds=embeds,
+                    view=(
+                        self.views[message.author]
+                        if message.author in self.views
+                        else None
+                    ),
+                )
+                logger.debug("Replied with generated response.")
+            else:
+                logger.warning("No embeds to send in the reply.")
+                await message.reply(
+                    content="An error occurred: No content to send.",
+                    view=(
+                        self.views[message.author]
+                        if message.author in self.views
+                        else None
+                    ),
+                )
 
         except Exception as e:
             description = str(e)
