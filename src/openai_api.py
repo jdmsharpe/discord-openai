@@ -176,6 +176,7 @@ class OpenAIAPI(commands.Cog):
             try:
                 # Append the user's message to the conversation history
                 conversation.messages.append(content)
+                logging.info(f"Appended user message to conversation: {content}")
 
                 # API call
                 response = await self.openai.chat.completions.create(
@@ -186,6 +187,7 @@ class OpenAIAPI(commands.Cog):
                     if response.choices
                     else "No response."
                 )
+                logging.info(f"Received response from OpenAI: {response_text}")
 
                 # Now that response is generated, add that to conversation history
                 conversation.messages.append(
@@ -201,6 +203,7 @@ class OpenAIAPI(commands.Cog):
 
             except Exception as e:
                 description = str(e)
+                logging.error(f"Error in handle_new_message_in_conversation: {description}", exc_info=True)
                 if (
                     hasattr(e, "error")
                     and isinstance(e.error, dict)
@@ -221,6 +224,7 @@ class OpenAIAPI(commands.Cog):
                         else None
                     ),
                 )
+                logging.info("Replied with generated response.")
 
                 # Stop typing
                 typing_task.cancel()
