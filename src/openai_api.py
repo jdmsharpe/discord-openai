@@ -68,7 +68,7 @@ class ButtonView(View):
             conversation.messages.pop()  # Remove the last assistant message
             conversation.messages.pop()  # Remove the last user message
             await self.cog.handle_new_message_in_conversation(
-                self, interaction.original_message, conversation
+                interaction.original_message, conversation
             )
         else:
             await interaction.response.send_message(
@@ -290,7 +290,7 @@ class OpenAIAPI(commands.Cog):
                     f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
                 )
 
-            await self.handle_new_message_in_conversation(self, message, conversation)
+            await self.handle_new_message_in_conversation(message, conversation)
 
     @slash_command(
         name="converse",
