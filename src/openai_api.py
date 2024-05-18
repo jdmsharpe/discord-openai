@@ -165,37 +165,44 @@ class OpenAIAPI(commands.Cog):
             conversation: The conversation object, which is of type ChatCompletionParameters.
         """
         # Determine the role based on the sender
-        role = (
-            "user"
-            if message.author == conversation.conversation_starter
-            else "assistant"
-        )
-        # Only attempt to generate a response if the message is from a user and the conversation is not paused
-        if role == "user" and not conversation.paused:
-            # Start typing and keep it alive until the response is ready
-            typing_task = asyncio.create_task(self.keep_typing(message.channel))
+        try:
+            self.logger.debug("Handling new message in conversation.")
+            # Determine the role based on the sender
+            role = (
+                "user"
+                if message.author == conversation.conversation_starter
+                else "assistant"
+            )
+            self.logger.debug(f"Determined role: {role}")
+            
+            # Only attempt to generate a response if the message is from a user and the conversation is not paused
+            if role == "user" and not conversation.paused:
+                self.logger.debug("Starting typing indicator.")
+                # Start typing and keep it alive until the response is ready
+                typing_task = asyncio.create_task(self.keep_typing(message.channel))
 
-            # Convert the Discord message to OpenAI input format
-            content = {
-                "role": role,
-                "content": [{"type": "text", "text": message.content}],
-            }
+                # Convert the Discord message to OpenAI input format
+                content = {
+                    "role": role,
+                    "content": [{"type": "text", "text": message.content}],
+                }
 
-            if message.attachments is not None and len(message.attachments) > 0:
-                for attachment in message.attachments:
-                    content["content"].append(
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": attachment.url},
-                        }
-                    )
+                if message.attachments is not None and len(message.attachments) > 0:
+                    for attachment in message.attachments:
+                        content["content"].append(
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": attachment.url},
+                            }
+                        )
+                self.logger.debug(f"Converted message to OpenAI input format: {content}")
 
-            try:
                 # Append the user's message to the conversation history
                 conversation.messages.append(content)
-                self.logger.info(f"Appended user message to conversation: {content}")
+                self.logger.debug(f"Appended user message to conversation: {content}")
 
                 # API call
+                self.logger.debug("Making API call to OpenAI.")
                 response = await self.openai.chat.completions.create(
                     **conversation.to_dict()
                 )
@@ -204,7 +211,7 @@ class OpenAIAPI(commands.Cog):
                     if response.choices
                     else "No response."
                 )
-                self.logger.info(f"Received response from OpenAI: {response_text}")
+                self.logger.debug(f"Received response from OpenAI: {response_text}")
 
                 # Now that response is generated, add that to conversation history
                 conversation.messages.append(
@@ -213,38 +220,39 @@ class OpenAIAPI(commands.Cog):
                         "content": {"type": "text", "text": response_text},
                     }
                 )
+                self.logger.debug(f"Appended assistant response to conversation: {response_text}")
 
                 # Assemble the response
                 embeds = []
                 append_response_embeds(embeds, response_text)
+                self.logger.debug("Assembled response embeds.")
 
-            except Exception as e:
-                description = str(e)
-                self.logger.error(f"Error in handle_new_message_in_conversation: {description}", exc_info=True)
-                if (
-                    hasattr(e, "error")
-                    and isinstance(e.error, dict)
-                    and "message" in e.error
-                ):
-                    description = e.error["message"]
+            await message.reply(
+                embeds=embeds,
+                view=(
+                    self.views[message.author]
+                    if message.author in self.views
+                    else None
+                ),
+            )
+            self.logger.debug("Replied with generated response.")
 
-                embeds.append(
-                    Embed(title="Error", description=description, color=Colour.red())
-                )
+        except Exception as e:
+            description = str(e)
+            self.logger.error(f"Error in handle_new_message_in_conversation: {description}", exc_info=True)
+            if (
+                hasattr(e, "error")
+                and isinstance(e.error, dict)
+                and "message" in e.error
+            ):
+                description = e.error["message"]
 
-            finally:
-                await message.reply(
-                    embeds=embeds,
-                    view=(
-                        self.views[message.author]
-                        if message.author in self.views
-                        else None
-                    ),
-                )
-                self.logger.info("Replied with generated response.")
+            await message.reply(embed=Embed(title="Error", description=description, color=Colour.red()))
+            self.logger.debug("Replied with error message.")
 
-                # Stop typing
-                typing_task.cancel()
+        finally:
+            # Stop typing
+            typing_task.cancel()
 
     async def keep_typing(self, channel):
         """
