@@ -250,9 +250,9 @@ class OpenAIAPI(commands.Cog):
                         else None
                     ),
                 )
-                logger.debug("Replied with generated response.")
+                self.logger.debug("Replied with generated response.")
             else:
-                logger.warning("No embeds to send in the reply.")
+                self.logger.warning("No embeds to send in the reply.")
                 await message.reply(
                     content="An error occurred: No content to send.",
                     view=(
@@ -351,13 +351,13 @@ class OpenAIAPI(commands.Cog):
             await self.handle_new_message_in_conversation(message, conversation)
 
     @commands.Cog.listener()
-    async def on_error(event, *args, **kwargs):
-        logger.error(f"Error in event {event}: {args} {kwargs}", exc_info=True)
+    async def on_error(self, event, *args, **kwargs):
+        self.logger.error(f"Error in event {event}: {args} {kwargs}", exc_info=True)
 
     # For specific command errors
     @commands.Cog.listener()
-    async def on_command_error(ctx, error):
-        logger.error(f"Error in command {ctx.command}: {error}", exc_info=True)
+    async def on_command_error(self, ctx, error):
+        self.logger.error(f"Error in command {ctx.command}: {error}", exc_info=True)
         await ctx.send(f"An error occurred: {error}")
 
     @slash_command(
