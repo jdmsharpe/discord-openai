@@ -46,7 +46,57 @@ class ButtonView(View):
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
 
-    @button(label="Finish", style=ButtonStyle.danger)
+    @button(label="Regenerate", style=ButtonStyle.blurple)
+    async def regenerate_button(self, button: Button, interaction: Interaction):
+        # Check if the interaction user is the one who started the conversation
+        if interaction.user != self.conversation_starter:
+            await interaction.response.send_message(
+                "You are not allowed to regenerate the response.", ephemeral=True
+            )
+            return
+
+        await interaction.response.send_message(
+            "Regenerating response...", ephemeral=True
+        )
+
+        # Modify the conversation history and regenerate the response
+        if self.conversation_id in self.cog.conversation_histories:
+            conversation = self.cog.conversation_histories[self.conversation_id]
+            conversation.messages.pop()  # Remove the last assistant message
+            user_message = (
+                conversation.messages.pop()
+            )  # Use the last user message as prompt
+            await self.cog.handle_new_message_in_conversation(
+                user_message, conversation
+            )
+        else:
+            await interaction.response.send_message(
+                "No active conversation found.", ephemeral=True
+            )
+
+    @button(label="Pause", style=ButtonStyle.gray)
+    async def pause_button(self, button: Button, interaction: Interaction):
+        # Check if the interaction user is the one who started the conversation
+        if interaction.user != self.conversation_starter:
+            await interaction.response.send_message(
+                "You are not allowed to pause the conversation.", ephemeral=True
+            )
+            return
+
+        # Toggle the paused state
+        if self.conversation_id in self.cog.conversation_histories:
+            conversation = self.cog.conversation_histories[self.conversation_id]
+            conversation.paused = not conversation.paused
+            status = "paused" if conversation.paused else "resumed"
+            await interaction.response.send_message(
+                f"Conversation {status}.", ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                "No active conversation found.", ephemeral=True
+            )
+
+    @button(label="Finish", style=ButtonStyle.red)
     async def finish_button(self, button: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
@@ -65,7 +115,7 @@ class ButtonView(View):
             )
         else:
             await interaction.response.send_message(
-                "No active conversation found or it's already finished.", ephemeral=True
+                "No active conversation found.", ephemeral=True
             )
 
 
@@ -88,13 +138,91 @@ class OpenAIAPI(commands.Cog):
         # Dictionary to store UI views for each conversation
         self.views = {}
 
+    async def handle_new_message_in_conversation(self, message, conversation):
+        # Determine the role based on the sender
+        role = (
+            "user"
+            if message.author == conversation.conversation_starter
+            else "assistant"
+        )
+        # Only attempt to generate a response if the message is from a user and the conversation is not paused
+        if role == "user" and not conversation.paused:
+            # Start typing and keep it alive until the response is ready
+            typing_task = asyncio.create_task(self.keep_typing(message.channel))
+
+            try:
+                content = {
+                    "role": "user",
+                    "content": [{"type": "text", "text": message.content}],
+                }
+
+                if message.attachments is not None and len(message.attachments) > 0:
+                    for attachment in message.attachments:
+                        content["content"].append(
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": attachment.url},
+                            }
+                        )
+
+                # Append the user's message to the conversation history
+                conversation.messages.append(content)
+
+                # API call
+                response = await self.openai.chat.completions.create(
+                    **conversation.to_dict()
+                )
+                response_text = (
+                    response.choices[0].message.content
+                    if response.choices
+                    else "No response."
+                )
+
+                # Now that response is generated, add that to conversation history
+                conversation.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": {"type": "text", "text": response_text},
+                    }
+                )
+
+                # Assemble the response
+                embeds = []
+                append_response_embeds(embeds, response_text)
+
+            except Exception as e:
+                description = str(e)
+                if (
+                    hasattr(e, "error")
+                    and isinstance(e.error, dict)
+                    and "message" in e.error
+                ):
+                    description = e.error["message"]
+
+                embeds.append(
+                    Embed(title="Error", description=description, color=Colour.red())
+                )
+
+            finally:
+                await message.reply(
+                    embeds=embeds,
+                    view=(
+                        self.views[message.author]
+                        if message.author in self.views
+                        else None
+                    ),
+                )
+
+                # Stop typing
+                typing_task.cancel()
+
     async def keep_typing(self, channel):
         """
         Coroutine to keep the typing indicator alive in a channel.
         """
         while True:
             async with channel.typing():
-                await asyncio.sleep(2.5)  # Resend typing indicator every 2.5 seconds
+                await asyncio.sleep(5)  # Resend typing indicator every 5 seconds
 
     # Added for debugging purposes
     @commands.Cog.listener()
@@ -151,84 +279,7 @@ class OpenAIAPI(commands.Cog):
                     f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
                 )
 
-            # Determine the role based on the sender
-            role = (
-                "user"
-                if message.author == conversation.conversation_starter
-                else "assistant"
-            )
-            # Only attempt to generate a response if the message is from a user
-            if role == "user":
-                # Start typing and keep it alive until the response is ready
-                typing_task = asyncio.create_task(self.keep_typing(message.channel))
-
-                try:
-                    content = {
-                        "role": "user",
-                        "content": [{"type": "text", "text": message.content}],
-                    }
-
-                    if message.attachments is not None and len(message.attachments) > 0:
-                        for attachment in message.attachments:
-                            content["content"].append(
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": attachment.url},
-                                }
-                            )
-
-                    # Append the user's message to the conversation history
-                    conversation.messages.append(content)
-
-                    # API call
-                    response = await self.openai.chat.completions.create(
-                        **conversation.to_dict()
-                    )
-                    response_text = (
-                        response.choices[0].message.content
-                        if response.choices
-                        else "No response."
-                    )
-
-                    # Now that response is generated, add that to conversation history
-                    conversation.messages.append(
-                        {
-                            "role": "assistant",
-                            "content": {"type": "text", "text": response_text},
-                        }
-                    )
-
-                    # Assemble the response
-                    embeds = []
-                    append_response_embeds(embeds, response_text)
-
-                except Exception as e:
-                    description = str(e)
-                    if (
-                        hasattr(e, "error")
-                        and isinstance(e.error, dict)
-                        and "message" in e.error
-                    ):
-                        description = e.error["message"]
-
-                    embeds.append(
-                        Embed(
-                            title="Error", description=description, color=Colour.red()
-                        )
-                    )
-
-                finally:
-                    await message.reply(
-                        embeds=embeds,
-                        view=(
-                            self.views[message.author]
-                            if message.author in self.views
-                            else None
-                        ),
-                    )
-
-                    # Stop typing
-                    typing_task.cancel()
+            await self.handle_new_message_in_conversation(message, conversation)
 
     @slash_command(
         name="converse",
