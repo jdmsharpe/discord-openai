@@ -68,7 +68,7 @@ class ButtonView(View):
             conversation.messages.pop()  # Remove the last assistant message
             conversation.messages.pop()  # Remove the last user message
             await self.cog.handle_new_message_in_conversation(
-                interaction.original_message, conversation
+                interaction.original_response(), conversation
             )
         else:
             await interaction.response.send_message(
@@ -90,10 +90,8 @@ class ButtonView(View):
             conversation.paused = not conversation.paused
             status = "paused" if conversation.paused else "resumed"
             await interaction.response.send_message(
-                f"Conversation {status}.", ephemeral=True
+                f"Conversation {status}. Press again to toggle.", ephemeral=True
             )
-            button.label = "Resume" if conversation.paused else "Pause"
-            button.refresh_state(interaction)
         else:
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
