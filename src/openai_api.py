@@ -47,7 +47,7 @@ class ButtonView(View):
         self.conversation_id = conversation_id
 
     @button(label="Regenerate", style=ButtonStyle.blurple)
-    async def regenerate_button(self, button: Button, interaction: Interaction):
+    async def regenerate_button(self, _: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
             await interaction.response.send_message(
@@ -55,16 +55,12 @@ class ButtonView(View):
             )
             return
 
-        await interaction.response.send_message(
-            "Regenerating response...", ephemeral=True
-        )
-
         # Modify the conversation history and regenerate the response
         if self.conversation_id in self.cog.conversation_histories:
             conversation = self.cog.conversation_histories[self.conversation_id]
-            if len(conversation.messages) <= 2:
+            if len(conversation.messages) <= 2 or conversation.conversation_id == interaction.id:
                 await interaction.response.send_message(
-                    "Conversation is too short - please try a new slash command.",
+                    "Message cannot be regenerated. Please try a new slash command.",
                     ephemeral=True,
                 )
                 return
@@ -98,6 +94,8 @@ class ButtonView(View):
             await interaction.response.send_message(
                 f"Conversation {status}.", ephemeral=True
             )
+            button.label = "Resume" if conversation.paused else "Pause"
+            button.refresh_state()
         else:
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
@@ -265,7 +263,7 @@ class OpenAIAPI(commands.Cog):
                 return
 
             # Ignore messages not in the same channel as the conversation
-            if message.channel.id != conversation.channel:
+            if message.channel.id != conversation.channel_id:
                 return
 
             # Should not happen, but just in case
@@ -393,7 +391,7 @@ class OpenAIAPI(commands.Cog):
         for conversation in self.conversation_histories.values():
             if (
                 conversation.conversation_starter == ctx.author
-                and conversation.channel == ctx.channel_id
+                and conversation.channel_id == ctx.channel_id
             ):
                 await ctx.send_followup(
                     embed=Embed(
