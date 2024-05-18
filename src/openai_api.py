@@ -144,8 +144,10 @@ class OpenAIAPI(commands.Cog):
             bot: The bot instance.
         """
         logging.basicConfig(
-            level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+            level=logging.DEBUG,  # Capture all levels of logs
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
+        self.logger = logging.getLogger(__name__)
         self.bot = bot
         self.openai = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
@@ -191,7 +193,7 @@ class OpenAIAPI(commands.Cog):
             try:
                 # Append the user's message to the conversation history
                 conversation.messages.append(content)
-                logging.info(f"Appended user message to conversation: {content}")
+                self.logger.info(f"Appended user message to conversation: {content}")
 
                 # API call
                 response = await self.openai.chat.completions.create(
@@ -202,7 +204,7 @@ class OpenAIAPI(commands.Cog):
                     if response.choices
                     else "No response."
                 )
-                logging.info(f"Received response from OpenAI: {response_text}")
+                self.logger.info(f"Received response from OpenAI: {response_text}")
 
                 # Now that response is generated, add that to conversation history
                 conversation.messages.append(
@@ -218,7 +220,7 @@ class OpenAIAPI(commands.Cog):
 
             except Exception as e:
                 description = str(e)
-                logging.error(f"Error in handle_new_message_in_conversation: {description}", exc_info=True)
+                self.logger.error(f"Error in handle_new_message_in_conversation: {description}", exc_info=True)
                 if (
                     hasattr(e, "error")
                     and isinstance(e.error, dict)
@@ -239,7 +241,7 @@ class OpenAIAPI(commands.Cog):
                         else None
                     ),
                 )
-                logging.info("Replied with generated response.")
+                self.logger.info("Replied with generated response.")
 
                 # Stop typing
                 typing_task.cancel()
@@ -259,13 +261,13 @@ class OpenAIAPI(commands.Cog):
         Event listener that runs when the bot is ready.
         Logs bot details and attempts to synchronize commands.
         """
-        logging.info(f"Logged in as {self.bot.user} (ID: {self.bot.owner_id})")
-        logging.info(f"Attempting to sync commands for guilds: {GUILD_IDS}")
+        self.logger.info(f"Logged in as {self.bot.user} (ID: {self.bot.owner_id})")
+        self.logger.info(f"Attempting to sync commands for guilds: {GUILD_IDS}")
         try:
             await self.bot.sync_commands()
-            logging.info("Commands synchronized successfully.")
+            self.logger.info("Commands synchronized successfully.")
         except Exception as e:
-            logging.error(f"Error during command synchronization: {e}", exc_info=True)
+            self.logger.error(f"Error during command synchronization: {e}", exc_info=True)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -303,11 +305,21 @@ class OpenAIAPI(commands.Cog):
                 self.views[message.author] = ButtonView(
                     self, message.author, message.id
                 )
-                logging.info(
+                self.logger.info(
                     f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
                 )
 
             await self.handle_new_message_in_conversation(message, conversation)
+
+    @commands.Cog.listener()
+    async def on_error(event, *args, **kwargs):
+        logger.error(f"Error in event {event}: {args} {kwargs}", exc_info=True)
+
+    # For specific command errors
+    @commands.Cog.listener()
+    async def on_command_error(ctx, error):
+        logger.error(f"Error in command {ctx.command}: {error}", exc_info=True)
+        await ctx.send(f"An error occurred: {error}")
 
     @slash_command(
         name="converse",
@@ -479,7 +491,7 @@ class OpenAIAPI(commands.Cog):
 
             # Append the user's message to the conversation history
             params.messages.append(content)
-            logging.info(
+            self.logger.info(
                 f"converse: Conversation history and parameters initialized for interaction ID {ctx.interaction.id}."
             )
 
