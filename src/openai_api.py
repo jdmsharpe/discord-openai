@@ -67,12 +67,12 @@ class ButtonView(View):
 
             conversation.messages.pop()  # Remove the last assistant message
             conversation.messages.pop()  # Remove the last user message
+
+            # Get original message
+            original_response = await interaction.original_response()
+
             await self.cog.handle_new_message_in_conversation(
-                interaction.original_response(), conversation
-            )
-        else:
-            await interaction.response.send_message(
-                "No active conversation found.", ephemeral=True
+                original_response, conversation
             )
 
     @button(label="Pause", style=ButtonStyle.gray)
@@ -92,10 +92,6 @@ class ButtonView(View):
             await interaction.response.send_message(
                 f"Conversation {status}. Press again to toggle.", ephemeral=True
             )
-        else:
-            await interaction.response.send_message(
-                "No active conversation found.", ephemeral=True
-            )
 
     @button(label="Finish", style=ButtonStyle.blurple)
     async def finish_button(self, button: Button, interaction: Interaction):
@@ -110,14 +106,6 @@ class ButtonView(View):
         if self.conversation_id in self.cog.conversation_histories:
             del self.cog.conversation_histories[self.conversation_id]
             button.disabled = True  # Disable the button
-
-            await interaction.response.send_message(
-                "Conversation finished.", ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                "No active conversation found.", ephemeral=True
-            )
 
 
 class OpenAIAPI(commands.Cog):
