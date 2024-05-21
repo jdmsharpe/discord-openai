@@ -74,9 +74,8 @@ class ButtonView(View):
                     else "No assistant message found."
                 )
 
-                await interaction.response.defer(ephemeral=True)
 
-                bot_message = await interaction.original_response()
+                bot_message = interaction.message
                 user_message = bot_message.reference.resolved
                 logging.info(f"Original message fetched: {user_message}")
 
