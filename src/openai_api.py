@@ -61,32 +61,35 @@ class ButtonView(View):
             # Modify the conversation history and regenerate the response
             if self.conversation_id in self.cog.conversation_histories:
                 conversation = self.cog.conversation_histories[self.conversation_id]
-                if len(conversation.messages) <= 2:
-                    logging.info(
-                        "Not enough messages in the conversation history to regenerate."
-                    )
-                    await interaction.response.send_message(
-                        "Message cannot be regenerated. Please try a new slash command.",
-                        ephemeral=True,
-                    )
-                    return
+                assistant_message = None
+                user_message = None
 
-                assistant_message = conversation.messages.pop()  # Remove the last assistant message
-                user_message = conversation.messages.pop() # Use the last user message as prompt
+                if conversation.messages[-1]["role"] == "assistant":
+                    assistant_message = (
+                        conversation.messages.pop()
+                    )  # Remove the last assistant message
 
-                logging.info(f"Assistant message removed: {assistant_message}")
-                logging.info(f"User message used as prompt: {user_message}")
+                if conversation.messages[-1]["role"] == "user":
+                    user_message = conversation
 
-                # Get the message to which the button is attached
-                original_message = interaction.message
-                logging.info(f"Original message fetched: {original_message.content}")
+                logging.info(
+                    f"Assistant message removed: {assistant_message}"
+                    if assistant_message
+                    else "No assistant message found."
+                )
+                logging.info(
+                    f"User message used as prompt: {user_message}"
+                    if user_message
+                    else "No user message found."
+                )
 
                 await interaction.response.defer(ephemeral=True)
+
+                interaction_message = await interaction.original_response()
+                logging.info(f"Original message fetched: {interaction_message.content}")
+
                 await self.cog.handle_new_message_in_conversation(
-                    original_message, conversation
-                )
-                await interaction.followup.send(
-                    "Regenerating response...", ephemeral=True
+                    interaction_message, conversation
                 )
             else:
                 logging.info("No active conversation found.")
