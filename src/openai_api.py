@@ -61,35 +61,25 @@ class ButtonView(View):
             # Modify the conversation history and regenerate the response
             if self.conversation_id in self.cog.conversation_histories:
                 conversation = self.cog.conversation_histories[self.conversation_id]
-                assistant_message = None
-                user_message = None
+                bot_message_content = None
 
                 if conversation.messages[-1]["role"] == "assistant":
-                    assistant_message = (
+                    bot_message_content = (
                         conversation.messages.pop()
                     )  # Remove the last assistant message
 
-                if conversation.messages[-1]["role"] == "user":
-                    user_message = conversation
-
                 logging.info(
-                    f"Assistant message removed: {assistant_message}"
-                    if assistant_message
+                    f"Assistant message removed: {bot_message_content}"
+                    if bot_message_content
                     else "No assistant message found."
                 )
-                logging.info(
-                    f"User message used as prompt: {user_message}"
-                    if user_message
-                    else "No user message found."
-                )
 
-                await interaction.response.defer(ephemeral=True)
-
-                interaction_message = await interaction.original_response()
-                logging.info(f"Original message fetched: {interaction_message.content}")
+                bot_message = await interaction.original_response()
+                user_message = bot_message.reference.resolved
+                logging.info(f"Original message fetched: {user_message}")
 
                 await self.cog.handle_new_message_in_conversation(
-                    interaction_message, conversation
+                    user_message, conversation
                 )
             else:
                 logging.info("No active conversation found.")
