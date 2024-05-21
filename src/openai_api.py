@@ -106,10 +106,9 @@ class ButtonView(View):
         if self.conversation_id in self.cog.conversation_histories:
             conversation = self.cog.conversation_histories[self.conversation_id]
             conversation.paused = not conversation.paused
-            status = "paused" if conversation.paused else "resumed"
-            await interaction.response.send_message(
-                f"Conversation {status}. Press again to toggle.", ephemeral=True
-            )
+            button.emoji = "▶️" if conversation.paused else "⏸️"
+            button.refresh_component()
+            button.refresh_state()
         else:
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
