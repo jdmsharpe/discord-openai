@@ -61,18 +61,11 @@ class ButtonView(View):
             if self.conversation_id in self.cog.conversation_histories:
                 # Modify the conversation history and regenerate the response
                 conversation = self.cog.conversation_histories[self.conversation_id]
-                assistant_response = conversation.messages.pop()  # Remove the last assistant message
-                user_prompt = conversation.messages.pop()  # Remove the last user message
-
-                logging.info(f"Assistant response: {assistant_response}")
-                logging.info(f"User prompt: {user_prompt}")
+                conversation.messages.pop()  # Remove the last assistant message
+                conversation.messages.pop()  # Remove the last user message
 
                 messages = await interaction.channel.history(limit=2).flatten()
-                bot_message = messages[0]
                 user_message = messages[1]
-
-                logging.info(f"Bot message: {bot_message.content}")
-                logging.info(f"User message: {user_message.content}")
 
                 await self.cog.handle_new_message_in_conversation(
                     user_message, conversation
@@ -102,8 +95,8 @@ class ButtonView(View):
             conversation = self.cog.conversation_histories[self.conversation_id]
             conversation.paused = not conversation.paused
             button.emoji = "▶️" if conversation.paused else "⏸️"
-            button.refresh_component()
-            button.refresh_state()
+            button.refresh_component(button)
+            button.refresh_state(interaction)
         else:
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
