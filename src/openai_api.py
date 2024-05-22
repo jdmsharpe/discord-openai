@@ -45,7 +45,6 @@ class ButtonView(View):
         self.cog = cog
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
-        self.paused = "⏸️"
 
     @button(emoji="🔄", style=ButtonStyle.green)
     async def regenerate_button(self, _: Button, interaction: Interaction):
@@ -92,7 +91,7 @@ class ButtonView(View):
                 "An error occurred while regenerating the response.", ephemeral=True
             )
 
-    @button(emoji=self.paused, style=ButtonStyle.gray)
+    @button(emoji="⏯️", style=ButtonStyle.gray)
     async def play_pause_button(self, button: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
@@ -106,7 +105,6 @@ class ButtonView(View):
             conversation = self.cog.conversation_histories[self.conversation_id]
             conversation.paused = not conversation.paused
             status = "paused" if conversation.paused else "resumed"
-            self.paused = "▶️" if conversation.paused else "⏸️"
             await interaction.response.send_message(
                 f"Conversation {status}. Press again to toggle.", ephemeral=True
             )
