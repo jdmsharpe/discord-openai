@@ -22,15 +22,15 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
 
     async def test_regenerate_button(self):
         await self.view.regenerate_button(None, None)
-        self.view.regenerate_button.assert_called()
+        self.view.regenerate_button.assert_called_once()
 
     async def test_play_pause_button(self):
         await self.view.play_pause_button(None, None)
-        self.view.play_pause_button.assert_called()
+        self.view.play_pause_button.assert_called_once()
 
     async def test_stop_button(self):
         await self.view.stop_button(None, None)
-        self.view.stop_button.assert_called()
+        self.view.stop_button.assert_called_once()
 
 
 if __name__ == "__main__":
