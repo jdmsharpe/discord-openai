@@ -1,20 +1,18 @@
 import aiohttp
 import asyncio
+from button_view import ButtonView
 import logging
 import io
 from openai import AsyncOpenAI
 from discord import (
     ApplicationContext,
     Attachment,
-    ButtonStyle,
     Colour,
     Embed,
     File,
-    Interaction,
 )
 from discord.ext import commands
 from discord.commands import slash_command, option, OptionChoice
-from discord.ui import button, Button, View
 from pathlib import Path
 from typing import Optional
 from util import (
@@ -37,93 +35,6 @@ def append_response_embeds(embeds, response_text):
                 color=Colour.blue(),
             )
         )
-
-
-class ButtonView(View):
-    def __init__(self, cog, conversation_starter, conversation_id):
-        super().__init__(timeout=None)
-        self.cog = cog
-        self.conversation_starter = conversation_starter
-        self.conversation_id = conversation_id
-
-    @button(emoji="🔄", style=ButtonStyle.green)
-    async def regenerate_button(self, _: Button, interaction: Interaction):
-        logging.info("Regenerate button clicked.")
-        try:
-            # Check if the interaction user is the one who started the conversation
-            if interaction.user != self.conversation_starter:
-                logging.info("User is not the conversation starter.")
-                await interaction.response.send_message(
-                    "You are not allowed to regenerate the response.", ephemeral=True
-                )
-                return
-
-            if self.conversation_id in self.cog.conversation_histories:
-                # Modify the conversation history and regenerate the response
-                conversation = self.cog.conversation_histories[self.conversation_id]
-
-                conversation.messages.pop()  # Remove the last assistant message
-                conversation.messages.pop()  # Remove the last user message
-
-                messages = await interaction.channel.history(limit=2).flatten()
-                user_message = messages[1]
-
-                await self.cog.handle_new_message_in_conversation(
-                    user_message, conversation
-                )
-            else:
-                logging.info("No active conversation found.")
-                await interaction.response.send_message(
-                    "No active conversation found.", ephemeral=True
-                )
-        except Exception as e:
-            logging.error(f"Error in regenerate_button: {str(e)}", exc_info=True)
-            await interaction.followup.send(
-                "An error occurred while regenerating the response.", ephemeral=True
-            )
-
-    @button(emoji="⏯️", style=ButtonStyle.gray)
-    async def play_pause_button(self, button: Button, interaction: Interaction):
-        # Check if the interaction user is the one who started the conversation
-        if interaction.user != self.conversation_starter:
-            await interaction.response.send_message(
-                "You are not allowed to pause the conversation.", ephemeral=True
-            )
-            return
-
-        # Toggle the paused state
-        if self.conversation_id in self.cog.conversation_histories:
-            conversation = self.cog.conversation_histories[self.conversation_id]
-            conversation.paused = not conversation.paused
-            status = "paused" if conversation.paused else "resumed"
-            await interaction.response.send_message(
-                f"Conversation {status}. Press again to toggle.", ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                "No active conversation found.", ephemeral=True
-            )
-
-    @button(emoji="⏹️", style=ButtonStyle.blurple)
-    async def stop_button(self, button: Button, interaction: Interaction):
-        # Check if the interaction user is the one who started the conversation
-        if interaction.user != self.conversation_starter:
-            await interaction.response.send_message(
-                "You are not allowed to end this conversation.", ephemeral=True
-            )
-            return
-
-        # End the conversation
-        if self.conversation_id in self.cog.conversation_histories:
-            del self.cog.conversation_histories[self.conversation_id]
-            button.disabled = True  # Disable the button
-            await interaction.response.send_message(
-                "Conversation ended.", ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                "No active conversation found.", ephemeral=True
-            )
 
 
 class OpenAIAPI(commands.Cog):
@@ -268,6 +179,9 @@ class OpenAIAPI(commands.Cog):
     async def keep_typing(self, channel):
         """
         Coroutine to keep the typing indicator alive in a channel.
+
+        Args:
+            channel: The Discord channel object.
         """
         while True:
             async with channel.typing():
@@ -295,6 +209,9 @@ class OpenAIAPI(commands.Cog):
         """
         Event listener that runs when a message is sent.
         Generates a response using chat completion API when a new message from the conversation author is detected.
+
+        Args:
+            message: The incoming Discord Message object.
         """
         # Ignore messages from the bot itself
         if message.author == self.bot.user:
@@ -334,13 +251,15 @@ class OpenAIAPI(commands.Cog):
 
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):
-        self.logger.error(f"Error in event {event}: {args} {kwargs}", exc_info=True)
+        """
+        Event listener that runs when an error occurs.
 
-    # For specific command errors
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        self.logger.error(f"Error in command {ctx.command}: {error}", exc_info=True)
-        await ctx.send(f"An error occurred: {error}")
+        Args:
+            event: The name of the event that raised the error.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
+        self.logger.error(f"Error in event {event}: {args} {kwargs}", exc_info=True)
 
     @slash_command(
         name="converse",
