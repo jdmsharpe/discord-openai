@@ -45,6 +45,7 @@ class ButtonView(View):
         self.cog = cog
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
+        self.paused = "⏸️"
 
     @button(emoji="🔄", style=ButtonStyle.green)
     async def regenerate_button(self, _: Button, interaction: Interaction):
@@ -61,6 +62,16 @@ class ButtonView(View):
             if self.conversation_id in self.cog.conversation_histories:
                 # Modify the conversation history and regenerate the response
                 conversation = self.cog.conversation_histories[self.conversation_id]
+                if len(conversation.messages) <= 2:
+                    logging.info(
+                        "Not enough messages in the conversation history to regenerate."
+                    )
+                    await interaction.response.send_message(
+                        "Message cannot be regenerated. Please try a new slash command.",
+                        ephemeral=True,
+                    )
+                    return
+
                 conversation.messages.pop()  # Remove the last assistant message
                 conversation.messages.pop()  # Remove the last user message
 
@@ -81,7 +92,7 @@ class ButtonView(View):
                 "An error occurred while regenerating the response.", ephemeral=True
             )
 
-    @button(emoji="⏯️", style=ButtonStyle.gray)
+    @button(emoji=self.paused, style=ButtonStyle.gray)
     async def play_pause_button(self, button: Button, interaction: Interaction):
         # Check if the interaction user is the one who started the conversation
         if interaction.user != self.conversation_starter:
@@ -94,9 +105,11 @@ class ButtonView(View):
         if self.conversation_id in self.cog.conversation_histories:
             conversation = self.cog.conversation_histories[self.conversation_id]
             conversation.paused = not conversation.paused
-            button.emoji = "▶️" if conversation.paused else "⏸️"
-            button.refresh_component(button)
-            button.refresh_state(interaction)
+            status = "paused" if conversation.paused else "resumed"
+            self.paused = "▶️" if conversation.paused else "⏸️"
+            await interaction.response.send_message(
+                f"Conversation {status}. Press again to toggle.", ephemeral=True
+            )
         else:
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
