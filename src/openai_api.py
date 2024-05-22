@@ -58,26 +58,21 @@ class ButtonView(View):
                 )
                 return
 
-            # Modify the conversation history and regenerate the response
             if self.conversation_id in self.cog.conversation_histories:
+                # Modify the conversation history and regenerate the response
                 conversation = self.cog.conversation_histories[self.conversation_id]
-                bot_message_content = None
+                assistant_response = conversation.messages.pop()  # Remove the last assistant message
+                user_prompt = conversation.messages.pop()  # Remove the last user message
 
-                if conversation.messages[-1]["role"] == "assistant":
-                    bot_message_content = (
-                        conversation.messages.pop()
-                    )  # Remove the last assistant message
+                logging.info(f"Assistant response: {assistant_response}")
+                logging.info(f"User prompt: {user_prompt}")
 
-                logging.info(
-                    f"Assistant message removed: {bot_message_content}"
-                    if bot_message_content
-                    else "No assistant message found."
-                )
+                messages = await interaction.channel.history(limit=2).flatten()
+                bot_message = messages[0]
+                user_message = messages[1]
 
-
-                bot_message = interaction.message
-                user_message = bot_message.reference.resolved
-                logging.info(f"Original message fetched: {user_message}")
+                logging.info(f"Bot message: {bot_message.content}")
+                logging.info(f"User message: {user_message.content}")
 
                 await self.cog.handle_new_message_in_conversation(
                     user_message, conversation
@@ -179,11 +174,9 @@ class OpenAIAPI(commands.Cog):
                 if message.author == conversation.conversation_starter
                 else "assistant"
             )
-            self.logger.debug(f"Determined role: {role}")
 
             # Only attempt to generate a response if the message is from a user and the conversation is not paused
             if role == "user" and not conversation.paused:
-                self.logger.debug("Starting typing indicator.")
                 # Start typing and keep it alive until the response is ready
                 typing_task = asyncio.create_task(self.keep_typing(message.channel))
 
