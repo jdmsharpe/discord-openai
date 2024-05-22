@@ -61,15 +61,6 @@ class ButtonView(View):
             if self.conversation_id in self.cog.conversation_histories:
                 # Modify the conversation history and regenerate the response
                 conversation = self.cog.conversation_histories[self.conversation_id]
-                if len(conversation.messages) <= 2:
-                    logging.info(
-                        "Not enough messages in the conversation history to regenerate."
-                    )
-                    await interaction.response.send_message(
-                        "Message cannot be regenerated. Please try a new slash command.",
-                        ephemeral=True,
-                    )
-                    return
 
                 conversation.messages.pop()  # Remove the last assistant message
                 conversation.messages.pop()  # Remove the last user message
