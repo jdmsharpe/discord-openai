@@ -654,20 +654,16 @@ class OpenAIAPI(commands.Cog):
                 await ctx.send_followup(embed=embed, files=image_files)
 
         except Exception as e:
-            error_message = str(e)
+            description = str(e)
             if (
                 hasattr(e, "error")
                 and isinstance(e.error, dict)
                 and "message" in e.error
             ):
-                error_message = e.error["message"]
+                description = e.error["message"]
 
             await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=error_message,
-                    color=Colour.red(),
-                )
+                embed=Embed(title="Error", description=description, color=Colour.red())
             )
 
     @slash_command(
@@ -781,20 +777,16 @@ class OpenAIAPI(commands.Cog):
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
 
         except Exception as e:
-            error_message = str(e)
+            description = str(e)
             if (
                 hasattr(e, "error")
                 and isinstance(e.error, dict)
                 and "message" in e.error
             ):
-                error_message = e.error["message"]
+                description = e.error["message"]
 
             await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=error_message,
-                    color=Colour.red(),
-                )
+                embed=Embed(title="Error", description=description, color=Colour.red())
             )
 
         finally:
