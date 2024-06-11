@@ -12,7 +12,7 @@ from discord import (
     File,
 )
 from discord.ext import commands
-from discord.commands import slash_command, option, OptionChoice
+from discord.commands import command, slash_command, option, OptionChoice
 from pathlib import Path
 from typing import Optional
 from util import (
@@ -260,6 +260,14 @@ class OpenAIAPI(commands.Cog):
             **kwargs: Arbitrary keyword arguments.
         """
         self.logger.error(f"Error in event {event}: {args} {kwargs}", exc_info=True)
+
+    @command()
+    async def check_permissions(self, ctx):
+        permissions = ctx.channel.permissions_for(ctx.guild.me)
+        if permissions.read_messages and permissions.read_message_history:
+            await ctx.send("Bot has permission to read messages and message history.")
+        else:
+            await ctx.send("Bot is missing necessary permissions in this channel.")
 
     @slash_command(
         name="converse",
