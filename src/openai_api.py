@@ -852,8 +852,7 @@ class OpenAIAPI(commands.Cog):
 
         try:
             response_text = ""
-            file = await attachment.to_file()
-            converted_for_api = open(file, "rb")
+            converted_for_api = open(attachment.url, "rb")
             if action == "transcription":
                 response = await self.openai.audio.transcriptions.create(
                     model=model, file=converted_for_api
@@ -888,7 +887,3 @@ class OpenAIAPI(commands.Cog):
             await ctx.send_followup(
                 embed=Embed(title="Error", description=description, color=Colour.red())
             )
-
-        finally:
-            # Delete the audio file after sending
-            converted_for_api.close()
