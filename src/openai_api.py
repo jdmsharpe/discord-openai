@@ -855,12 +855,12 @@ class OpenAIAPI(commands.Cog):
             raw_bytes = await attachment.read()
             if action == "transcription":
                 response = await self.openai.audio.transcriptions.create(
-                    model=model, file=raw_bytes
+                    model=model, file=File(raw_bytes)
                 )
                 response_text = response.transcriptions[0].text
             elif action == "translation":
                 response = await self.openai.audio.translations.create(
-                    model=model, file=raw_bytes
+                    model=model, file=File(raw_bytes)
                 )
                 response_text = response.translations[0].text
 
