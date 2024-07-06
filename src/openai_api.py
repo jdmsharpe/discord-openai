@@ -888,3 +888,7 @@ class OpenAIAPI(commands.Cog):
             await ctx.send_followup(
                 embed=Embed(title="Error", description=description, color=Colour.red())
             )
+
+        finally:
+            # Delete the audio file after sending
+            converted_for_api.close()
