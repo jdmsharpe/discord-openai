@@ -800,3 +800,89 @@ class OpenAIAPI(commands.Cog):
         finally:
             # Delete the audio file after sending
             speech_file_path.unlink(missing_ok=True)
+
+    @slash_command(
+        name="speech_to_text",
+        description="Generates text from the input audio.",
+        guild_ids=GUILD_IDS,
+    )
+    # Skip model selection as only whisper-1 is supported
+    @option(
+        "attachment",
+        description="Attachment audio file. Max size 25 MB. Supported types: mp3, mp4, mpeg, mpga, m4a, wav, and webm.",
+        required=True,
+        type=Attachment,
+    )
+    @option(
+        "action",
+        description="Action to perform. (default: transcription)",
+        required=False,
+        choices=[
+            OptionChoice(
+                name="Transcribe audio into whatever language the audio is in",
+                value="transcription",
+            ),
+            OptionChoice(
+                name="Translate and transcribe the audio into English",
+                value="translation",
+            ),
+        ],
+    )
+    async def speech_to_text(
+        self,
+        ctx: ApplicationContext,
+        attachment: Attachment,
+        model: str = "whisper-1",
+        action: str = "transcription",
+    ):
+        """
+        Generates text from the input audio.
+
+        Args:
+          model: The model to use for speech-to-text conversion. Only `whisper-1` is supported.
+
+          attachment: The audio file to generate text from. File uploads are currently limited
+                to 25 MB and the following input file types are supported: mp3, mp4, mpeg, mpga,
+                m4a, wav, and webm.
+
+          action: The action to perform. Supported actions are `transcription` and `translation`.
+        """
+        # Acknowledge the interaction immediately - reply can take some time
+        await ctx.defer()
+
+        try:
+            response_text = ""
+            if action == "transcription":
+                response = await self.openai.audio.transcriptions.create(
+                    model=model, file=attachment.url
+                )
+                response_text = response.transcriptions[0].text
+            elif action == "translation":
+                response = await self.openai.audio.translations.create(
+                    model=model, file=attachment.url
+                )
+                response_text = response.translations[0].text
+
+            # Assemble the response
+            embed = [
+                Embed(
+                    title="Response",
+                    description=response_text,
+                    color=Colour.blue(),
+                ),
+            ]
+
+            await ctx.send_followup(embed=embed, file=attachment)
+
+        except Exception as e:
+            description = str(e)
+            if (
+                hasattr(e, "error")
+                and isinstance(e.error, dict)
+                and "message" in e.error
+            ):
+                description = e.error["message"]
+
+            await ctx.send_followup(
+                embed=Embed(title="Error", description=description, color=Colour.red())
+            )
