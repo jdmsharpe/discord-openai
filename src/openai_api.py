@@ -852,8 +852,7 @@ class OpenAIAPI(commands.Cog):
 
         try:
             response_text = ""
-            raw_bytes = attachment.read()
-            await raw_bytes
+            raw_bytes = await attachment.read()
             if action == "transcription":
                 response = await self.openai.audio.transcriptions.create(
                     model=model, file=raw_bytes
