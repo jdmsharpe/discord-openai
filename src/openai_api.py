@@ -851,6 +851,8 @@ class OpenAIAPI(commands.Cog):
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
 
+        speech_file_path = None
+
         try:
             # Initialize variables
             response = ""
@@ -884,7 +886,7 @@ class OpenAIAPI(commands.Cog):
                 color=Colour.blue(),
             )
 
-            await ctx.send_followup(embed=embed, file=attachment)
+            await ctx.send_followup(embed=embed, file=File(attachment.url))
 
         except Exception as e:
             description = str(e)
