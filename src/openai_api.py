@@ -807,7 +807,6 @@ class OpenAIAPI(commands.Cog):
         description="Generates text from the input audio.",
         guild_ids=GUILD_IDS,
     )
-    # Skip model selection as only whisper-1 is supported
     @option(
         "attachment",
         description="Attachment audio file. Max size 25 MB. Supported types: mp3, mp4, mpeg, mpga, m4a, wav, and webm.",
@@ -815,16 +814,22 @@ class OpenAIAPI(commands.Cog):
         type=Attachment,
     )
     @option(
+        "model",
+        description="Model to use for speech-to-text conversion.",
+        required=False,
+        choices=OptionChoice(name="whisper-1", value="whisper-1"),
+    )
+    @option(
         "action",
         description="Action to perform. (default: transcription)",
         required=False,
         choices=[
             OptionChoice(
-                name="Transcribe audio into whatever language the audio is in",
+                name="Transcription",
                 value="transcription",
             ),
             OptionChoice(
-                name="Translate and transcribe the audio into English",
+                name="Translation (into English)",
                 value="translation",
             ),
         ],
@@ -851,12 +856,12 @@ class OpenAIAPI(commands.Cog):
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
 
+        # Initialize variables
         speech_file_path = None
+        embeds = []
+        response = ""
 
         try:
-            # Initialize variables
-            response = ""
-
             # Download the file
             async with aiohttp.ClientSession() as session:
                 async with session.get(attachment.url) as response:
@@ -878,6 +883,12 @@ class OpenAIAPI(commands.Cog):
                     response = await self.openai.audio.translations.create(
                         model=model, file=speech_file
                     )
+
+            # Update initial response description based on input parameters
+            description = ""
+            description += f"**Model:** {model}\n"
+            description += f"**Action:** {action}\n"
+            description += f"**Output:** {response.text}\n" if response.text else ""
 
             # Assemble the response
             embed = Embed(
