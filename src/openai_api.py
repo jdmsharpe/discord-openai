@@ -852,7 +852,7 @@ class OpenAIAPI(commands.Cog):
 
         try:
             response_text = ""
-            converted_for_api = open(attachment.url, "rb")
+            converted_for_api = File(open(attachment.url, "rb"))
             if action == "transcription":
                 response = await self.openai.audio.transcriptions.create(
                     model=model, file=converted_for_api
