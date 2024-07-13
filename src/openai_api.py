@@ -852,7 +852,8 @@ class OpenAIAPI(commands.Cog):
         await ctx.defer()
 
         try:
-            response_text = ""
+            # Initialize variables
+            response = ""
 
             # Download the file
             async with aiohttp.ClientSession() as session:
@@ -871,17 +872,15 @@ class OpenAIAPI(commands.Cog):
                     response = await self.openai.audio.transcriptions.create(
                         model=model, file=speech_file
                     )
-                    response_text = response.transcriptions[0].text
                 elif action == "translation":
                     response = await self.openai.audio.translations.create(
                         model=model, file=speech_file
                     )
-                    response_text = response.translations[0].text
 
             # Assemble the response
             embed = Embed(
                 title="Response",
-                description=response_text,
+                description=response.text,
                 color=Colour.blue(),
             )
 
