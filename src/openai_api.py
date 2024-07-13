@@ -893,7 +893,7 @@ class OpenAIAPI(commands.Cog):
             # Assemble the response
             embed = Embed(
                 title="Response",
-                description=response.text,
+                description=description,
                 color=Colour.blue(),
             )
 
