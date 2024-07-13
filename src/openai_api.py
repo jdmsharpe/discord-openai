@@ -886,7 +886,7 @@ class OpenAIAPI(commands.Cog):
                 color=Colour.blue(),
             )
 
-            await ctx.send_followup(embed=embed, file=File(attachment.url))
+            await ctx.send_followup(embed=embed, file=File(speech_file_path))
 
         except Exception as e:
             description = str(e)
