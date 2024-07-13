@@ -817,7 +817,7 @@ class OpenAIAPI(commands.Cog):
         "model",
         description="Model to use for speech-to-text conversion.",
         required=False,
-        choices=OptionChoice(name="whisper-1", value="whisper-1"),
+        choices=[OptionChoice(name="whisper-1", value="whisper-1")],
     )
     @option(
         "action",
