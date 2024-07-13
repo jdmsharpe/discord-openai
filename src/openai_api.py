@@ -799,7 +799,8 @@ class OpenAIAPI(commands.Cog):
 
         finally:
             # Delete the audio file after sending
-            speech_file_path.unlink(missing_ok=True)
+            if speech_file_path:
+                speech_file_path.unlink(missing_ok=True)
 
     @slash_command(
         name="speech_to_text",
@@ -852,26 +853,37 @@ class OpenAIAPI(commands.Cog):
 
         try:
             response_text = ""
-            converted_for_api = File(open(attachment.url, "rb"))
-            if action == "transcription":
-                response = await self.openai.audio.transcriptions.create(
-                    model=model, file=converted_for_api
-                )
-                response_text = response.transcriptions[0].text
-            elif action == "translation":
-                response = await self.openai.audio.translations.create(
-                    model=model, file=converted_for_api
-                )
-                response_text = response.translations[0].text
+
+            # Download the file
+            async with aiohttp.ClientSession() as session:
+                async with session.get(attachment.url) as response:
+                    if response.status != 200:
+                        raise Exception("Failed to download the attachment")
+                    speech_file_content = await response.read()
+
+            # Save the file to a temporary location
+            speech_file_path = Path(f"/tmp/{attachment.filename}")
+            speech_file_path.write_bytes(speech_file_content)
+
+            # Read the file for the API request
+            with open(speech_file_path, "rb") as speech_file:
+                if action == "transcription":
+                    response = await self.openai.audio.transcriptions.create(
+                        model=model, file=speech_file
+                    )
+                    response_text = response.transcriptions[0].text
+                elif action == "translation":
+                    response = await self.openai.audio.translations.create(
+                        model=model, file=speech_file
+                    )
+                    response_text = response.translations[0].text
 
             # Assemble the response
-            embed = [
-                Embed(
-                    title="Response",
-                    description=response_text,
-                    color=Colour.blue(),
-                ),
-            ]
+            embed = Embed(
+                title="Response",
+                description=response_text,
+                color=Colour.blue(),
+            )
 
             await ctx.send_followup(embed=embed, file=attachment)
 
@@ -887,3 +899,8 @@ class OpenAIAPI(commands.Cog):
             await ctx.send_followup(
                 embed=Embed(title="Error", description=description, color=Colour.red())
             )
+
+        finally:
+            # Delete the audio file after sending
+            if speech_file_path:
+                speech_file_path.unlink(missing_ok=True)
