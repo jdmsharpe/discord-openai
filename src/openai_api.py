@@ -290,6 +290,7 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="GPT-4", value="gpt-4"),
             OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
             OptionChoice(name="GPT-4 Omni", value="gpt-4o"),
+            OptionChoice(name="GPT-4 Omni Mini", value="gpt-4o-mini"),
         ],
     )
     @option(
