@@ -387,12 +387,21 @@ class OpenAIAPI(commands.Cog):
                 )
                 return
 
-        # Initialize parameters for the chat completions API
+        # Choose the appropriate role for the introductory message based on the model
+        if model == "o1-preview" or model == "o1" or model == "o1-mini" or model == "o3-mini":
+            role = "developer"
+        else:
+            role = "system"
+
+        # Construct the messages array using the selected role
+        messages = [
+            {"role": role, "content": {"type": "text", "text": persona}},
+            {"role": "user", "content": {"type": "text", "text": prompt}},
+        ]
+
+        # Build the parameters with the updated messages
         params = ChatCompletionParameters(
-            messages=[
-                {"role": "system", "content": {"type": "text", "text": persona}},
-                {"role": "user", "content": {"type": "text", "text": prompt}},
-            ],
+            messages=messages,
             model=model,
             persona=persona,
             frequency_penalty=frequency_penalty,
