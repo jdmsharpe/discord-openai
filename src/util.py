@@ -11,7 +11,7 @@ class ChatCompletionParameters:
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         seed: Optional[int] = None,
-        temperature: Optional[float] = 1.0,
+        temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         conversation_starter: Optional[str] = None,
         conversation_id: Optional[int] = None,
@@ -24,31 +24,47 @@ class ChatCompletionParameters:
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
         self.seed = seed
-        self.temperature = temperature
-        self.top_p = top_p
+
+        # Define the models that do not support custom temperature and top_p.
+        reasoning_models = ("o1-preview", "o1", "o1-mini", "o3-mini")
+        if model in reasoning_models:
+            # For reasoning models, force the default temperature (1.0) and ignore top_p.
+            self.temperature = 1.0
+            self.top_p = None
+        else:
+            self.temperature = temperature
+            self.top_p = top_p
+
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
         self.channel_id = channel_id
         self.paused = paused
 
     def to_dict(self):
-        # Create a copy of messages to avoid mutating original list
+        # Create a copy of messages to avoid mutating the original list.
         messages_copy = [msg.copy() for msg in self.messages]
         for message in messages_copy:
             if "content" in message:
-                # Ensure content is a list of dictionaries if not already
+                # Ensure the content is a list of dictionaries if not already.
                 if not isinstance(message["content"], list):
                     message["content"] = [message["content"]]
 
-        return {
+        payload = {
             "messages": messages_copy,
             "model": self.model,
-            "frequency_penalty": self.frequency_penalty,
-            "presence_penalty": self.presence_penalty,
-            "seed": self.seed,
-            "temperature": self.temperature,
-            "top_p": self.top_p,
         }
+        if self.frequency_penalty is not None:
+            payload["frequency_penalty"] = self.frequency_penalty
+        if self.presence_penalty is not None:
+            payload["presence_penalty"] = self.presence_penalty
+        if self.seed is not None:
+            payload["seed"] = self.seed
+        if self.temperature is not None:
+            payload["temperature"] = self.temperature
+        if self.top_p is not None:
+            payload["top_p"] = self.top_p
+
+        return payload
 
 
 class ImageGenerationParameters:
@@ -106,10 +122,10 @@ class TextToSpeechParameters:
 
 def chunk_text(text, size=4096):
     """Yield successive size chunks from text."""
-    return list(text[i : i + size] for i in range(0, len(text), size))
+    return list(text[i: i + size] for i in range(0, len(text), size))
 
 
 def extract_urls(text):
-    url_pattern = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+    url_pattern = r"http[s]?://(?:[a-zA-Z0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
     urls = re.findall(url_pattern, text)
     return urls

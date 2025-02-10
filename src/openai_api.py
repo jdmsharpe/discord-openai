@@ -320,7 +320,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "temperature",
-        description="(Advanced) Controls the randomness of the model. Set this or top_p, but not both. (default: 1.0)",
+        description="(Advanced) Controls the randomness of the model. Set this or top_p, but not both. (default: not set)",
         required=False,
         type=float,
     )
@@ -340,7 +340,7 @@ class OpenAIAPI(commands.Cog):
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         seed: Optional[int] = None,
-        temperature: Optional[float] = 1.0,
+        temperature: Optional[float] = None,
         top_p: Optional[float] = None,
     ):
         """
@@ -387,8 +387,11 @@ class OpenAIAPI(commands.Cog):
                 )
                 return
 
+        # Define the reasoning models that do NOT support messages with "system" role, custom temperature, and top_p
+        reasoning_models = ("o1-preview", "o1", "o1-mini", "o3-mini")
+
         # Determine if the chosen model supports system messages
-        if model in "o1-preview" or model in "o1" or model in "o1-mini" or model in "o3-mini":
+        if model in reasoning_models:
             # For models that don't support system messages, merge persona with prompt
             combined_prompt = f"{persona}\n\n{prompt}"
             messages = [
@@ -401,20 +404,31 @@ class OpenAIAPI(commands.Cog):
                 {"role": "user", "content": {"type": "text", "text": prompt}},
             ]
 
-        # Build the parameters with the updated messages
-        params = ChatCompletionParameters(
-            messages=messages,
-            model=model,
-            persona=persona,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            seed=seed,
-            temperature=temperature,
-            top_p=top_p,
-            conversation_starter=ctx.author,
-            conversation_id=ctx.interaction.id,
-            channel_id=ctx.channel_id,
-        )
+        # Build the parameters dictionary for ChatCompletionParameters
+        params_dict = {
+            "messages": messages,
+            "model": model,
+            "persona": persona,
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
+            "seed": seed,
+            "conversation_starter": ctx.author,
+            "conversation_id": ctx.interaction.id,
+            "channel_id": ctx.channel_id,
+        }
+
+        if model in reasoning_models:
+            # For reasoning models, force the default temperature (1.0) and omit top_p
+            params_dict["temperature"] = 1.0
+        else:
+            # For non-reasoning models, include temperature and top_p if provided
+            if temperature is not None:
+                params_dict["temperature"] = temperature
+            if top_p is not None:
+                params_dict["top_p"] = top_p
+
+        # Finally, create the ChatCompletionParameters object using the parameters dictionary
+        params = ChatCompletionParameters(**params_dict)
 
         try:
             # Update initial response description based on input parameters
