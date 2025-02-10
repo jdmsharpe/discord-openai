@@ -235,7 +235,7 @@ class OpenAIAPI(commands.Cog):
                 or conversation.conversation_id is None
             ):
                 self.conversation_histories[message.id] = ChatCompletionParameters(
-                    model="gpt-4o",
+                    model="chatgpt-4o-latest",
                     conversation_starter=message.author,
                     conversation_id=message.id,
                     channel_id=message.channel.id,
@@ -282,17 +282,16 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models. (default: gpt-4o)",
+        description="Choose from the following GPT models. (default: GPT-4o (Latest))",
         required=False,
         choices=[
-            OptionChoice(name="GPT-3.5 Turbo", value="gpt-3.5-turbo-0125"),
-            OptionChoice(name="GPT-3.5 Turbo 16k", value="gpt-3.5-turbo-16k"),
-            OptionChoice(name="GPT-4", value="gpt-4"),
-            OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
-            OptionChoice(name="GPT-4 Omni", value="gpt-4o"),
-            OptionChoice(name="GPT-4 Omni Mini", value="gpt-4o-mini"),
-            OptionChoice(name="O1 Preview", value="o1-preview"),
-            OptionChoice(name="O1 Mini", value="o1-mini"),
+            OptionChoice(name="GPT-4o (2024-08-06)", value="gpt-4o"),
+            OptionChoice(name="GPT-4o (Latest)", value="chatgpt-4o-latest"),
+            OptionChoice(name="GPT-4o-mini", value="gpt-4o-mini"),
+            OptionChoice(name="o1-preview", value="o1-preview"),
+            OptionChoice(name="o1", value="o1"),
+            OptionChoice(name="o1-mini", value="o1-mini"),
+            OptionChoice(name="o3-mini", value="o3-mini"),
         ],
     )
     @option(
@@ -336,7 +335,7 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-4o",
+        model: str = "chatgpt-4o-latest",
         attachment: Optional[Attachment] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
