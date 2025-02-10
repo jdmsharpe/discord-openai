@@ -387,17 +387,19 @@ class OpenAIAPI(commands.Cog):
                 )
                 return
 
-        # Choose the appropriate role for the introductory message based on the model
-        if model == "o1-preview" or model == "o1" or model == "o1-mini" or model == "o3-mini":
-            role = "developer"
+        # Determine if the chosen model supports system messages
+        if model in "o1-preview" or model in "o1" or model in "o1-mini" or model in "o3-mini":
+            # For models that don't support system messages, merge persona with prompt
+            combined_prompt = f"{persona}\n\n{prompt}"
+            messages = [
+                {"role": "user", "content": {"type": "text", "text": combined_prompt}}
+            ]
         else:
-            role = "system"
-
-        # Construct the messages array using the selected role
-        messages = [
-            {"role": role, "content": {"type": "text", "text": persona}},
-            {"role": "user", "content": {"type": "text", "text": prompt}},
-        ]
+            # For models that support system messages, use the standard two-message format
+            messages = [
+                {"role": "system", "content": {"type": "text", "text": persona}},
+                {"role": "user", "content": {"type": "text", "text": prompt}},
+            ]
 
         # Build the parameters with the updated messages
         params = ChatCompletionParameters(
