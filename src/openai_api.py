@@ -320,7 +320,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "temperature",
-        description="(Advanced) Controls the randomness of the model. Set this or top_p, but not both. (default: not set)",
+        description="(Advanced) Controls the randomness of the model. Set this or top_p, but not both. (default: 1.0)",
         required=False,
         type=float,
     )
@@ -340,7 +340,7 @@ class OpenAIAPI(commands.Cog):
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         seed: Optional[int] = None,
-        temperature: Optional[float] = None,
+        temperature: Optional[float] = 1.0,
         top_p: Optional[float] = None,
     ):
         """

@@ -11,7 +11,7 @@ class ChatCompletionParameters:
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         seed: Optional[int] = None,
-        temperature: Optional[float] = None,
+        temperature: Optional[float] = 1.0,
         top_p: Optional[float] = None,
         conversation_starter: Optional[str] = None,
         conversation_id: Optional[int] = None,
