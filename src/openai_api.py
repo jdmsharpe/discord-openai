@@ -266,13 +266,14 @@ class OpenAIAPI(commands.Cog):
         description="Choose from the following GPT models. (default: GPT-4o (Latest))",
         required=False,
         choices=[
-            OptionChoice(name="GPT-4o (2024-08-06)", value="gpt-4o"),
-            OptionChoice(name="GPT-4o (Latest)", value="chatgpt-4o-latest"),
+            OptionChoice(name="GPT-3.5 Turbo", value="gpt-3.5-turbo"),
+            OptionChoice(name="GPT-4", value="gpt-4"),
             OptionChoice(name="GPT-4o-mini", value="gpt-4o-mini"),
-            OptionChoice(name="o1-preview", value="o1-preview"),
-            OptionChoice(name="o1", value="o1"),
+            OptionChoice(name="GPT-4o (Latest)", value="chatgpt-4o-latest"),
+            OptionChoice(name="GPT-4.5 (Preview)", value="gpt-4.5-preview"),
             OptionChoice(name="o1-mini", value="o1-mini"),
             OptionChoice(name="o3-mini", value="o3-mini"),
+            OptionChoice(name="o1-preview", value="o1-preview"),
         ],
     )
     @option(
@@ -369,7 +370,7 @@ class OpenAIAPI(commands.Cog):
                 return
 
         # Define the reasoning models that do NOT support messages with "system" role, custom temperature, and top_p
-        reasoning_models = ("o1-preview", "o1", "o1-mini", "o3-mini")
+        reasoning_models = ("o1-mini", "o3-mini", "o1-preview")
 
         # Determine if the chosen model supports system messages
         if model in reasoning_models:
