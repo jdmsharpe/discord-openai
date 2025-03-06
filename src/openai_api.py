@@ -218,36 +218,17 @@ class OpenAIAPI(commands.Cog):
             return
 
         for conversation in self.conversation_histories.values():
-            # Ignore messages not from the conversation starter or from another user
-            if (
-                message.author != conversation.conversation_starter
-                and message.author != self.bot.user
-            ):
-                return
-
-            # Ignore messages not in the same channel as the conversation
+            # Skip conversations that are not in the same channel
             if message.channel.id != conversation.channel_id:
-                return
+                continue
 
-            # Should not happen, but just in case
-            if (
-                conversation.conversation_id not in self.conversation_histories.keys()
-                or conversation.conversation_id is None
-            ):
-                self.conversation_histories[message.id] = ChatCompletionParameters(
-                    model="chatgpt-4o-latest",
-                    conversation_starter=message.author,
-                    conversation_id=message.id,
-                    channel_id=message.channel.id,
-                )
-                self.views[message.author] = ButtonView(
-                    self, message.author, message.id
-                )
-                self.logger.info(
-                    f"on_message: Conversation history and parameters initialized for interaction ID {message.id}."
-                )
+            # Skip if the message is not from the conversation starter
+            if message.author != conversation.conversation_starter:
+                continue
 
+            # Process the message for the matching conversation
             await self.handle_new_message_in_conversation(message, conversation)
+            break  # Stop looping once we've handled the message
 
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):
