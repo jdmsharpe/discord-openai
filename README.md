@@ -84,7 +84,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 
 #### Required Permissions
 - **Bot Permissions Integer:** `397821737984`
-- **Intents:** Ensure the bot has access to read messages and message history (see the provided images in the original README for guidance).
+- **Intents:** Ensure the bot has access to read messages and message history.
 
 ### Build and Run with Docker (Recommended)
 #### Build and run the image locally
