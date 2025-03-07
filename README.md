@@ -15,7 +15,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 - **Image Generation:** Create images from text prompts with `/generate_image` using either DALL-E 2 or DALL-E 3, including options for image quality, size, and style.
 - **Text-to-Speech:** Convert text into lifelike audio using `/text_to_speech`, with customizable voice, audio format, and speed.
 - **Speech-to-Text:** Transform audio attachments into text with `/speech_to_text` – choose between simple transcription or translation into English.
-- **Interactive UI:** Button-based controls and real-time feedback enhance the user experience.
+- **Interactive UI:** Incorporates button-based controls and real-time feedback.
 
 ## Commands
 
