@@ -84,7 +84,9 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 
 #### Required Permissions
 - **Bot Permissions Integer:** `397821737984`
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/87e33ec0-e496-4835-9526-4eaa1e980f7f)
 - **Intents:** Ensure the bot has access to read messages and message history.
+![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/b0e2d96a-769b-471c-91ad-ef2f2dc54f13)
 
 ### Build and Run with Docker (Recommended)
 #### Build and run the image locally
