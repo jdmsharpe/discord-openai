@@ -7,27 +7,51 @@
   
 </div>
 
-## What is it?
-This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Development/pycord). It draws heavily from [Nick McGee's awesome discord-bot](https://github.com/Nick-McGee/discord-bot). The bot allows users in the server to interact with the OpenAI API. It is controlled with slash commands and the message-based user interface.
+## Overview
+This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Development/pycord) that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, and speech-to-text capabilities all accessible via modern slash commands. Whether you’re looking to chat with a state-of-the-art model, generate creative visuals, or convert text and speech, this bot offers an interactive interface that enhances your Discord server experience.
 
-Please also check out the official OpenAI Discord bots:
-+ [gpt-discord-bot](https://github.com/openai/gpt-discord-bot/tree/main) (chat completion).
-+ [dallify-discord-bot](https://github.com/openai/dallify-discord-bot) (image generation).
+## Features
+- **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/converse`. The bot maintains conversation history as you write further messages in the same channel, and even accepts image attachments.
+- **Image Generation:** Create images from text prompts with `/generate_image` using either DALL-E 2 or DALL-E 3, including options for image quality, size, and style.
+- **Text-to-Speech:** Convert text into lifelike audio using `/text_to_speech`, with customizable voice, audio format, and speed.
+- **Speech-to-Text:** Transform audio attachments into text with `/speech_to_text` – choose between simple transcription or translation into English.
+- **Interactive UI:** Button-based controls and real-time feedback enhance the user experience.
 
-### Commands
-+ `/converse <prompt>` - Starts a conversation with a model given an initial prompt.
-+ `/generate_image <prompt>` - Creates image(s) given a prompt.
-+ `/text_to_speech <prompt>` - Generates lifelike spoken audio given a prompt.
+## Commands
 
-### Converse Functionality
-Starting a conversation with `/converse <prompt>` will start a conversation with a model. The model will keep track of the conversation history and remember past inputs.
-+ Any further response from the conversation starter within the same channel will be interpreted as a reply to the model's last output.
-+ This allows for multiple concurrent conversations if the user separates each into its own separate Discord thread.
-+ Image attachments are accepted (up to 10). The model can analyze them. See [the following OpenAI guide](https://platform.openai.com/docs/guides/vision) for info on how this works.
+### `/converse`
+- **Usage:** `/converse <prompt>`
+- **Description:** Start a conversation with a model. The bot tracks conversation history and context, allowing for follow-up messages in the same channel.
+- **Advanced Options:**
+  - **Persona:** Define the model’s role (default: “You are a helpful assistant.”)
+  - **Model Selection:** Choose from multiple GPT models (e.g., GPT-3.5 Turbo, GPT-4, etc.)
+  - **Customization:** Adjust parameters like frequency penalty, presence penalty, temperature, top_p, and more.
+- **Notes:** You can include image attachments to enrich the conversation (note: this may be model-specific, as not all support image uploads).
 
-For more information on these thread parameters, please see [this OpenAI API doc on them](https://platform.openai.com/docs/guides/text-generation/parameter-details). Please also see the [helpful OpenAI API guide doc splash page](https://platform.openai.com/docs/overview) for further reference and information.
+### `/generate_image`
+- **Usage:** `/generate_image <prompt>`
+- **Description:** Generate image(s) from a text prompt using OpenAI’s DALL-E models.
+- **Options:**
+  - **Model:** Select between DALL-E 2 and DALL-E 3.
+  - **Count:** Specify the number of images (with model-specific limits).
+  - **Quality, Size, and Style:** Customize image output details (note: some options are model-specific).
 
-### UI
+### `/text_to_speech`
+- **Usage:** `/text_to_speech <input>`
+- **Description:** Convert text into natural-sounding audio.
+- **Options:**
+  - **Model & Voice:** Select from available TTS models and voices.
+  - **Response Format & Speed:** Choose the audio file format and adjust playback speed.
+
+### `/speech_to_text`
+- **Usage:** `/speech_to_text <attachment>`
+- **Description:** Convert an audio file into text.
+- **Options:**
+  - **Model:** Currently supports `whisper-1`.
+  - **Action:** Choose between transcription or translation (into English).
+- **Notes:** Supports various audio file types (e.g., mp3, mp4, wav, etc.) up to 25 MB.
+
+## UI
 
 <div align="center">
 
@@ -37,7 +61,7 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 </div>
 
-### Demo
+## Demo
 
 <div align="center">
 
@@ -48,11 +72,19 @@ For more information on these thread parameters, please see [this OpenAI API doc
 
 </div>
 
-## How to use it?
-+ <a href="https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D.">**Create a Discord Bot** and invite it to your Discord server</a>
-+ Note that this bot needs the following Discord bot permissions integer to function correctly: `397821737984`
-![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/87e33ec0-e496-4835-9526-4eaa1e980f7f)
-+ Alongside the following intents: ![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/b0e2d96a-769b-471c-91ad-ef2f2dc54f13)
+## Setup & Installation
+
+### Prerequisites
+- A Discord account and a server where you can add the bot.
+- An OpenAI API key (get one at [OpenAI API Keys](https://platform.openai.com/api-keys)).
+
+### Creating and Inviting Your Bot
+1. Follow the [Discord Bot Creation Guide](https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D) to create your application and bot.
+2. Invite the bot to your server using the correct permissions.
+
+#### Required Permissions
+- **Bot Permissions Integer:** `397821737984`
+- **Intents:** Ensure the bot has access to read messages and message history (see the provided images in the original README for guidance).
 
 ### Build and Run with Docker (Recommended)
 #### Build and run the image locally
