@@ -396,7 +396,7 @@ class OpenAIAPI(commands.Cog):
             "channel_id": ctx.channel_id,
         }
 
-        if model in reasoning_models:
+        if model in REASONING_MODELS:
             # For reasoning models, force the default temperature (1.0) and omit top_p
             params_dict["temperature"] = 1.0
         else:
