@@ -6,7 +6,7 @@ class ChatCompletionParameters:
     def __init__(
         self,
         messages: List[dict] = [],
-        model: str = "chatgpt-4o-latest",
+        model: str = "gpt-4.5-preview",
         persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
@@ -26,7 +26,7 @@ class ChatCompletionParameters:
         self.seed = seed
 
         # Define the models that do not support custom temperature and top_p.
-        reasoning_models = ("o1-preview", "o1", "o1-mini", "o3-mini")
+        reasoning_models = ("o1-mini", "o3-mini", "o1-preview", "o1")
         if model in reasoning_models:
             # For reasoning models, force the default temperature (1.0) and ignore top_p.
             self.temperature = 1.0
