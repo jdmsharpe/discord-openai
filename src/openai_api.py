@@ -12,16 +12,16 @@ from discord import (
     File,
 )
 from discord.ext import commands
-from discord.commands import command, slash_command, option, OptionChoice
+from discord.commands import command, option, OptionChoice, slash_command
 from pathlib import Path
 from typing import Optional
 from util import (
     ChatCompletionParameters,
-    ImageGenerationParameters,
-    TextToSpeechParameters,
     chunk_text,
+    ImageGenerationParameters,
+    REASONING_MODELS,
+    TextToSpeechParameters,
 )
-
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 
@@ -369,11 +369,8 @@ class OpenAIAPI(commands.Cog):
                 )
                 return
 
-        # Define the reasoning models that do NOT support messages with "system" role, custom temperature, and top_p
-        reasoning_models = ("o1-mini", "o3-mini", "o1-preview", "o1")
-
         # Determine if the chosen model supports system messages
-        if model in reasoning_models:
+        if model in REASONING_MODELS:
             # For models that don't support system messages, merge persona with prompt
             combined_prompt = f"{persona}\n\n{prompt}"
             messages = [

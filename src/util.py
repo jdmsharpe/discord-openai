@@ -1,6 +1,7 @@
 import re
 from typing import List, Optional
 
+REASONING_MODELS = ["o1-mini", "o3-mini", "o1"]
 
 class ChatCompletionParameters:
     def __init__(
@@ -26,8 +27,7 @@ class ChatCompletionParameters:
         self.seed = seed
 
         # Define the models that do not support custom temperature and top_p.
-        reasoning_models = ("o1-mini", "o3-mini", "o1-preview", "o1")
-        if model in reasoning_models:
+        if model in REASONING_MODELS:
             # For reasoning models, force the default temperature (1.0) and ignore top_p.
             self.temperature = 1.0
             self.top_p = None
