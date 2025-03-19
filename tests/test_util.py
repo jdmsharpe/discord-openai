@@ -93,9 +93,13 @@ class TestChunkText(unittest.TestCase):
 
 class TestExtractUrls(unittest.TestCase):
     def test_extract_urls(self):
-        text = "Check out https://www.example.com and http://example.org/?page=1&param=1"
+        text = (
+            "Check out https://www.example.com and http://example.org/?page=1&param=1"
+        )
         result = extract_urls(text)
-        self.assertEqual(result, ["https://www.example.com", "http://example.org/?page=1&param=1"])
+        self.assertEqual(
+            result, ["https://www.example.com", "http://example.org/?page=1&param=1"]
+        )
 
 
 if __name__ == "__main__":

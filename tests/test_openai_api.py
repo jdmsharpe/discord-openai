@@ -4,6 +4,7 @@ import config.auth  # imported for OpenAIAPI class dependency
 from openai_api import OpenAIAPI
 from discord import Bot, Embed, Intents
 
+
 class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         # Setting up the bot with the OpenAIAPI cog
@@ -54,10 +55,11 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     async def test_text_to_speech_command(self):
         embed = await self.bot.text_to_speech("Hello")
         self.assertEqual("alloy_speech.mp3", embed.file)
-    
+
     async def test_speech_to_text_command(self):
         embed = await self.bot.speech_to_text("audio.mp3")
         self.assertEqual("Hello, World!", embed.description)
+
 
 if __name__ == "__main__":
     unittest.main()

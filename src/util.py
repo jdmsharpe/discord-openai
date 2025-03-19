@@ -1,7 +1,9 @@
 import re
 from typing import List, Optional
 
+CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
 REASONING_MODELS = ["o1-mini", "o3-mini", "o1"]
+
 
 class ChatCompletionParameters:
     def __init__(
@@ -120,12 +122,14 @@ class TextToSpeechParameters:
         }
 
 
-def chunk_text(text, size=4096):
+def chunk_text(text, size=CHUNK_TEXT_SIZE):
     """Yield successive size chunks from text."""
-    return list(text[i: i + size] for i in range(0, len(text), size))
+    return list(text[i : i + size] for i in range(0, len(text), size))
 
 
 def extract_urls(text):
-    url_pattern = r"http[s]?://(?:[a-zA-Z0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+    url_pattern = (
+        r"http[s]?://(?:[a-zA-Z0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+    )
     urls = re.findall(url_pattern, text)
     return urls
