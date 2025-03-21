@@ -105,7 +105,7 @@ class TextToSpeechParameters:
         input: str = "",
         model: str = "gpt-4o-mini-tts",
         voice: str = "alloy",
-        instruction: str = "",
+        instructions: str = "",
         response_format: str = "mp3",
         speed: float = 1.0,
     ):
@@ -119,10 +119,10 @@ class TextToSpeechParameters:
                 # For TTS-1 and TTS-1-HD, force the default voice (Alloy).
                 self.voice = "alloy"
 
-            self.instruction = None
+            self.instructions = None
         else:
             self.voice = voice
-            self.instruction = instruction
+            self.instructions = instructions
 
         self.response_format = response_format
         self.speed = speed
@@ -132,7 +132,7 @@ class TextToSpeechParameters:
             "input": self.input,
             "model": self.model,
             "voice": self.voice,
-            "instruction": self.instruction,
+            "instructions": self.instructions,
             "response_format": self.response_format,
             "speed": self.speed,
         }
