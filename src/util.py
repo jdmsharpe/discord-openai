@@ -3,6 +3,8 @@ from typing import List, Optional
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
 REASONING_MODELS = ["o1-mini", "o3-mini", "o1"]
+RICH_TTS_MODELS = ["gpt-4o-mini-tts", "gpt-4o-tts"]
+RICH_TTS_VOICES = ["ash", "ballad", "coral", "sage", "verse"]
 
 
 class ChatCompletionParameters:
@@ -101,14 +103,22 @@ class TextToSpeechParameters:
     def __init__(
         self,
         input: str = "",
-        model: str = "tts-1",
+        model: str = "gpt-4o-mini-tts",
         voice: str = "alloy",
         response_format: str = "mp3",
         speed: float = 1.0,
     ):
         self.input = input
         self.model = model
-        self.voice = voice
+
+        # Older models do not support all voices.
+        if model not in RICH_TTS_MODELS and voice in RICH_TTS_VOICES:
+            # User picked a voice that is not supported by the model.
+            # For TTS-1 and TTS-1-HD, force the default voice (Alloy).
+            self.voice = "alloy"
+        else:
+            self.voice = voice
+
         self.response_format = response_format
         self.speed = speed
 

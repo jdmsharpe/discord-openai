@@ -20,6 +20,7 @@ from util import (
     chunk_text,
     ImageGenerationParameters,
     REASONING_MODELS,
+    RICH_TTS_MODELS,
     TextToSpeechParameters,
 )
 from config.auth import GUILD_IDS, OPENAI_API_KEY
@@ -692,25 +693,45 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following TTS models. (default: tts-1)",
+        description="Choose from the following TTS models. (default: GPT-4o Mini TTS)",
         required=False,
         choices=[
-            OptionChoice(name="tts-1", value="tts-1"),
-            OptionChoice(name="tts-1-hd", value="tts-1-hd"),
+            OptionChoice(name="TTS-1", value="tts-1"),
+            OptionChoice(name="TTS-1 HD", value="tts-1-hd"),
+            OptionChoice(name="GPT-4o Mini TTS", value="gpt-4o-mini-tts"),
         ],
     )
     @option(
         "voice",
-        description="The voice to use when generating the audio. (default: alloy)",
+        description="The voice to use when generating the audio. (default: Alloy)",
         required=False,
         choices=[
-            OptionChoice(name="alloy", value="alloy"),
-            OptionChoice(name="echo", value="echo"),
-            OptionChoice(name="fable", value="fable"),
-            OptionChoice(name="onyx", value="onyx"),
-            OptionChoice(name="nova", value="nova"),
-            OptionChoice(name="shimmer", value="shimmer"),
+            OptionChoice(name="Alloy", value="alloy"),
+            OptionChoice(name="Ash (Only supported with GPT-4o Mini TTS)", value="ash"),
+            OptionChoice(
+                name="Ballad (Only supported with GPT-4o Mini TTS)", value="ballad"
+            ),
+            OptionChoice(
+                name="Coral (Only supported with GPT-4o Mini TTS)", value="coral"
+            ),
+            OptionChoice(name="Echo", value="echo"),
+            OptionChoice(name="Fable", value="fable"),
+            OptionChoice(name="Onyx", value="onyx"),
+            OptionChoice(name="Nova", value="nova"),
+            OptionChoice(
+                name="Sage (Only supported with GPT-4o Mini TTS)", value="sage"
+            ),
+            OptionChoice(name="Shimmer", value="shimmer"),
+            OptionChoice(
+                name="Verse (Only supported with GPT-4o Mini TTS)", value="verse"
+            ),
         ],
+    )
+    @option(
+        "instructions",
+        description="Control the voice of your generated audio with additional instructions.",
+        required=False,
+        type=str,
     )
     @option(
         "response_format",
@@ -735,8 +756,9 @@ class OpenAIAPI(commands.Cog):
         self,
         ctx: ApplicationContext,
         input: str,
-        model: str = "tts-1",
+        model: str = "gpt-4o-mini-tts",
         voice: str = "alloy",
+        instructions: str = "",
         response_format: str = "mp3",
         speed: float = 1.0,
     ):
@@ -748,12 +770,15 @@ class OpenAIAPI(commands.Cog):
 
           model:
               One of the available [TTS models](https://platform.openai.com/docs/models/tts):
-              `tts-1` or `tts-1-hd`
+              `tts-1`, `tts-1-hd`, or `gpt-4o-mini-tts`.
 
           voice: The voice to use when generating the audio. Supported voices are `alloy`,
               `echo`, `fable`, `onyx`, `nova`, and `shimmer`. Previews of the voices are
               available in the
               [Text to speech guide](https://platform.openai.com/docs/guides/text-to-speech/voice-options).
+
+          instructions: Control the voice of your generated audio with additional instructions. Does not
+              work with `tts-1` or `tts-1-hd`.
 
           response_format: The format to audio in. Supported formats are `mp3`, `opus`, `aac`, `flac`,
               `wav`, and `pcm`.
@@ -764,9 +789,13 @@ class OpenAIAPI(commands.Cog):
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
 
+        if model not in RICH_TTS_MODELS:
+            # Instructions are not supported with older models
+            instructions = None
+
         # Initialize parameters for the text-to-speech API
         text_to_speech_params = TextToSpeechParameters(
-            input, model, voice, response_format, speed
+            input, model, voice, instructions, response_format, speed
         )
 
         try:
@@ -821,9 +850,13 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Model to use for speech-to-text conversion.",
+        description="Model to use for speech-to-text conversion. (default: GPT-4o Transcribe)",
         required=False,
-        choices=[OptionChoice(name="whisper-1", value="whisper-1")],
+        choices=[
+            OptionChoice(name="Whisper", value="whisper-1"),
+            OptionChoice(name="GPT-4o Transcribe", value="gpt-4o-transcribe"),
+            OptionChoice(name="GPT-4o Mini Transcribe", value="gpt-4o-mini-transcribe"),
+        ],
     )
     @option(
         "action",
@@ -844,14 +877,15 @@ class OpenAIAPI(commands.Cog):
         self,
         ctx: ApplicationContext,
         attachment: Attachment,
-        model: str = "whisper-1",
+        model: str = "gpt-4o-transcribe",
         action: str = "transcription",
     ):
         """
         Generates text from the input audio.
 
         Args:
-          model: The model to use for speech-to-text conversion. Only `whisper-1` is supported.
+          model: The model to use for speech-to-text conversion. Supported models are `whisper-1`,
+                `gpt-4o-transcribe`, and `gpt-4o-mini-transcribe`.
 
           attachment: The audio file to generate text from. File uploads are currently limited
                 to 25 MB and the following input file types are supported: mp3, mp4, mpeg, mpga,

@@ -55,14 +55,14 @@ class TestTextToSpeechParameters(unittest.TestCase):
     def test_to_dict(self):
         params = TextToSpeechParameters(
             input="Hello, world!",
-            model="tts-1",
+            model="gpt-4o-mini-tts",
             voice="alloy",
             response_format="mp3",
             speed=1.0,
         )
         result = params.to_dict()
         self.assertEqual(result["input"], "Hello, world!")
-        self.assertEqual(result["model"], "tts-1")
+        self.assertEqual(result["model"], "gpt-4o-mini-tts")
         self.assertEqual(result["voice"], "alloy")
         self.assertEqual(result["response_format"], "mp3")
         self.assertEqual(result["speed"], 1.0)
