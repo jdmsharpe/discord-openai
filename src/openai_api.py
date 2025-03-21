@@ -789,10 +789,6 @@ class OpenAIAPI(commands.Cog):
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
 
-        if model not in RICH_TTS_MODELS:
-            # Instructions are not supported with older models
-            instructions = None
-
         # Initialize parameters for the text-to-speech API
         text_to_speech_params = TextToSpeechParameters(
             input, model, voice, instructions, response_format, speed

@@ -105,6 +105,7 @@ class TextToSpeechParameters:
         input: str = "",
         model: str = "gpt-4o-mini-tts",
         voice: str = "alloy",
+        instruction: str = "",
         response_format: str = "mp3",
         speed: float = 1.0,
     ):
@@ -112,12 +113,16 @@ class TextToSpeechParameters:
         self.model = model
 
         # Older models do not support all voices.
-        if model not in RICH_TTS_MODELS and voice in RICH_TTS_VOICES:
-            # User picked a voice that is not supported by the model.
-            # For TTS-1 and TTS-1-HD, force the default voice (Alloy).
-            self.voice = "alloy"
+        if model not in RICH_TTS_MODELS:
+            if voice not in RICH_TTS_VOICES:
+                # User picked a voice that is not supported by the model.
+                # For TTS-1 and TTS-1-HD, force the default voice (Alloy).
+                self.voice = "alloy"
+
+            self.instruction = None
         else:
             self.voice = voice
+            self.instruction = instruction
 
         self.response_format = response_format
         self.speed = speed
@@ -127,6 +132,7 @@ class TextToSpeechParameters:
             "input": self.input,
             "model": self.model,
             "voice": self.voice,
+            "instruction": self.instruction,
             "response_format": self.response_format,
             "speed": self.speed,
         }
