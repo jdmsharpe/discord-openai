@@ -790,13 +790,13 @@ class OpenAIAPI(commands.Cog):
         await ctx.defer()
 
         # Initialize parameters for the text-to-speech API
-        text_to_speech_params = TextToSpeechParameters(
+        params = TextToSpeechParameters(
             input, model, voice, instructions, response_format, speed
         )
 
         try:
             response = await self.openai.audio.speech.create(
-                **text_to_speech_params.to_dict()
+                **params.to_dict()
             )
 
             # Path where the audio file will be saved
@@ -807,10 +807,22 @@ class OpenAIAPI(commands.Cog):
             # Stream audio to file
             response.write_to_file(speech_file_path)
 
+            description = ""
+            description += f"**Text:** {params.input}\n"
+            description += f"**Model:** {params.model}\n"
+            description += f"**Voice:** {params.voice}\n"
+            description += (
+                f"**Instructions:** {instructions}\n"
+                if params.instructions
+                else ""
+            )
+            description += f"**Respoonse Format:** {response_format}\n"
+            description += f"**Speed:** {params.speed}\n"
+
             # Inform the user that the audio has been created
             embed = Embed(
-                title="Text to Speech Conversion",
-                description=f"**Text:** {input}\n**Voice:** {voice}",
+                title="Text-to-Speech",
+                description=description,
                 color=Colour.blue(),
             )
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
@@ -928,7 +940,7 @@ class OpenAIAPI(commands.Cog):
 
             # Assemble the response
             embed = Embed(
-                title="Response",
+                title="Speech-to-Text",
                 description=description,
                 color=Colour.blue(),
             )
