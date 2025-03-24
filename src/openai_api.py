@@ -729,7 +729,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "instructions",
-        description="Control the voice of your generated audio with additional instructions.",
+        description="Control the voice of your generated audio with additional instructions. Limited to GPT-4o Mini TTS. (default: not set)",
         required=False,
         type=str,
     )
@@ -795,9 +795,7 @@ class OpenAIAPI(commands.Cog):
         )
 
         try:
-            response = await self.openai.audio.speech.create(
-                **params.to_dict()
-            )
+            response = await self.openai.audio.speech.create(**params.to_dict())
 
             # Path where the audio file will be saved
             speech_file_path = (
@@ -812,9 +810,7 @@ class OpenAIAPI(commands.Cog):
             description += f"**Model:** {params.model}\n"
             description += f"**Voice:** {params.voice}\n"
             description += (
-                f"**Instructions:** {instructions}\n"
-                if params.instructions
-                else ""
+                f"**Instructions:** {instructions}\n" if params.instructions else ""
             )
             description += f"**Respoonse Format:** {response_format}\n"
             description += f"**Speed:** {params.speed}\n"
@@ -868,7 +864,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "action",
-        description="Action to perform. (default: transcription)",
+        description="Action to perform. (default: Transcription)",
         required=False,
         choices=[
             OptionChoice(
