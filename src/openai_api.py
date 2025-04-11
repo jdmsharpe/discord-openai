@@ -729,7 +729,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "instructions",
-        description="Control the voice of your generated audio with additional instructions. Limited to GPT-4o Mini TTS. (default: not set)",
+        description="Control the voice of your generated audio with additional instructions. (default: not set)",
         required=False,
         type=str,
     )
