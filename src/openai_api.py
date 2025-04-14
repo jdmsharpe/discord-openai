@@ -264,17 +264,21 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models. (default: GPT-4.5 (Preview))",
+        description="Choose from the following GPT models. (default: GPT-4.1)",
         required=False,
         choices=[
-            OptionChoice(name="GPT-3.5 Turbo", value="gpt-3.5-turbo"),
-            OptionChoice(name="GPT-4", value="gpt-4"),
-            OptionChoice(name="GPT-4o-mini", value="gpt-4o-mini"),
-            OptionChoice(name="GPT-4o (Latest)", value="chatgpt-4o-latest"),
-            OptionChoice(name="GPT-4.5 (Preview)", value="gpt-4.5-preview"),
-            OptionChoice(name="o1-mini", value="o1-mini"),
+            OptionChoice(name="GPT-4.1", value="gpt-4.1"),
+            OptionChoice(name="GPT-4.1 Mini", value="gpt-4.1-mini"),
+            OptionChoice(name="GPT-4.1 Nano", value="gpt-4.1-nano"),
             OptionChoice(name="o3-mini", value="o3-mini"),
             OptionChoice(name="o1", value="o1"),
+            OptionChoice(name="o1-mini", value="o1-mini"),
+            OptionChoice(name="GPT-4o", value="gpt-4o"),
+            OptionChoice(name="GPT-4o Mini", value="gpt-4o-mini"),
+            OptionChoice(name="GPT-4.5 (Preview)", value="gpt-4.5-preview"),
+            OptionChoice(name="GPT-4", value="gpt-4"),
+            OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
+            OptionChoice(name="GPT-3.5 Turbo", value="gpt-3.5-turbo"),
         ],
     )
     @option(
@@ -318,7 +322,7 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-4.5-preview",
+        model: str = "gpt-4.1",
         attachment: Optional[Attachment] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,

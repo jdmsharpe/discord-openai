@@ -2,8 +2,8 @@ import re
 from typing import List, Optional
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
-REASONING_MODELS = ["o1-mini", "o3-mini", "o1"]
-RICH_TTS_MODELS = ["gpt-4o-mini-tts", "gpt-4o-tts"]
+REASONING_MODELS = ["o3-mini", "o1", "o1-mini"]
+RICH_TTS_MODELS = ["gpt-4o-tts", "gpt-4o-mini-tts"]
 RICH_TTS_VOICES = ["ash", "ballad", "coral", "sage", "verse"]
 
 
@@ -11,7 +11,7 @@ class ChatCompletionParameters:
     def __init__(
         self,
         messages: List[dict] = [],
-        model: str = "gpt-4.5-preview",
+        model: str = "gpt-4.1",
         persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
