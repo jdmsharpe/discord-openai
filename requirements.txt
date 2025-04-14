@@ -1,2 +1,2 @@
-openai~=1.65
+openai~=1.74
 py-cord~=2.6
