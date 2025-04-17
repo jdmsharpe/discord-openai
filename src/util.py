@@ -2,7 +2,7 @@ import re
 from typing import List, Optional
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
-REASONING_MODELS = ["o3-mini", "o1", "o1-mini"]
+REASONING_MODELS = ["o4-mini", "o3", "o3-mini", "o1", "o1-mini"]
 RICH_TTS_MODELS = ["gpt-4o-tts", "gpt-4o-mini-tts"]
 RICH_TTS_VOICES = ["ash", "ballad", "coral", "sage", "verse"]
 
