@@ -277,7 +277,6 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="o1 Mini", value="o1-mini"),
             OptionChoice(name="GPT-4o", value="gpt-4o"),
             OptionChoice(name="GPT-4o Mini", value="gpt-4o-mini"),
-            OptionChoice(name="GPT-4.5 (Preview)", value="gpt-4.5-preview"),
             OptionChoice(name="GPT-4", value="gpt-4"),
             OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
             OptionChoice(name="GPT-3.5 Turbo", value="gpt-3.5-turbo"),
