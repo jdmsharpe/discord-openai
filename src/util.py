@@ -81,6 +81,20 @@ class ImageGenerationParameters:
         size: str = "1024x1024",
         style: Optional[str] = None,
     ):
+        # Validate types to help debug the "Constructor parameter should be str" error
+        if not isinstance(prompt, str):
+            raise TypeError(f"prompt must be str, got {type(prompt).__name__}: {prompt}")
+        if not isinstance(model, str):
+            raise TypeError(f"model must be str, got {type(model).__name__}: {model}")
+        if not isinstance(n, int):
+            raise TypeError(f"n must be int, got {type(n).__name__}: {n}")
+        if not isinstance(quality, str):
+            raise TypeError(f"quality must be str, got {type(quality).__name__}: {quality}")
+        if not isinstance(size, str):
+            raise TypeError(f"size must be str, got {type(size).__name__}: {size}")
+        if style is not None and not isinstance(style, str):
+            raise TypeError(f"style must be str or None, got {type(style).__name__}: {style}")
+        
         self.prompt = prompt
         self.model = model
         self.n = n

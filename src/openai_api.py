@@ -661,7 +661,14 @@ class OpenAIAPI(commands.Cog):
             # For gpt-image-1, keep "medium" as default
 
         # Initialize parameters for the image generation API
-        image_params = ImageGenerationParameters(prompt, model, n, quality, size, style)
+        image_params = ImageGenerationParameters(
+            prompt=prompt,
+            model=model,
+            n=n,
+            quality=quality,
+            size=size,
+            style=style
+        )
 
         try:
             response = await self.openai.images.generate(**image_params.to_dict())
