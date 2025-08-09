@@ -669,7 +669,8 @@ class OpenAIAPI(commands.Cog):
                 n=n,
                 quality=quality,
                 size=size,
-                style=style
+                style=style,
+                response_format="url"  # Force URL format to avoid base64
             )
             self.logger.debug(f"Successfully created ImageGenerationParameters")
             self.logger.debug(f"image_params.to_dict() = {image_params.to_dict()}")
@@ -688,12 +689,39 @@ class OpenAIAPI(commands.Cog):
             self.logger.debug("Making OpenAI API call for image generation")
             response = await self.openai.images.generate(**image_params.to_dict())
             self.logger.debug(f"OpenAI API response received: {response}")
+            self.logger.debug(f"Response type: {type(response)}")
+            self.logger.debug(f"Response data: {response.data}")
+            self.logger.debug(f"Response data type: {type(response.data)}")
+            if response.data:
+                self.logger.debug(f"First data item: {response.data[0]}")
+                self.logger.debug(f"First data item type: {type(response.data[0])}")
+                self.logger.debug(f"First data item attributes: {dir(response.data[0])}")
             
-            image_urls = [data.url for data in response.data]
+            # Try different ways to extract image data
+            image_urls = []
+            image_data = []
+            for i, data_item in enumerate(response.data):
+                self.logger.debug(f"Processing data item {i}: {data_item}")
+                
+                # Check if it has url attribute (DALL-E style)
+                if hasattr(data_item, 'url') and data_item.url:
+                    self.logger.debug(f"Found URL for item {i}: {data_item.url}")
+                    image_urls.append(data_item.url)
+                # Check if it has b64_json attribute (base64 style)
+                elif hasattr(data_item, 'b64_json') and data_item.b64_json:
+                    self.logger.debug(f"Found b64_json for item {i}")
+                    image_data.append(data_item.b64_json)
+                # Check if it has revised_prompt
+                if hasattr(data_item, 'revised_prompt'):
+                    self.logger.debug(f"Revised prompt for item {i}: {data_item.revised_prompt}")
+            
             self.logger.debug(f"Image URLs extracted: {image_urls}")
+            self.logger.debug(f"Image base64 data count: {len(image_data)}")
             
-            if image_urls:
+            if image_urls or image_data:
                 image_files = []
+                
+                # Process URL-based images (DALL-E models)
                 for idx, url in enumerate(image_urls):
                     self.logger.debug(f"Downloading image {idx} from URL: {url}")
                     async with aiohttp.ClientSession() as session:
@@ -703,8 +731,8 @@ class OpenAIAPI(commands.Cog):
                                 await ctx.send_followup("Could not download file...")
                                 continue  # Skip this iteration and proceed with the next image
                             data = io.BytesIO(await resp.read())
-                            filename = f"image{idx}.png"
-                            self.logger.debug(f"Creating File object for image {idx} with filename: {repr(filename)}")
+                            filename = str(f"image{idx}.png")  # Ensure filename is definitely a string
+                            self.logger.debug(f"Creating File object for image {idx} with filename: {repr(filename)}, filename type: {type(filename)}")
                             try:
                                 file_obj = File(data, filename)
                                 image_files.append(file_obj)
@@ -712,6 +740,23 @@ class OpenAIAPI(commands.Cog):
                             except Exception as file_e:
                                 self.logger.error(f"Error creating File object for image {idx}: {file_e}", exc_info=True)
                                 raise Exception(f"Failed to create file object: {str(file_e)}")
+                
+                # Process base64-encoded images (gpt-image-1 model)
+                for idx, b64_data in enumerate(image_data):
+                    self.logger.debug(f"Processing base64 image {idx}")
+                    try:
+                        import base64
+                        # Decode base64 data
+                        image_bytes = base64.b64decode(b64_data)
+                        data = io.BytesIO(image_bytes)
+                        filename = str(f"image{len(image_urls) + idx}.png")  # Ensure filename is definitely a string
+                        self.logger.debug(f"Creating File object for base64 image {idx} with filename: {repr(filename)}, filename type: {type(filename)}")
+                        file_obj = File(data, filename)
+                        image_files.append(file_obj)
+                        self.logger.debug(f"Successfully created File object for base64 image {idx}")
+                    except Exception as file_e:
+                        self.logger.error(f"Error creating File object for base64 image {idx}: {file_e}", exc_info=True)
+                        raise Exception(f"Failed to create file object from base64: {str(file_e)}")
 
                 if len(image_files) <= 0:
                     raise Exception("No images were generated.")

@@ -80,6 +80,7 @@ class ImageGenerationParameters:
         quality: str = "medium",
         size: str = "1024x1024",
         style: Optional[str] = None,
+        response_format: str = "url",
     ):
         # Validate types to help debug the "Constructor parameter should be str" error
         if not isinstance(prompt, str):
@@ -94,6 +95,8 @@ class ImageGenerationParameters:
             raise TypeError(f"size must be str, got {type(size).__name__}: {size}")
         if style is not None and not isinstance(style, str):
             raise TypeError(f"style must be str or None, got {type(style).__name__}: {style}")
+        if not isinstance(response_format, str):
+            raise TypeError(f"response_format must be str, got {type(response_format).__name__}: {response_format}")
         
         self.prompt = prompt
         self.model = model
@@ -107,6 +110,7 @@ class ImageGenerationParameters:
             
         self.size = size
         self.style = style
+        self.response_format = response_format
 
     def to_dict(self):
         payload = {
@@ -115,6 +119,7 @@ class ImageGenerationParameters:
             "n": self.n,
             "quality": self.quality,
             "size": self.size,
+            "response_format": self.response_format,
         }
         if self.style is not None:
             payload["style"] = self.style
