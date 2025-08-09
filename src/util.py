@@ -89,14 +89,16 @@ class ImageGenerationParameters:
         self.style = style
 
     def to_dict(self):
-        return {
+        payload = {
             "prompt": self.prompt,
             "model": self.model,
             "n": self.n,
             "quality": self.quality,
             "size": self.size,
-            "style": self.style,
         }
+        if self.style is not None:
+            payload["style"] = self.style
+        return payload
 
 
 class TextToSpeechParameters:

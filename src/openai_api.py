@@ -82,58 +82,52 @@ class OpenAIAPI(commands.Cog):
                 else "assistant"
             )
 
-            # Only attempt to generate a response if the message is from a user and the conversation is not paused
-            if role == "user" and not conversation.paused:
-                # Start typing and keep it alive until the response is ready
-                typing_task = asyncio.create_task(self.keep_typing(message.channel))
+            # Convert the Discord message to OpenAI input format
+            content = {
+                "role": role,
+                "content": [{"type": "text", "text": message.content}],
+            }
+            if message.attachments:
+                for attachment in message.attachments:
+                    content["content"].append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": attachment.url},
+                        }
+                    )
+            self.logger.debug(
+                f"Converted message to OpenAI input format: {content}"
+            )
 
-                # Convert the Discord message to OpenAI input format
-                content = {
-                    "role": role,
-                    "content": [{"type": "text", "text": message.content}],
+            # Append the user's message to the conversation history
+            conversation.messages.append(content)
+            self.logger.debug(f"Appended user message to conversation: {content}")
+
+            # API call
+            self.logger.debug("Making API call to OpenAI.")
+            response = await self.openai.chat.completions.create(
+                **conversation.to_dict()
+            )
+            response_text = (
+                response.choices[0].message.content
+                if response.choices
+                else "No response."
+            )
+            self.logger.debug(f"Received response from OpenAI: {response_text}")
+
+            # Now that response is generated, add that to conversation history
+            conversation.messages.append(
+                {
+                    "role": "assistant",
+                    "content": {"type": "text", "text": response_text},
                 }
+            )
+            self.logger.debug(
+                f"Appended assistant response to conversation: {response_text}"
+            )
 
-                if message.attachments:
-                    for attachment in message.attachments:
-                        content["content"].append(
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": attachment.url},
-                            }
-                        )
-                self.logger.debug(
-                    f"Converted message to OpenAI input format: {content}"
-                )
-
-                # Append the user's message to the conversation history
-                conversation.messages.append(content)
-                self.logger.debug(f"Appended user message to conversation: {content}")
-
-                # API call
-                self.logger.debug("Making API call to OpenAI.")
-                response = await self.openai.chat.completions.create(
-                    **conversation.to_dict()
-                )
-                response_text = (
-                    response.choices[0].message.content
-                    if response.choices
-                    else "No response."
-                )
-                self.logger.debug(f"Received response from OpenAI: {response_text}")
-
-                # Now that response is generated, add that to conversation history
-                conversation.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": {"type": "text", "text": response_text},
-                    }
-                )
-                self.logger.debug(
-                    f"Appended assistant response to conversation: {response_text}"
-                )
-
-                # Assemble the response
-                append_response_embeds(embeds, response_text)
+            # Assemble the response
+            append_response_embeds(embeds, response_text)
 
             if embeds:
                 await message.reply(
@@ -162,16 +156,7 @@ class OpenAIAPI(commands.Cog):
                 f"Error in handle_new_message_in_conversation: {description}",
                 exc_info=True,
             )
-            if (
-                hasattr(e, "error")
-                and isinstance(e.error, dict)
-                and "message" in e.error
-            ):
-                description = e.error["message"]
-
-            await message.reply(
-                embed=Embed(title="Error", description=description, color=Colour.red())
-            )
+            await message.reply(embed=Embed(title="Error", description=description, color=Colour.red()))
 
         finally:
             if typing_task:
@@ -499,12 +484,6 @@ class OpenAIAPI(commands.Cog):
 
         except Exception as e:
             error_message = str(e)
-            if (
-                hasattr(e, "error")
-                and isinstance(e.error, dict)
-                and "message" in e.error
-            ):
-                error_message = e.error["message"]
 
             await ctx.send_followup(
                 embed=Embed(
@@ -574,7 +553,7 @@ class OpenAIAPI(commands.Cog):
         n: int = 1,
         quality: str = "standard",
         size: str = "1024x1024",
-        style: str = "natural",
+    style: Optional[str] = "natural",
     ):
         """
         Creates an image given a prompt.
@@ -645,9 +624,14 @@ class OpenAIAPI(commands.Cog):
             )
             return
 
-        # Strip style parameter if model is DALL-E 2
+        # Remove unsupported parameters based on model selection
         if model == "dall-e-2" and style is not None:
+            style = None  # dall-e-2 ignores style
+        if model == "gpt-image-1":
+            # Current API ignores/ rejects style & hd quality for gpt-image-1, keep payload minimal
             style = None
+            if quality != "standard":
+                quality = "standard"
 
         # Initialize parameters for the image generation API
         image_params = ImageGenerationParameters(prompt, model, n, quality, size, style)
@@ -677,17 +661,29 @@ class OpenAIAPI(commands.Cog):
                 await ctx.send_followup(embed=embed, files=image_files)
 
         except Exception as e:
+            # Try to extract OpenAI / httpx error details gracefully
             description = str(e)
-            if (
-                hasattr(e, "error")
-                and isinstance(e.error, dict)
-                and "message" in e.error
-            ):
-                description = e.error["message"]
+            try:
+                import httpx
+                if isinstance(e, httpx.HTTPStatusError):
+                    # Attempt to parse JSON error body
+                    try:
+                        body = e.response.json()
+                        # OpenAI style: {'error': {'message': '...'}} or direct message
+                        if isinstance(body, dict):
+                            if "error" in body and isinstance(body["error"], dict) and "message" in body["error"]:
+                                description = body["error"]["message"]
+                            elif "message" in body:
+                                description = body["message"]
+                            else:
+                                description = str(body)
+                    except Exception:
+                        # Fallback: raw text
+                        description = e.response.text
+            except ImportError:
+                pass
 
-            await ctx.send_followup(
-                embed=Embed(title="Error", description=description, color=Colour.red())
-            )
+            await ctx.send_followup(embed=Embed(title="Error", description=description, color=Colour.red()))
 
     @slash_command(
         name="text_to_speech",
@@ -771,82 +767,42 @@ class OpenAIAPI(commands.Cog):
         speed: float = 1.0,
     ):
         """
-        Generates audio from the input text.
+        Generates lifelike audio from the provided text.
 
         Args:
-          input: The text to generate audio for. The maximum length is 4096 characters.
-
-          model:
-              One of the available [TTS models](https://platform.openai.com/docs/models/tts):
-              `tts-1`, `tts-1-hd`, or `gpt-4o-mini-tts`.
-
-          voice: The voice to use when generating the audio. Supported voices are `alloy`,
-              `echo`, `fable`, `onyx`, `nova`, and `shimmer`. Previews of the voices are
-              available in the
-              [Text to speech guide](https://platform.openai.com/docs/guides/text-to-speech/voice-options).
-
-          instructions: Control the voice of your generated audio with additional instructions. Does not
-              work with `tts-1` or `tts-1-hd`.
-
-          response_format: The format to audio in. Supported formats are `mp3`, `opus`, `aac`, `flac`,
-              `wav`, and `pcm`.
-
-          speed: The speed of the generated audio. Select a value from `0.25` to `4.0`. `1.0` is
-              the default.
+          input: Text to convert (max 4096 chars).
+          model: TTS model (e.g., gpt-4o-mini-tts, tts-1, tts-1-hd).
+          voice: Voice to use.
+          instructions: Extra voice style instructions (not for tts-1 / tts-1-hd).
+          response_format: Audio file format.
+          speed: Playback speed multiplier.
         """
-        # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
 
-        # Initialize parameters for the text-to-speech API
         params = TextToSpeechParameters(
             input, model, voice, instructions, response_format, speed
         )
-
+        speech_file_path = None
         try:
             response = await self.openai.audio.speech.create(**params.to_dict())
-
-            # Path where the audio file will be saved
-            speech_file_path = (
-                Path(__file__).parent / f"{voice}_speech.{response_format}"
-            )
-
-            # Stream audio to file
+            speech_file_path = Path(__file__).parent / f"{voice}_speech.{response_format}"
             response.write_to_file(speech_file_path)
 
-            description = ""
-            description += f"**Text:** {params.input}\n"
-            description += f"**Model:** {params.model}\n"
-            description += f"**Voice:** {params.voice}\n"
-            description += (
-                f"**Instructions:** {instructions}\n" if params.instructions else ""
+            description = (
+                f"**Text:** {params.input}\n"
+                f"**Model:** {params.model}\n"
+                f"**Voice:** {params.voice}\n"
+                + (f"**Instructions:** {instructions}\n" if params.instructions else "")
+                + f"**Response Format:** {response_format}\n"
+                + f"**Speed:** {params.speed}\n"
             )
-            description += f"**Respoonse Format:** {response_format}\n"
-            description += f"**Speed:** {params.speed}\n"
 
-            # Inform the user that the audio has been created
-            embed = Embed(
-                title="Text-to-Speech",
-                description=description,
-                color=Colour.blue(),
-            )
+            embed = Embed(title="Text-to-Speech", description=description, color=Colour.blue())
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
-
         except Exception as e:
-            description = str(e)
-            if (
-                hasattr(e, "error")
-                and isinstance(e.error, dict)
-                and "message" in e.error
-            ):
-                description = e.error["message"]
-
-            await ctx.send_followup(
-                embed=Embed(title="Error", description=description, color=Colour.red())
-            )
-
+            await ctx.send_followup(embed=Embed(title="Error", description=str(e), color=Colour.red()))
         finally:
-            # Delete the audio file after sending
-            if speech_file_path:
+            if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
 
     @slash_command(
@@ -912,59 +868,31 @@ class OpenAIAPI(commands.Cog):
         speech_file_path = None
         embeds = []
         response = ""
-
         try:
-            # Download the file
             async with aiohttp.ClientSession() as session:
-                async with session.get(attachment.url) as response:
-                    if response.status != 200:
+                async with session.get(attachment.url) as dl_resp:
+                    if dl_resp.status != 200:
                         raise Exception("Failed to download the attachment")
-                    speech_file_content = await response.read()
+                    speech_file_content = await dl_resp.read()
 
-            # Save the file to a temporary location
             speech_file_path = Path(f"/tmp/{attachment.filename}")
             speech_file_path.write_bytes(speech_file_content)
 
-            # Read the file for the API request
             with open(speech_file_path, "rb") as speech_file:
                 if action == "transcription":
-                    response = await self.openai.audio.transcriptions.create(
-                        model=model, file=speech_file
-                    )
-                elif action == "translation":
-                    response = await self.openai.audio.translations.create(
-                        model=model, file=speech_file
-                    )
+                    response = await self.openai.audio.transcriptions.create(model=model, file=speech_file)
+                else:  # translation
+                    response = await self.openai.audio.translations.create(model=model, file=speech_file)
 
-            # Update initial response description based on input parameters
-            description = ""
-            description += f"**Model:** {model}\n"
-            description += f"**Action:** {action}\n"
-            description += f"**Output:** {response.text}\n" if response.text else ""
-
-            # Assemble the response
-            embed = Embed(
-                title="Speech-to-Text",
-                description=description,
-                color=Colour.blue(),
+            description = (
+                f"**Model:** {model}\n" +
+                f"**Action:** {action}\n" +
+                (f"**Output:** {response.text}\n" if getattr(response, 'text', None) else "")
             )
-
+            embed = Embed(title="Speech-to-Text", description=description, color=Colour.blue())
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
-
         except Exception as e:
-            description = str(e)
-            if (
-                hasattr(e, "error")
-                and isinstance(e.error, dict)
-                and "message" in e.error
-            ):
-                description = e.error["message"]
-
-            await ctx.send_followup(
-                embed=Embed(title="Error", description=description, color=Colour.red())
-            )
-
+            await ctx.send_followup(embed=Embed(title="Error", description=str(e), color=Colour.red()))
         finally:
-            # Delete the audio file after sending
-            if speech_file_path:
+            if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
