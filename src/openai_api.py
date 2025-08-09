@@ -522,11 +522,12 @@ class OpenAIAPI(commands.Cog):
     @option("prompt", description="Prompt", required=True)
     @option(
         "model",
-        description="Choose from the following DALL-E models. (default: dall-e-3)",
+        description="Choose from the following image generation models. (default: gpt-image-1)",
         required=False,
         choices=[
             OptionChoice(name="DALL-E 2", value="dall-e-2"),
             OptionChoice(name="DALL-E 3", value="dall-e-3"),
+            OptionChoice(name="GPT-4 Image", value="gpt-image-1"),
         ],
     )
     @option(
@@ -569,7 +570,7 @@ class OpenAIAPI(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "dall-e-3",
+        model: str = "gpt-image-1",
         n: int = 1,
         quality: str = "standard",
         size: str = "1024x1024",
@@ -582,7 +583,8 @@ class OpenAIAPI(commands.Cog):
           prompt: A text description of the desired image(s). The maximum length is 1000
               characters for `dall-e-2` and 4000 characters for `dall-e-3`.
 
-          model: The model to use for image generation.
+          model: The model to use for image generation. Defaults to `gpt-image-1` (a GPT-4
+              based image generation model). You can also select `dall-e-2` or `dall-e-3`.
 
           n: The number of images to generate. Must be between 1 and 10. For `dall-e-3`, only
               `n=1` is supported.
@@ -598,7 +600,8 @@ class OpenAIAPI(commands.Cog):
           style: The style of the generated images. Must be one of `vivid` or `natural`. Vivid
               causes the model to lean towards generating hyper-real and dramatic images.
               Natural causes the model to produce more natural, less hyper-real looking
-              images. This param is only supported for `dall-e-3`.
+              images. This param is only supported for `dall-e-3`. (It is ignored when using
+              the default `gpt-image-1` model.)
         """
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()

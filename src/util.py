@@ -75,7 +75,7 @@ class ImageGenerationParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "dall-e-3",
+        model: str = "gpt-image-1",
         n: int = 1,
         quality: str = "standard",
         size: str = "1024x1024",
