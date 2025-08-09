@@ -663,6 +663,9 @@ class OpenAIAPI(commands.Cog):
         # Initialize parameters for the image generation API
         self.logger.debug(f"Creating ImageGenerationParameters with: prompt={repr(prompt)}, model={repr(model)}, n={repr(n)}, quality={repr(quality)}, size={repr(size)}, style={repr(style)}")
         try:
+            # Only set response_format for DALL-E models that support it
+            response_format = "url" if model in ["dall-e-2", "dall-e-3"] else None
+            
             image_params = ImageGenerationParameters(
                 prompt=prompt,
                 model=model,
@@ -670,7 +673,7 @@ class OpenAIAPI(commands.Cog):
                 quality=quality,
                 size=size,
                 style=style,
-                response_format="url"  # Force URL format to avoid base64
+                response_format=response_format
             )
             self.logger.debug(f"Successfully created ImageGenerationParameters")
             self.logger.debug(f"image_params.to_dict() = {image_params.to_dict()}")

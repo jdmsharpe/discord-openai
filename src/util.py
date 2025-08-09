@@ -80,7 +80,7 @@ class ImageGenerationParameters:
         quality: str = "medium",
         size: str = "1024x1024",
         style: Optional[str] = None,
-        response_format: str = "url",
+        response_format: Optional[str] = None,
     ):
         # Validate types to help debug the "Constructor parameter should be str" error
         if not isinstance(prompt, str):
@@ -95,8 +95,8 @@ class ImageGenerationParameters:
             raise TypeError(f"size must be str, got {type(size).__name__}: {size}")
         if style is not None and not isinstance(style, str):
             raise TypeError(f"style must be str or None, got {type(style).__name__}: {style}")
-        if not isinstance(response_format, str):
-            raise TypeError(f"response_format must be str, got {type(response_format).__name__}: {response_format}")
+        if response_format is not None and not isinstance(response_format, str):
+            raise TypeError(f"response_format must be str or None, got {type(response_format).__name__}: {response_format}")
         
         self.prompt = prompt
         self.model = model
@@ -110,7 +110,12 @@ class ImageGenerationParameters:
             
         self.size = size
         self.style = style
-        self.response_format = response_format
+        
+        # Only set response_format for models that support it (DALL-E models)
+        if model in ["dall-e-2", "dall-e-3"] and response_format is not None:
+            self.response_format = response_format
+        else:
+            self.response_format = None
 
     def to_dict(self):
         payload = {
@@ -119,10 +124,12 @@ class ImageGenerationParameters:
             "n": self.n,
             "quality": self.quality,
             "size": self.size,
-            "response_format": self.response_format,
         }
         if self.style is not None:
             payload["style"] = self.style
+        # Only include response_format if it's set (for DALL-E models)
+        if self.response_format is not None:
+            payload["response_format"] = self.response_format
         return payload
 
 
