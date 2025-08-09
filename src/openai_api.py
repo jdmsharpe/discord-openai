@@ -540,6 +540,7 @@ class OpenAIAPI(commands.Cog):
         "style",
         description="Style of the image. Only supported for DALL-E 3. (default: natural)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="Vivid", value="vivid"),
             OptionChoice(name="Natural", value="natural"),
