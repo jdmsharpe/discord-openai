@@ -82,29 +82,18 @@ class ImageGenerationParameters:
         style: Optional[str] = None,
         response_format: Optional[str] = None,
     ):
-        # Validate types to help debug the "Constructor parameter should be str" error
-        if not isinstance(prompt, str):
-            raise TypeError(f"prompt must be str, got {type(prompt).__name__}: {prompt}")
-        if not isinstance(model, str):
-            raise TypeError(f"model must be str, got {type(model).__name__}: {model}")
-        if not isinstance(n, int):
-            raise TypeError(f"n must be int, got {type(n).__name__}: {n}")
-        if not isinstance(quality, str):
-            raise TypeError(f"quality must be str, got {type(quality).__name__}: {quality}")
-        if not isinstance(size, str):
-            raise TypeError(f"size must be str, got {type(size).__name__}: {size}")
-        if style is not None and not isinstance(style, str):
-            raise TypeError(f"style must be str or None, got {type(style).__name__}: {style}")
-        if response_format is not None and not isinstance(response_format, str):
-            raise TypeError(f"response_format must be str or None, got {type(response_format).__name__}: {response_format}")
-        
         self.prompt = prompt
         self.model = model
         self.n = n
         
         # Set appropriate quality based on model if using default
-        if quality == "medium" and model in ["dall-e-2", "dall-e-3"]:
-            self.quality = "standard"  # DALL-E models use "standard" as default
+        if quality == "medium":
+            if model == "dall-e-3":
+                self.quality = "hd"  # DALL-E 3 uses "hd" as default for better quality
+            elif model == "dall-e-2":
+                self.quality = "standard"  # DALL-E 2 only supports "standard"
+            else:
+                self.quality = quality  # Keep "medium" for gpt-image-1
         else:
             self.quality = quality
             

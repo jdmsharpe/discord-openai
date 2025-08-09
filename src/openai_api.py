@@ -68,12 +68,10 @@ class OpenAIAPI(commands.Cog):
             conversation: The conversation object, which is of type ChatCompletionParameters.
         """
         # Determine the role based on the sender
-        self.logger.info(
-            f"Handling new message in conversation {conversation.conversation_id}."
-        )
+        self.logger.info(f"Handling new message in conversation {conversation.conversation_id}")
         typing_task = None
         embeds = []
-
+        
         try:
             # Determine the role based on the sender
             role = (
@@ -517,7 +515,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "quality",
-        description="Quality of the image. (default: medium for GPT-4 Image, standard for DALL-E)",
+        description="Quality of the image. (default: medium for GPT-4 Image, HD for DALL-E 3, standard for DALL-E 2)",
         required=False,
         choices=[
             OptionChoice(name="Low (GPT-4 Image only)", value="low"),
@@ -656,12 +654,13 @@ class OpenAIAPI(commands.Cog):
             
         # Set appropriate quality defaults if user didn't change from default
         if quality == "medium":  # This is our function default
-            if model in ["dall-e-2", "dall-e-3"]:
-                quality = "standard"  # DALL-E models use "standard" as default
+            if model == "dall-e-3":
+                quality = "hd"  # DALL-E 3 uses "hd" as default for better quality
+            elif model == "dall-e-2":
+                quality = "standard"  # DALL-E 2 only supports "standard"
             # For gpt-image-1, keep "medium" as default
 
         # Initialize parameters for the image generation API
-        self.logger.debug(f"Creating ImageGenerationParameters with: prompt={repr(prompt)}, model={repr(model)}, n={repr(n)}, quality={repr(quality)}, size={repr(size)}, style={repr(style)}")
         try:
             # Only set response_format for DALL-E models that support it
             response_format = "url" if model in ["dall-e-2", "dall-e-3"] else None
@@ -675,10 +674,9 @@ class OpenAIAPI(commands.Cog):
                 style=style,
                 response_format=response_format
             )
-            self.logger.debug(f"Successfully created ImageGenerationParameters")
-            self.logger.debug(f"image_params.to_dict() = {image_params.to_dict()}")
+            self.logger.info(f"Generating {n} image(s) with model {model}")
         except Exception as e:
-            self.logger.error(f"Error creating ImageGenerationParameters: {e}", exc_info=True)
+            self.logger.error(f"Error creating image parameters: {e}")
             await ctx.send_followup(
                 embed=Embed(
                     title="Error",
@@ -689,89 +687,57 @@ class OpenAIAPI(commands.Cog):
             return
 
         try:
-            self.logger.debug("Making OpenAI API call for image generation")
             response = await self.openai.images.generate(**image_params.to_dict())
-            self.logger.debug(f"OpenAI API response received: {response}")
-            self.logger.debug(f"Response type: {type(response)}")
-            self.logger.debug(f"Response data: {response.data}")
-            self.logger.debug(f"Response data type: {type(response.data)}")
-            if response.data:
-                self.logger.debug(f"First data item: {response.data[0]}")
-                self.logger.debug(f"First data item type: {type(response.data[0])}")
-                self.logger.debug(f"First data item attributes: {dir(response.data[0])}")
             
-            # Try different ways to extract image data
+            # Extract image data from response
             image_urls = []
             image_data = []
-            for i, data_item in enumerate(response.data):
-                self.logger.debug(f"Processing data item {i}: {data_item}")
-                
+            for data_item in response.data:
                 # Check if it has url attribute (DALL-E style)
                 if hasattr(data_item, 'url') and data_item.url:
-                    self.logger.debug(f"Found URL for item {i}: {data_item.url}")
                     image_urls.append(data_item.url)
                 # Check if it has b64_json attribute (base64 style)
                 elif hasattr(data_item, 'b64_json') and data_item.b64_json:
-                    self.logger.debug(f"Found b64_json for item {i}")
                     image_data.append(data_item.b64_json)
-                # Check if it has revised_prompt
-                if hasattr(data_item, 'revised_prompt'):
-                    self.logger.debug(f"Revised prompt for item {i}: {data_item.revised_prompt}")
-            
-            self.logger.debug(f"Image URLs extracted: {image_urls}")
-            self.logger.debug(f"Image base64 data count: {len(image_data)}")
             
             if image_urls or image_data:
                 image_files = []
                 
                 # Process URL-based images (DALL-E models)
                 for idx, url in enumerate(image_urls):
-                    self.logger.debug(f"Downloading image {idx} from URL: {url}")
                     async with aiohttp.ClientSession() as session:
                         async with session.get(url) as resp:
                             if resp.status != 200:
                                 self.logger.warning(f"Failed to download image {idx}, status: {resp.status}")
-                                await ctx.send_followup("Could not download file...")
-                                continue  # Skip this iteration and proceed with the next image
+                                continue
                             data = io.BytesIO(await resp.read())
-                            filename = str(f"image{idx}.png")  # Ensure filename is definitely a string
-                            self.logger.debug(f"Creating File object for image {idx} with filename: {repr(filename)}, filename type: {type(filename)}")
-                            try:
-                                file_obj = File(data, filename)
-                                image_files.append(file_obj)
-                                self.logger.debug(f"Successfully created File object for image {idx}")
-                            except Exception as file_e:
-                                self.logger.error(f"Error creating File object for image {idx}: {file_e}", exc_info=True)
-                                raise Exception(f"Failed to create file object: {str(file_e)}")
+                            filename = f"image{idx}.png"
+                            file_obj = File(data, filename)
+                            image_files.append(file_obj)
                 
                 # Process base64-encoded images (gpt-image-1 model)
                 for idx, b64_data in enumerate(image_data):
-                    self.logger.debug(f"Processing base64 image {idx}")
                     try:
                         import base64
-                        # Decode base64 data
                         image_bytes = base64.b64decode(b64_data)
                         data = io.BytesIO(image_bytes)
-                        filename = str(f"image{len(image_urls) + idx}.png")  # Ensure filename is definitely a string
-                        self.logger.debug(f"Creating File object for base64 image {idx} with filename: {repr(filename)}, filename type: {type(filename)}")
+                        filename = f"image{len(image_urls) + idx}.png"
                         file_obj = File(data, filename)
                         image_files.append(file_obj)
-                        self.logger.debug(f"Successfully created File object for base64 image {idx}")
-                    except Exception as file_e:
-                        self.logger.error(f"Error creating File object for base64 image {idx}: {file_e}", exc_info=True)
-                        raise Exception(f"Failed to create file object from base64: {str(file_e)}")
+                    except Exception as e:
+                        self.logger.error(f"Error processing base64 image {idx}: {e}")
+                        continue
 
                 if len(image_files) <= 0:
                     raise Exception("No images were generated.")
 
-                self.logger.debug("Creating embed and sending response")
                 embed = Embed(
-                    title="DALL-E Image Generation",
+                    title="Image Generation",
                     description=f"**Prompt:**\n{prompt}",
                     color=Colour.blue(),
                 )
                 await ctx.send_followup(embed=embed, files=image_files)
-                self.logger.debug("Image generation completed successfully")
+                self.logger.info(f"Successfully generated and sent {len(image_files)} image(s)")
 
         except Exception as e:
             # Try to extract OpenAI / httpx error details gracefully
