@@ -553,7 +553,7 @@ class OpenAIAPI(commands.Cog):
         n: int = 1,
         quality: str = "standard",
         size: str = "1024x1024",
-    style: Optional[str] = "natural",
+        style: Optional[str] = "natural",
     ):
         """
         Creates an image given a prompt.
