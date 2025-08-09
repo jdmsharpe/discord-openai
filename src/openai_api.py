@@ -517,11 +517,15 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "quality",
-        description="Quality of the image. (default: standard)",
+        description="Quality of the image. (default: medium for GPT-4 Image, standard for DALL-E)",
         required=False,
         choices=[
-            OptionChoice(name="Standard", value="standard"),
-            OptionChoice(name="HD", value="hd"),
+            OptionChoice(name="Low (GPT-4 Image only)", value="low"),
+            OptionChoice(name="Medium (GPT-4 Image only)", value="medium"),
+            OptionChoice(name="High (GPT-4 Image only)", value="high"),
+            OptionChoice(name="Auto (GPT-4 Image only)", value="auto"),
+            OptionChoice(name="Standard (DALL-E only)", value="standard"),
+            OptionChoice(name="HD (DALL-E only)", value="hd"),
         ],
     )
     @option(
@@ -552,7 +556,7 @@ class OpenAIAPI(commands.Cog):
         prompt: str,
         model: str = "gpt-image-1",
         n: int = 1,
-        quality: str = "standard",
+        quality: str = "medium",
         size: str = "1024x1024",
         style: Optional[str] = "natural",
     ):
@@ -624,15 +628,37 @@ class OpenAIAPI(commands.Cog):
                 )
             )
             return
+        
+        if model in ["dall-e-2", "dall-e-3"] and quality in ["low", "medium", "high", "auto"]:
+            error_message = "DALL-E models only support 'standard' and 'hd' quality options."
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error", description=error_message, color=Colour.red()
+                )
+            )
+            return
+            
+        if model == "gpt-image-1" and quality in ["standard", "hd"]:
+            error_message = "GPT-4 Image model only supports 'low', 'medium', 'high', and 'auto' quality options."
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error", description=error_message, color=Colour.red()
+                )
+            )
+            return
 
         # Remove unsupported parameters based on model selection
         if model == "dall-e-2" and style is not None:
             style = None  # dall-e-2 ignores style
         if model == "gpt-image-1":
-            # Current API ignores/ rejects style & hd quality for gpt-image-1, keep payload minimal
+            # gpt-image-1 doesn't support style parameter
             style = None
-            if quality != "standard":
-                quality = "standard"
+            
+        # Set appropriate quality defaults if user didn't change from default
+        if quality == "medium":  # This is our function default
+            if model in ["dall-e-2", "dall-e-3"]:
+                quality = "standard"  # DALL-E models use "standard" as default
+            # For gpt-image-1, keep "medium" as default
 
         # Initialize parameters for the image generation API
         image_params = ImageGenerationParameters(prompt, model, n, quality, size, style)
