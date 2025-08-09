@@ -661,38 +661,69 @@ class OpenAIAPI(commands.Cog):
             # For gpt-image-1, keep "medium" as default
 
         # Initialize parameters for the image generation API
-        image_params = ImageGenerationParameters(
-            prompt=prompt,
-            model=model,
-            n=n,
-            quality=quality,
-            size=size,
-            style=style
-        )
+        self.logger.debug(f"Creating ImageGenerationParameters with: prompt={repr(prompt)}, model={repr(model)}, n={repr(n)}, quality={repr(quality)}, size={repr(size)}, style={repr(style)}")
+        try:
+            image_params = ImageGenerationParameters(
+                prompt=prompt,
+                model=model,
+                n=n,
+                quality=quality,
+                size=size,
+                style=style
+            )
+            self.logger.debug(f"Successfully created ImageGenerationParameters")
+            self.logger.debug(f"image_params.to_dict() = {image_params.to_dict()}")
+        except Exception as e:
+            self.logger.error(f"Error creating ImageGenerationParameters: {e}", exc_info=True)
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error",
+                    description=f"Failed to create image parameters: {str(e)}",
+                    color=Colour.red(),
+                )
+            )
+            return
 
         try:
+            self.logger.debug("Making OpenAI API call for image generation")
             response = await self.openai.images.generate(**image_params.to_dict())
+            self.logger.debug(f"OpenAI API response received: {response}")
+            
             image_urls = [data.url for data in response.data]
+            self.logger.debug(f"Image URLs extracted: {image_urls}")
+            
             if image_urls:
                 image_files = []
                 for idx, url in enumerate(image_urls):
+                    self.logger.debug(f"Downloading image {idx} from URL: {url}")
                     async with aiohttp.ClientSession() as session:
                         async with session.get(url) as resp:
                             if resp.status != 200:
+                                self.logger.warning(f"Failed to download image {idx}, status: {resp.status}")
                                 await ctx.send_followup("Could not download file...")
                                 continue  # Skip this iteration and proceed with the next image
                             data = io.BytesIO(await resp.read())
-                            image_files.append(File(data, f"image{idx}.png"))
+                            filename = f"image{idx}.png"
+                            self.logger.debug(f"Creating File object for image {idx} with filename: {repr(filename)}")
+                            try:
+                                file_obj = File(data, filename)
+                                image_files.append(file_obj)
+                                self.logger.debug(f"Successfully created File object for image {idx}")
+                            except Exception as file_e:
+                                self.logger.error(f"Error creating File object for image {idx}: {file_e}", exc_info=True)
+                                raise Exception(f"Failed to create file object: {str(file_e)}")
 
                 if len(image_files) <= 0:
                     raise Exception("No images were generated.")
 
+                self.logger.debug("Creating embed and sending response")
                 embed = Embed(
                     title="DALL-E Image Generation",
                     description=f"**Prompt:**\n{prompt}",
                     color=Colour.blue(),
                 )
                 await ctx.send_followup(embed=embed, files=image_files)
+                self.logger.debug("Image generation completed successfully")
 
         except Exception as e:
             # Try to extract OpenAI / httpx error details gracefully
