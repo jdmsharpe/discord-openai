@@ -11,7 +11,7 @@ class ChatCompletionParameters:
     def __init__(
         self,
         messages: List[dict] = [],
-        model: str = "gpt-4.1",
+        model: str = "gpt-5",
         persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,

@@ -247,9 +247,12 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models. (default: GPT-4.1)",
+        description="Choose from the following GPT models. (default: GPT-5)",
         required=False,
         choices=[
+            OptionChoice(name="GPT-5", value="gpt-5"),
+            OptionChoice(name="GPT-5 Mini", value="gpt-5-mini"),
+            OptionChoice(name="GPT-5 Nano", value="gpt-5-nano"),
             OptionChoice(name="GPT-4.1", value="gpt-4.1"),
             OptionChoice(name="GPT-4.1 Mini", value="gpt-4.1-mini"),
             OptionChoice(name="GPT-4.1 Nano", value="gpt-4.1-nano"),
@@ -306,7 +309,7 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-4.1",
+        model: str = "gpt-5",
         attachment: Optional[Attachment] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
@@ -502,9 +505,9 @@ class OpenAIAPI(commands.Cog):
         description="Choose from the following image generation models. (default: gpt-image-1)",
         required=False,
         choices=[
-            OptionChoice(name="DALL-E 2", value="dall-e-2"),
-            OptionChoice(name="DALL-E 3", value="dall-e-3"),
             OptionChoice(name="GPT-4 Image", value="gpt-image-1"),
+            OptionChoice(name="DALL-E 3", value="dall-e-3"),
+            OptionChoice(name="DALL-E 2", value="dall-e-2"),
         ],
     )
     @option(
