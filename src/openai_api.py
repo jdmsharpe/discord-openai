@@ -27,6 +27,15 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY
 
 
 def append_response_embeds(embeds, response_text):
+    # Discord limits: 4096 chars per embed description, 6000 chars total for all embeds
+    # Account for existing embeds' character count
+    current_total = sum(len(embed.description or "") + len(embed.title or "") for embed in embeds)
+    remaining_chars = 6000 - current_total - 100  # Leave buffer for field names/formatting
+    
+    # Truncate response if it would exceed the total limit
+    if len(response_text) > remaining_chars:
+        response_text = response_text[:remaining_chars - 50] + "\n\n... (Response truncated due to Discord's 6000 character limit)"
+    
     # Ensure each chunk is no larger than 4096 characters (max Discord embed description length)
     for index, chunk in enumerate(chunk_text(response_text), start=1):
         embeds.append(
@@ -73,6 +82,9 @@ class OpenAIAPI(commands.Cog):
         embeds = []
         
         try:
+            # Start typing indicator
+            typing_task = asyncio.create_task(self.keep_typing(message.channel))
+            
             # Determine the role based on the sender
             role = (
                 "user"
@@ -201,18 +213,14 @@ class OpenAIAPI(commands.Cog):
         if message.author == self.bot.user:
             return
 
+        # Look for a conversation that matches BOTH the channel AND the user
         for conversation in self.conversation_histories.values():
-            # Skip conversations that are not in the same channel
-            if message.channel.id != conversation.channel_id:
-                continue
-
-            # Skip if the message is not from the conversation starter
-            if message.author != conversation.conversation_starter:
-                continue
-
-            # Process the message for the matching conversation
-            await self.handle_new_message_in_conversation(message, conversation)
-            break  # Stop looping once we've handled the message
+            # Check if message is in the same channel AND from the conversation starter
+            if (message.channel.id == conversation.channel_id and 
+                message.author == conversation.conversation_starter):
+                # Process the message for the matching conversation
+                await self.handle_new_message_in_conversation(message, conversation)
+                break  # Stop looping once we've handled the message
 
     @commands.Cog.listener()
     async def on_error(self, event, *args, **kwargs):
