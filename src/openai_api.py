@@ -20,7 +20,6 @@ from util import (
     chunk_text,
     ImageGenerationParameters,
     REASONING_MODELS,
-    RICH_TTS_MODELS,
     TextToSpeechParameters,
 )
 from config.auth import GUILD_IDS, OPENAI_API_KEY
@@ -374,13 +373,13 @@ class OpenAIAPI(commands.Cog):
             # For models that don't support system messages, merge persona with prompt
             combined_prompt = f"{persona}\n\n{prompt}"
             messages = [
-                {"role": "user", "content": {"type": "text", "text": combined_prompt}}
+                {"role": "user", "content": [{"type": "text", "text": combined_prompt}]}
             ]
         else:
             # For models that support system messages, use the standard two-message format
             messages = [
-                {"role": "system", "content": {"type": "text", "text": persona}},
-                {"role": "user", "content": {"type": "text", "text": prompt}},
+                {"role": "system", "content": [{"type": "text", "text": persona}]},
+                {"role": "user", "content": [{"type": "text", "text": prompt}]},
             ]
 
         # Build the parameters dictionary for ChatCompletionParameters
@@ -433,18 +432,14 @@ class OpenAIAPI(commands.Cog):
                 f"**Nucleus Sampling:** {params.top_p}\n" if params.top_p else ""
             )
 
-            content = {
-                "role": "user",
-                "content": [{"type": "text", "text": prompt}],
-            }
-
             if attachment is not None:
-                content["content"].append(
+                user_message = params.messages[-1]
+                if not isinstance(user_message.get("content"), list):
+                    user_message["content"] = [user_message["content"]]
+                user_message["content"].append(
                     {"type": "image_url", "image_url": {"url": attachment.url}}
                 )
 
-            # Append the user's message to the conversation history
-            params.messages.append(content)
             self.logger.info(
                 f"converse: Conversation history and parameters initialized for interaction ID {ctx.interaction.id}."
             )

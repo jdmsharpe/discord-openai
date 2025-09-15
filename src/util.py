@@ -4,13 +4,24 @@ from typing import List, Optional
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
 REASONING_MODELS = ["o4-mini", "o3", "o3-mini", "o1", "o1-mini"]
 RICH_TTS_MODELS = ["gpt-4o-tts", "gpt-4o-mini-tts"]
-RICH_TTS_VOICES = ["ash", "ballad", "coral", "sage", "verse"]
+
+RICH_TTS_VOICES = {"ash", "ballad", "coral", "sage", "verse"}
+STANDARD_TTS_VOICES = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
+DEFAULT_TTS_VOICE = "alloy"
+MODEL_SUPPORTED_TTS_VOICES = {
+    "tts-1": STANDARD_TTS_VOICES,
+    "tts-1-hd": STANDARD_TTS_VOICES,
+    "gpt-4o-tts": STANDARD_TTS_VOICES | RICH_TTS_VOICES,
+    "gpt-4o-mini-tts": STANDARD_TTS_VOICES | RICH_TTS_VOICES,
+}
+DEFAULT_SUPPORTED_TTS_VOICES = STANDARD_TTS_VOICES | RICH_TTS_VOICES
+
 
 
 class ChatCompletionParameters:
     def __init__(
         self,
-        messages: List[dict] = [],
+        messages: Optional[List[dict]] = None,
         model: str = "gpt-5",
         persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
@@ -23,7 +34,7 @@ class ChatCompletionParameters:
         channel_id: Optional[int] = None,
         paused: Optional[bool] = False,
     ):
-        self.messages = messages
+        self.messages = [msg.copy() for msg in messages] if messages is not None else []
         self.model = model
         self.persona = persona
         self.frequency_penalty = frequency_penalty
@@ -135,17 +146,18 @@ class TextToSpeechParameters:
         self.input = input
         self.model = model
 
-        # Older models do not support all voices.
-        if model not in RICH_TTS_MODELS:
-            if voice not in RICH_TTS_VOICES:
-                # User picked a voice that is not supported by the model.
-                # For TTS-1 and TTS-1-HD, force the default voice (Alloy).
-                self.voice = "alloy"
-
-            self.instructions = None
-        else:
+        supported_voices = MODEL_SUPPORTED_TTS_VOICES.get(
+            model, DEFAULT_SUPPORTED_TTS_VOICES
+        )
+        if voice in supported_voices:
             self.voice = voice
+        else:
+            self.voice = DEFAULT_TTS_VOICE
+
+        if model in RICH_TTS_MODELS:
             self.instructions = instructions
+        else:
+            self.instructions = None
 
         self.response_format = response_format
         self.speed = speed

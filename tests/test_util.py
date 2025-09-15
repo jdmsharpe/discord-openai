@@ -57,6 +57,13 @@ class TestChatCompletionParameters(unittest.TestCase):
         self.assertEqual(result["temperature"], 0.7)  # Should use provided value
         self.assertEqual(result["top_p"], 0.9)  # Should use provided value
 
+    def test_messages_default_isolated(self):
+        params_one = ChatCompletionParameters()
+        params_one.messages.append({"role": "user", "content": {"type": "text", "text": "hello"}})
+        params_two = ChatCompletionParameters()
+        self.assertEqual(params_two.messages, [])
+        self.assertIsNot(params_one.messages, params_two.messages)
+
 
 class TestImageGenerationParameters(unittest.TestCase):
     def test_to_dict(self):
@@ -160,6 +167,26 @@ class TestTextToSpeechParameters(unittest.TestCase):
         self.assertEqual(result["response_format"], "mp3")
         self.assertEqual(result["speed"], 1.0)
 
+
+    def test_standard_voice_preserved_for_tts(self):
+        params = TextToSpeechParameters(input="Hi", model="tts-1", voice="echo")
+        self.assertEqual(params.voice, "echo")
+        self.assertIsNone(params.instructions)
+
+    def test_invalid_voice_falls_back_to_default(self):
+        params = TextToSpeechParameters(input="Hi", model="tts-1", voice="ash")
+        self.assertEqual(params.voice, "alloy")
+        self.assertIsNone(params.instructions)
+
+    def test_rich_model_retains_voice_and_instructions(self):
+        params = TextToSpeechParameters(
+            input="Hi",
+            model="gpt-4o-mini-tts",
+            voice="ash",
+            instructions="whisper tone",
+        )
+        self.assertEqual(params.voice, "ash")
+        self.assertEqual(params.instructions, "whisper tone")
 
 class TestChunkText(unittest.TestCase):
     def test_chunk_text(self):
