@@ -544,7 +544,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "size",
-        description="Size of the image. Note DALL-E 2 does not support image sizes larger than 1024x1024. (default: 1024x1024)",
+        description="Size of the image. (default: 1024x1024)",
         required=False,
         type=str,
         choices=[
