@@ -1,3 +1,2 @@
-aiohttp~=3.9
 openai~=1.74
 py-cord~=2.6
