@@ -79,11 +79,11 @@ class OpenAIAPI(commands.Cog):
         self.logger.info(f"Handling new message in conversation {conversation.conversation_id}")
         typing_task = None
         embeds = []
-        
+
         try:
             # Start typing indicator
             typing_task = asyncio.create_task(self.keep_typing(message.channel))
-            
+
             # Determine the role based on the sender
             role = (
                 "user"
@@ -530,7 +530,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "quality",
-        description="Quality of the image. (default: medium for GPT-4 Image, HD for DALL-E 3, standard for DALL-E 2)",
+        description="Quality of the image. Only supported for GPT-4 Image/DALL-E 3. (default: medium for GPT-4 Image, HD for DALL-E 3)",
         required=False,
         type=str,
         choices=[
@@ -538,13 +538,13 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="Medium (GPT-4 Image only)", value="medium"),
             OptionChoice(name="High (GPT-4 Image only)", value="high"),
             OptionChoice(name="Auto (GPT-4 Image only)", value="auto"),
-            OptionChoice(name="Standard (DALL-E only)", value="standard"),
-            OptionChoice(name="HD (DALL-E only)", value="hd"),
+            OptionChoice(name="Standard (DALL-E 3 only)", value="standard"),
+            OptionChoice(name="HD (DALL-E 3 only)", value="hd"),
         ],
     )
     @option(
         "size",
-        description="Size of the image. (default: 1024x1024)",
+        description="Size of the image. Note DALL-E 2 does not support image sizes larger than 1024x1024. (default: 1024x1024)",
         required=False,
         type=str,
         choices=[
@@ -557,7 +557,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "style",
-        description="Style of the image. Only supported for DALL-E 3. (default: natural)",
+        description="Style of the image. Only supported by DALL-E 3. (default: natural for DALL-E 3, not set for others)",
         required=False,
         type=str,
         choices=[
@@ -585,12 +585,11 @@ class OpenAIAPI(commands.Cog):
           model: The model to use for image generation. Defaults to `gpt-image-1` (a GPT-4
               based image generation model). You can also select `dall-e-2` or `dall-e-3`.
 
-          n: The number of images to generate. Must be between 1 and 10. For `dall-e-3`, only
-              `n=1` is supported.
+          n: The number of images to generate. Must be between 1 and 10. For `dall-e-3` and 
+              `gpt-image-1`, only `n=1` is supported.
 
-          quality: The quality of the image that will be generated. `hd` creates images with finer
-              details and greater consistency across the image. This param is only supported
-              for `dall-e-3`.
+          quality: The quality of the image that will be generated. This param is only supported
+              for `dall-e-3` and `gpt-image-1`.
 
           size: The size of the generated images. Must be one of `256x256`, `512x512`, or
               `1024x1024` for `dall-e-2`. Must be one of `1024x1024`, `1792x1024`, or
@@ -599,8 +598,8 @@ class OpenAIAPI(commands.Cog):
           style: The style of the generated images. Must be one of `vivid` or `natural`. Vivid
               causes the model to lean towards generating hyper-real and dramatic images.
               Natural causes the model to produce more natural, less hyper-real looking
-              images. This param is only supported for `dall-e-3`. (It is ignored when using
-              the default `gpt-image-1` model.)
+              images. This param is only supported for `dall-e-3`. Ignored when using
+              the default `gpt-image-1` model.
         """
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
@@ -635,49 +634,26 @@ class OpenAIAPI(commands.Cog):
             )
             return
 
-        if model == "dall-e-2" and quality == "hd":
-            error_message = "The `hd` quality option is only supported for DALL-E 3."
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error", description=error_message, color=Colour.red()
-                )
-            )
-            return
-        
-        if model in ["dall-e-2", "dall-e-3"] and quality in ["low", "medium", "high", "auto"]:
-            error_message = "DALL-E models only support 'standard' and 'hd' quality options."
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error", description=error_message, color=Colour.red()
-                )
-            )
-            return
-            
-        if model == "gpt-image-1" and quality in ["standard", "hd"]:
-            error_message = "GPT-4 Image model only supports 'low', 'medium', 'high', and 'auto' quality options."
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error", description=error_message, color=Colour.red()
-                )
-            )
-            return
-
         # Remove unsupported parameters based on model selection
         if model == "dall-e-2":
             style = None
             quality = None
         if model == "gpt-image-1":
             style = None
-            
-        # Set appropriate quality for DALL-E 3 if using default
-        if model == "dall-e-3" and quality == "medium":
-            quality = "hd"  # DALL-E 3 uses "hd" as default for better quality
+
+        # Set HD quality for DALL-E 3 if an unsupported quality is provided
+        if model == "dall-e-3" and quality not in ["standard", "hd"]:
+            quality = "hd"
+
+        # Set medium quality for GPT-4 Image if an unsupported quality is provided
+        if model == "gpt-image-1" and quality not in ["low", "medium", "high", "auto"]:
+            quality = "medium"
 
         # Initialize parameters for the image generation API
         try:
             # Only set response_format for DALL-E models that support it
             response_format = "url" if model in ["dall-e-2", "dall-e-3"] else None
-            
+
             image_params = ImageGenerationParameters(
                 prompt=prompt,
                 model=model,
@@ -701,7 +677,7 @@ class OpenAIAPI(commands.Cog):
 
         try:
             response = await self.openai.images.generate(**image_params.to_dict())
-            
+
             # Extract image data from response
             image_urls = []
             image_data = []
@@ -712,10 +688,10 @@ class OpenAIAPI(commands.Cog):
                 # Check if it has b64_json attribute (base64 style)
                 elif hasattr(data_item, 'b64_json') and data_item.b64_json:
                     image_data.append(data_item.b64_json)
-            
+
             if image_urls or image_data:
                 image_files = []
-                
+
                 # Process URL-based images (DALL-E models)
                 for idx, url in enumerate(image_urls):
                     async with aiohttp.ClientSession() as session:
@@ -727,7 +703,7 @@ class OpenAIAPI(commands.Cog):
                             filename = f"image{idx}.png"
                             file_obj = File(data, filename)
                             image_files.append(file_obj)
-                
+
                 # Process base64-encoded images (gpt-image-1 model)
                 for idx, b64_data in enumerate(image_data):
                     try:
@@ -753,8 +729,6 @@ class OpenAIAPI(commands.Cog):
                     description += f"**Quality:** {image_params.quality}\n"
                 if image_params.style:
                     description += f"**Style:** {image_params.style}\n"
-                if image_params.response_format:
-                    description += f"**Response Format:** {image_params.response_format}\n"
 
                 embed = Embed(
                     title="Image Generation",
