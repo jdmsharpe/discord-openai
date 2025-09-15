@@ -88,8 +88,8 @@ class ImageGenerationParameters:
         prompt: str = "",
         model: str = "gpt-image-1",
         n: int = 1,
-        quality: str = "medium",
-        size: str = "1024x1024",
+        quality: Optional[str] = "medium",
+        size: Optional[str] = "1024x1024",
         style: Optional[str] = None,
         response_format: Optional[str] = None,
     ):
@@ -122,9 +122,10 @@ class ImageGenerationParameters:
             "prompt": self.prompt,
             "model": self.model,
             "n": self.n,
-            "quality": self.quality,
             "size": self.size,
         }
+        if self.quality is not None:
+            payload["quality"] = self.quality
         if self.style is not None:
             payload["style"] = self.style
         # Only include response_format if it's set (for DALL-E models)

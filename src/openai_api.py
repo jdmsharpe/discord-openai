@@ -566,8 +566,8 @@ class OpenAIAPI(commands.Cog):
         prompt: str,
         model: str = "gpt-image-1",
         n: int = 1,
-        quality: str = "medium",
-        size: str = "1024x1024",
+        quality: Optional[str] = "medium",
+        size: Optional[str] = "1024x1024",
         style: Optional[str] = "natural",
     ):
         """
@@ -658,19 +658,15 @@ class OpenAIAPI(commands.Cog):
             return
 
         # Remove unsupported parameters based on model selection
-        if model == "dall-e-2" and style is not None:
-            style = None  # dall-e-2 ignores style
+        if model == "dall-e-2":
+            style = None
+            quality = None
         if model == "gpt-image-1":
-            # gpt-image-1 doesn't support style parameter
             style = None
             
-        # Set appropriate quality defaults if user didn't change from default
-        if quality == "medium":  # This is our function default
-            if model == "dall-e-3":
-                quality = "hd"  # DALL-E 3 uses "hd" as default for better quality
-            elif model == "dall-e-2":
-                quality = "standard"  # DALL-E 2 only supports "standard"
-            # For gpt-image-1, keep "medium" as default
+        # Set appropriate quality for DALL-E 3 if using default
+        if model == "dall-e-3" and quality == "medium":
+            quality = "hd"  # DALL-E 3 uses "hd" as default for better quality
 
         # Initialize parameters for the image generation API
         try:
@@ -743,9 +739,21 @@ class OpenAIAPI(commands.Cog):
                 if len(image_files) <= 0:
                     raise Exception("No images were generated.")
 
+                description = ""
+                description += f"**Prompt:** {image_params.prompt}\n"
+                description += f"**Model:** {image_params.model}\n"
+                description += f"**Size:** {image_params.size}\n"
+                description += f"**Image count:** {image_params.n}\n"
+                if image_params.quality:
+                    description += f"**Quality:** {image_params.quality}\n"
+                if image_params.style:
+                    description += f"**Style:** {image_params.style}\n"
+                if image_params.response_format:
+                    description += f"**Response Format:** {image_params.response_format}\n"
+
                 embed = Embed(
                     title="Image Generation",
-                    description=f"**Prompt:**\n{prompt}",
+                    description=description,
                     color=Colour.blue(),
                 )
                 await ctx.send_followup(embed=embed, files=image_files)
