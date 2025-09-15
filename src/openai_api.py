@@ -252,16 +252,18 @@ class OpenAIAPI(commands.Cog):
         description="Starts a conversation with a model.",
         guild_ids=GUILD_IDS,
     )
-    @option("prompt", description="Prompt", required=True)
+    @option("prompt", description="Prompt", required=True, type=str)
     @option(
         "persona",
         description="What role you want the model to emulate. (default: You are a helpful assistant.)",
         required=False,
+        type=str,
     )
     @option(
         "model",
         description="Choose from the following GPT models. (default: GPT-5)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="GPT-5", value="gpt-5"),
             OptionChoice(name="GPT-5 Mini", value="gpt-5-mini"),
@@ -508,11 +510,12 @@ class OpenAIAPI(commands.Cog):
         description="Generates image from a prompt.",
         guild_ids=GUILD_IDS,
     )
-    @option("prompt", description="Prompt", required=True)
+    @option("prompt", description="Prompt", required=True, type=str)
     @option(
         "model",
         description="Choose from the following image generation models. (default: gpt-image-1)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="GPT-4 Image", value="gpt-image-1"),
             OptionChoice(name="DALL-E 3", value="dall-e-3"),
@@ -529,6 +532,7 @@ class OpenAIAPI(commands.Cog):
         "quality",
         description="Quality of the image. (default: medium for GPT-4 Image, HD for DALL-E 3, standard for DALL-E 2)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="Low (GPT-4 Image only)", value="low"),
             OptionChoice(name="Medium (GPT-4 Image only)", value="medium"),
@@ -542,6 +546,7 @@ class OpenAIAPI(commands.Cog):
         "size",
         description="Size of the image. (default: 1024x1024)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="256x256", value="256x256"),
             OptionChoice(name="512x512", value="512x512"),
@@ -793,11 +798,13 @@ class OpenAIAPI(commands.Cog):
         "input",
         description="Text to convert to speech. (max length 4096 characters)",
         required=True,
+        type=str,
     )
     @option(
         "model",
         description="Choose from the following TTS models. (default: GPT-4o Mini TTS)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="TTS-1", value="tts-1"),
             OptionChoice(name="TTS-1 HD", value="tts-1-hd"),
@@ -808,6 +815,7 @@ class OpenAIAPI(commands.Cog):
         "voice",
         description="The voice to use when generating the audio. (default: Alloy)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="Alloy", value="alloy"),
             OptionChoice(name="Ash (Only supported with GPT-4o Mini TTS)", value="ash"),
@@ -840,6 +848,7 @@ class OpenAIAPI(commands.Cog):
         "response_format",
         description="The format of the audio file output. (default: mp3)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="MP3", value="mp3"),
             OptionChoice(name="WAV", value="wav"),
@@ -919,6 +928,7 @@ class OpenAIAPI(commands.Cog):
         "model",
         description="Model to use for speech-to-text conversion. (default: GPT-4o Transcribe)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(name="Whisper", value="whisper-1"),
             OptionChoice(name="GPT-4o Transcribe", value="gpt-4o-transcribe"),
@@ -929,6 +939,7 @@ class OpenAIAPI(commands.Cog):
         "action",
         description="Action to perform. (default: Transcription)",
         required=False,
+        type=str,
         choices=[
             OptionChoice(
                 name="Transcription",
