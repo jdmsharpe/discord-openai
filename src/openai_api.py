@@ -530,7 +530,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "quality",
-        description="Image quality. Only supported for GPT-4 Image/DALL-E 3. (default: medium for GPT-4 Image, HD for DALL-E 3)",
+        description="Image quality. Only supported for GPT-4 Image and DALL-E 3. (default: medium, HD for DALL-E 3)",
         required=False,
         type=str,
         choices=[
@@ -557,7 +557,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "style",
-        description="Style of the image. Only supported by DALL-E 3. (default: natural for DALL-E 3, not set for others)",
+        description="Style of the image. Only supported by DALL-E 3. (default: natural, not set for others)",
         required=False,
         type=str,
         choices=[
