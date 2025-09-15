@@ -530,7 +530,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "quality",
-        description="Quality of the image. Only supported for GPT-4 Image/DALL-E 3. (default: medium for GPT-4 Image, HD for DALL-E 3)",
+        description="Image quality. Only supported for GPT-4 Image/DALL-E 3. (default: medium for GPT-4 Image, HD for DALL-E 3)",
         required=False,
         type=str,
         choices=[
