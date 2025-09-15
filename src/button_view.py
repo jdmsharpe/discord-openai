@@ -40,7 +40,7 @@ class ButtonView(View):
                 )
                 return
 
-            await interaction.response.defer(ephemeral=True, thinking=True)
+            await interaction.response.defer(ephemeral=True)
 
             # Modify the conversation history and regenerate the response
             conversation = self.cog.conversation_histories[self.conversation_id]
@@ -66,9 +66,14 @@ class ButtonView(View):
             )
         except Exception as e:
             logging.error(f"Error in regenerate_button: {str(e)}", exc_info=True)
-            await interaction.followup.send(
-                "An error occurred while regenerating the response.", ephemeral=True
-            )
+            if interaction.response.is_done():
+                await interaction.followup.send(
+                    "An error occurred while regenerating the response.", ephemeral=True
+                )
+            else:
+                await interaction.response.send_message(
+                    "An error occurred while regenerating the response.", ephemeral=True
+                )
 
     @button(emoji="⏯️", style=ButtonStyle.gray)
     async def play_pause_button(self, button: Button, interaction: Interaction):
