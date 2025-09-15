@@ -217,6 +217,12 @@ class OpenAIAPI(commands.Cog):
             # Check if message is in the same channel AND from the conversation starter
             if (message.channel.id == conversation.channel_id and 
                 message.author == conversation.conversation_starter):
+                if conversation.paused:
+                    self.logger.debug(
+                        "Ignoring message because conversation %s is paused.",
+                        conversation.conversation_id,
+                    )
+                    return
                 # Process the message for the matching conversation
                 await self.handle_new_message_in_conversation(message, conversation)
                 break  # Stop looping once we've handled the message
