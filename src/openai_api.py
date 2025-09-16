@@ -18,6 +18,7 @@ from typing import Optional
 from util import (
     ChatCompletionParameters,
     chunk_text,
+    format_openai_error,
     ImageGenerationParameters,
     REASONING_MODELS,
     TextToSpeechParameters,
@@ -160,7 +161,7 @@ class OpenAIAPI(commands.Cog):
                 )
 
         except Exception as e:
-            description = str(e)
+            description = format_openai_error(e)
             self.logger.error(
                 f"Error in handle_new_message_in_conversation: {description}",
                 exc_info=True,
@@ -495,8 +496,7 @@ class OpenAIAPI(commands.Cog):
             self.conversation_histories[ctx.interaction.id] = params
 
         except Exception as e:
-            error_message = str(e)
-
+            error_message = format_openai_error(e)
             await ctx.send_followup(
                 embed=Embed(
                     title="Error",
@@ -665,11 +665,12 @@ class OpenAIAPI(commands.Cog):
             )
             self.logger.info(f"Generating {n} image(s) with model {model}")
         except Exception as e:
-            self.logger.error(f"Error creating image parameters: {e}")
+            error_message = format_openai_error(e)
+            self.logger.error(f"Error creating image parameters: {error_message}", exc_info=True)
             await ctx.send_followup(
                 embed=Embed(
                     title="Error",
-                    description=f"Failed to create image parameters: {str(e)}",
+                    description=f"Failed to create image parameters: {error_message}",
                     color=Colour.red(),
                 )
             )
@@ -739,29 +740,11 @@ class OpenAIAPI(commands.Cog):
                 self.logger.info(f"Successfully generated and sent {len(image_files)} image(s)")
 
         except Exception as e:
-            # Try to extract OpenAI / httpx error details gracefully
-            description = str(e)
-            try:
-                import httpx
-                if isinstance(e, httpx.HTTPStatusError):
-                    # Attempt to parse JSON error body
-                    try:
-                        body = e.response.json()
-                        # OpenAI style: {'error': {'message': '...'}} or direct message
-                        if isinstance(body, dict):
-                            if "error" in body and isinstance(body["error"], dict) and "message" in body["error"]:
-                                description = body["error"]["message"]
-                            elif "message" in body:
-                                description = body["message"]
-                            else:
-                                description = str(body)
-                    except Exception:
-                        # Fallback: raw text
-                        description = e.response.text
-            except ImportError:
-                pass
-
-            await ctx.send_followup(embed=Embed(title="Error", description=description, color=Colour.red()))
+            description = format_openai_error(e)
+            self.logger.error(f"Image generation failed: {description}", exc_info=True)
+            await ctx.send_followup(
+                embed=Embed(title="Error", description=description, color=Colour.red())
+            )
 
     @slash_command(
         name="text_to_speech",
@@ -882,7 +865,7 @@ class OpenAIAPI(commands.Cog):
             embed = Embed(title="Text-to-Speech", description=description, color=Colour.blue())
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
         except Exception as e:
-            await ctx.send_followup(embed=Embed(title="Error", description=str(e), color=Colour.red()))
+            await ctx.send_followup(embed=Embed(title="Error", description=format_openai_error(e), color=Colour.red()))
         finally:
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
@@ -976,7 +959,7 @@ class OpenAIAPI(commands.Cog):
             embed = Embed(title="Speech-to-Text", description=description, color=Colour.blue())
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
         except Exception as e:
-            await ctx.send_followup(embed=Embed(title="Error", description=str(e), color=Colour.red()))
+            await ctx.send_followup(embed=Embed(title="Error", description=format_openai_error(e), color=Colour.red()))
         finally:
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)

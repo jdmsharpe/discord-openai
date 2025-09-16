@@ -1,10 +1,12 @@
 import unittest
+from openai import APIError
 from util import (
     ChatCompletionParameters,
     ImageGenerationParameters,
     TextToSpeechParameters,
     chunk_text,
     extract_urls,
+    format_openai_error,
 )
 
 
@@ -220,6 +222,64 @@ class TestExtractUrls(unittest.TestCase):
         self.assertEqual(
             result, ["https://www.example.com", "http://example.org/?page=1&param=1"]
         )
+
+
+class TestFormatOpenAIError(unittest.TestCase):
+    def test_format_openai_error_api_error(self):
+        class DummyStatusError(APIError):
+            def __init__(self, response_body):
+                request = type('Request', (), {'method': 'POST', 'url': 'https://api.example.com/test'})()
+                super().__init__('Error code: 400', request, body=response_body)
+                self.status_code = 400
+
+        body = {
+            'error': {
+                'message': 'Unsupported file format mov',
+                'type': 'invalid_request_error',
+                'param': 'file',
+                'code': 'unsupported_value',
+            }
+        }
+
+        error = DummyStatusError(body)
+        formatted = format_openai_error(error)
+        expected = '\n'.join([
+            'Unsupported file format mov',
+            '',
+            'Status: 400',
+            'Error: DummyStatusError',
+            'Type: invalid_request_error',
+            'Code: unsupported_value',
+            'Param: file',
+        ])
+        self.assertEqual(formatted, expected)
+
+    def test_format_openai_error_generic_response(self):
+        class DummyResponse:  # pragma: no cover - simple stand-in for http response
+            def __init__(self):
+                self.status_code = 403
+                self.text = 'Forbidden'
+
+            def json(self):
+                raise ValueError('No JSON available')
+
+        class DummyException(Exception):
+            def __init__(self, response):
+                super().__init__('Request failed')
+                self.response = response
+
+        error = DummyException(DummyResponse())
+        formatted = format_openai_error(error)
+        expected = '\n'.join([
+            'Forbidden',
+            '',
+            'Status: 403',
+            'Error: DummyException',
+        ])
+        self.assertEqual(formatted, expected)
+
+
+
 
 
 if __name__ == "__main__":
