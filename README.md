@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![HitCount](https://hits.dwyl.com/jdmsharpe/discord-openai-bot.svg?style=flat-square&show=unique)](http://hits.dwyl.com/jdmsharpe/discord-openai-bot)
+![Badge](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fjdmsharpe%2Fdiscord-openai-bot%2F&label=discord-openai-bot&icon=github&color=%23198754&message=&style=flat&tz=UTC)
 <a href="https://hub.docker.com/r/jsgreen152/discord-openai-bot" target="_blank" rel="noopener noreferrer">![Workflow](https://github.com/jdmsharpe/discord-openai-bot/actions/workflows/main.yml/badge.svg)</a>
   
 </div>
