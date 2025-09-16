@@ -12,44 +12,40 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 
 ## Features
 - **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/converse`. The bot maintains conversation history as you write further messages in the same channel, and even accepts image attachments.
-- **Image Generation:** Create images from text prompts with `/generate_image` using either DALL-E 2 or DALL-E 3, including options for image quality, size, and style.
+- **Image Generation:** Create images from text prompts with `/generate_image` using GPT-4 Image (`gpt-image-1`) or DALL-E 3 / DALL-E 2, with controls for quality, aspect ratio, and style.
 - **Text-to-Speech:** Convert text into lifelike audio using `/text_to_speech`, with customizable voice, audio format, and speed.
-- **Speech-to-Text:** Transform audio attachments into text with `/speech_to_text` – choose between simple transcription or translation into English.
+- **Speech-to-Text:** Transform audio attachments into text with `/speech_to_text` and pick Whisper or GPT-4o transcription models, plus transcription or translation into English.
 - **Interactive UI:** Incorporates button-based controls and real-time feedback.
 
 ## Commands
 
 ### `/converse`
-- **Usage:** `/converse <prompt>`
-- **Description:** Start a conversation with a model. The bot tracks conversation history and context, allowing for follow-up messages in the same channel.
-- **Advanced Options:**
-  - **Persona:** Define the model’s role (default: “You are a helpful assistant.”)
-  - **Model Selection:** Choose from multiple GPT models (e.g., GPT-3.5 Turbo, GPT-4, etc.)
-  - **Customization:** Adjust parameters like frequency penalty, presence penalty, temperature, top_p, and more.
-- **Notes:** You can include image attachments to enrich the conversation (note: this may be model-specific, as not all support image uploads).
+- **Usage:** `/converse prompt:<text>`
+- **What it does:** Opens a thread with the selected GPT model and keeps the whole conversation in context for follow-up replies in the same channel.
+- **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5`.
+- **Model choices:** GPT-5 (standard/mini/nano), GPT-4.1 (standard/mini/nano), `o4-mini`, `o3`, `o3-mini`, `o1`, `o1-mini`, GPT-4o (standard/mini), GPT-4 / GPT-4 Turbo, and GPT-3.5 Turbo.
+- **Attachments:** Add an image to the initial message and it will be sent to compatible multimodal models.
+- **Advanced tuning:** Frequency penalty, presence penalty, temperature (or nucleus sampling via `top_p`), and `seed` are all optional. Reasoning models ignore custom temperature/`top_p` and fall back to their defaults automatically.
 
 ### `/generate_image`
-- **Usage:** `/generate_image <prompt>`
-- **Description:** Generate image(s) from a text prompt using OpenAI’s DALL-E models.
-- **Options:**
-  - **Model:** Select between DALL-E 2 and DALL-E 3.
-  - **Count:** Specify the number of images (with model-specific limits).
-  - **Quality, Size, and Style:** Customize image output details (note: some options are model-specific).
+- **Usage:** `/generate_image prompt:<text>`
+- **What it does:** Creates 1-10 images (model-dependent) using GPT-4 Image, DALL-E 3, or DALL-E 2.
+- **Defaults:** Uses `gpt-image-1`, medium quality, and 1024x1024 images. When you switch models the bot adjusts defaults (e.g., DALL-E 3 becomes HD quality, DALL-E 2 becomes Standard quality).
+- **Options:** Choose `n` images (DALL-E 3 and GPT-4 Image only support 1), quality presets, supported aspect ratios (portrait/landscape sizes are only for DALL-E 3 and GPT-4 Image), and the `style` toggle (vivid/natural) when DALL-E 3 is selected.
+- **Delivery:** GPT-4 Image returns base64 data that the bot uploads, while DALL-E models stream back hosted URLs.
 
 ### `/text_to_speech`
-- **Usage:** `/text_to_speech <input>`
-- **Description:** Convert text into natural-sounding audio.
-- **Options:**
-  - **Model & Voice:** Select from available TTS models and voices.
-  - **Response Format & Speed:** Choose the audio file format and adjust playback speed.
+- **Usage:** `/text_to_speech input:<text>`
+- **What it does:** Generates audio with OpenAI's TTS stack and returns the file as an attachment.
+- **Models & voices:** Pick between `gpt-4o-mini-tts`, `tts-1`, and `tts-1-hd`. Rich voices (`ash`, `ballad`, `coral`, `sage`, `verse`) are exclusive to GPT-4o Mini TTS, while the classic set (alloy, echo, fable, onyx, nova, shimmer) works everywhere. Instructions are only honoured by GPT-4o based TTS models.
+- **Format & speed:** Select MP3/WAV/Opus/AAC/FLAC/PCM output and tweak playback speed (default `1.0`).
 
 ### `/speech_to_text`
-- **Usage:** `/speech_to_text <attachment>`
-- **Description:** Convert an audio file into text.
-- **Options:**
-  - **Model:** Currently supports `whisper-1`.
-  - **Action:** Choose between transcription or translation (into English).
-- **Notes:** Supports various audio file types (e.g., mp3, mp4, wav, etc.) up to 25 MB.
+- **Usage:** `/speech_to_text attachment:<audio>`
+- **What it does:** Transcribes or translates uploaded audio that is <=25 MB (mp3, mp4, mpeg, mpga, m4a, wav, webm).
+- **Model choices:** `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1`.
+- **Actions:** Switch between verbatim `transcription` (default) or English `translation`.
+- **Output:** Results are streamed back in an embed, and long responses are automatically chunked to fit Discord limits.
 
 ## UI
 
