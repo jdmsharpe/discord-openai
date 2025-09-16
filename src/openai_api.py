@@ -513,7 +513,7 @@ class OpenAIAPI(commands.Cog):
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
         "model",
-        description="Choose from the following image generation models. (default: gpt-image-1)",
+        description="Choose from the following image generation models. (default: GPT-4 Image)",
         required=False,
         type=str,
         choices=[
@@ -725,7 +725,8 @@ class OpenAIAPI(commands.Cog):
                 description += f"**Prompt:** {image_params.prompt}\n"
                 description += f"**Model:** {image_params.model}\n"
                 description += f"**Size:** {image_params.size}\n"
-                description += f"**Image count:** {image_params.n}\n"
+                if image_params.n > 1:
+                    description += f"**Image count:** {image_params.n}\n"
                 if image_params.quality:
                     description += f"**Quality:** {image_params.quality}\n"
                 if image_params.style:
