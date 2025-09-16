@@ -98,7 +98,18 @@ class ImageGenerationParameters:
         self.prompt = prompt
         self.model = model
         self.n = n
-        self.quality = quality
+
+        # Set appropriate quality based on model if using default
+        if quality == "medium":
+            if model == "dall-e-3":
+                self.quality = "hd"  # DALL-E 3 uses "hd" as default for better quality
+            elif model == "dall-e-2":
+                self.quality = "standard"  # DALL-E 2 only supports "standard"
+            else:
+                self.quality = quality  # Keep "medium" for gpt-image-1
+        else:
+            self.quality = quality
+
         self.size = size
         self.style = style
 
