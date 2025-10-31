@@ -266,7 +266,7 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=str,
         choices=[
-            OptionChoice(name="GPT-5", value="gpt-5"),
+            OptionChoice(name="GPT-5", value="gpt-5-chat-latest"),
             OptionChoice(name="GPT-5 Mini", value="gpt-5-mini"),
             OptionChoice(name="GPT-5 Nano", value="gpt-5-nano"),
             OptionChoice(name="GPT-4.1", value="gpt-4.1"),
@@ -325,7 +325,7 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-5",
+        model: str = "gpt-5-chat-latest",
         attachment: Optional[Attachment] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,

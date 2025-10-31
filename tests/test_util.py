@@ -14,7 +14,7 @@ class TestChatCompletionParameters(unittest.TestCase):
     def test_to_dict(self):
         params = ChatCompletionParameters(
             messages=[{"role": "system", "content": "You are a helpful assistant."}],
-            model="gpt-5",
+            model="gpt-5-chat-latest",
             frequency_penalty=0.5,
             presence_penalty=0.5,
             seed=42,
@@ -26,7 +26,7 @@ class TestChatCompletionParameters(unittest.TestCase):
             result["messages"],
             [{"role": "system", "content": ["You are a helpful assistant."]}],
         )
-        self.assertEqual(result["model"], "gpt-5")
+        self.assertEqual(result["model"], "gpt-5-chat-latest")
         self.assertEqual(result["frequency_penalty"], 0.5)
         self.assertEqual(result["presence_penalty"], 0.5)
         self.assertEqual(result["seed"], 42)
