@@ -19,7 +19,6 @@ MODEL_SUPPORTED_TTS_VOICES = {
 DEFAULT_SUPPORTED_TTS_VOICES = STANDARD_TTS_VOICES | RICH_TTS_VOICES
 
 
-
 class ChatCompletionParameters:
     def __init__(
         self,
@@ -280,4 +279,3 @@ def format_openai_error(error: Exception) -> str:
     if details:
         return f"{message}\n\n" + "\n".join(details)
     return message
-
