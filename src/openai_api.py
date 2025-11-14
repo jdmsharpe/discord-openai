@@ -29,13 +29,20 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY
 def append_response_embeds(embeds, response_text):
     # Discord limits: 4096 chars per embed description, 6000 chars total for all embeds
     # Account for existing embeds' character count
-    current_total = sum(len(embed.description or "") + len(embed.title or "") for embed in embeds)
-    remaining_chars = 6000 - current_total - 100  # Leave buffer for field names/formatting
-    
+    current_total = sum(
+        len(embed.description or "") + len(embed.title or "") for embed in embeds
+    )
+    remaining_chars = (
+        6000 - current_total - 100
+    )  # Leave buffer for field names/formatting
+
     # Truncate response if it would exceed the total limit
     if len(response_text) > remaining_chars:
-        response_text = response_text[:remaining_chars - 50] + "\n\n... (Response truncated due to Discord's 6000 character limit)"
-    
+        response_text = (
+            response_text[: remaining_chars - 50]
+            + "\n\n... (Response truncated due to Discord's 6000 character limit)"
+        )
+
     # Ensure each chunk is no larger than 4096 characters (max Discord embed description length)
     for index, chunk in enumerate(chunk_text(response_text), start=1):
         embeds.append(
@@ -77,7 +84,9 @@ class OpenAIAPI(commands.Cog):
             conversation: The conversation object, which is of type ChatCompletionParameters.
         """
         # Determine the role based on the sender
-        self.logger.info(f"Handling new message in conversation {conversation.conversation_id}")
+        self.logger.info(
+            f"Handling new message in conversation {conversation.conversation_id}"
+        )
         typing_task = None
         embeds = []
 
@@ -105,9 +114,7 @@ class OpenAIAPI(commands.Cog):
                             "image_url": {"url": attachment.url},
                         }
                     )
-            self.logger.debug(
-                f"Converted message to OpenAI input format: {content}"
-            )
+            self.logger.debug(f"Converted message to OpenAI input format: {content}")
 
             # Append the user's message to the conversation history
             conversation.messages.append(content)
@@ -166,7 +173,9 @@ class OpenAIAPI(commands.Cog):
                 f"Error in handle_new_message_in_conversation: {description}",
                 exc_info=True,
             )
-            await message.reply(embed=Embed(title="Error", description=description, color=Colour.red()))
+            await message.reply(
+                embed=Embed(title="Error", description=description, color=Colour.red())
+            )
 
         finally:
             if typing_task:
@@ -216,8 +225,10 @@ class OpenAIAPI(commands.Cog):
         # Look for a conversation that matches BOTH the channel AND the user
         for conversation in self.conversation_histories.values():
             # Check if message is in the same channel AND from the conversation starter
-            if (message.channel.id == conversation.channel_id and 
-                message.author == conversation.conversation_starter):
+            if (
+                message.channel.id == conversation.channel_id
+                and message.author == conversation.conversation_starter
+            ):
                 if conversation.paused:
                     self.logger.debug(
                         "Ignoring message because conversation %s is paused.",
@@ -589,7 +600,7 @@ class OpenAIAPI(commands.Cog):
           model: The model to use for image generation. Defaults to `gpt-image-1` (a GPT-4
               based image generation model). You can also select `dall-e-2` or `dall-e-3`.
 
-          n: The number of images to generate. Must be between 1 and 10. For `dall-e-3` and 
+          n: The number of images to generate. Must be between 1 and 10. For `dall-e-3` and
               `gpt-image-1`, only `n=1` is supported.
 
           quality: The quality of the image that will be generated. This param is only supported
@@ -650,10 +661,12 @@ class OpenAIAPI(commands.Cog):
             quality = "hd"
 
         # Set medium quality for GPT-4 Image if an unsupported quality is provided
-        if (
-            (model == "gpt-image-1" or model == "gpt-image-1-mini")
-            and quality not in ["low", "medium", "high", "auto"]
-        ):
+        if (model == "gpt-image-1" or model == "gpt-image-1-mini") and quality not in [
+            "low",
+            "medium",
+            "high",
+            "auto",
+        ]:
             quality = "medium"
 
         # Initialize parameters for the image generation API
@@ -668,12 +681,14 @@ class OpenAIAPI(commands.Cog):
                 quality=quality,
                 size=size,
                 style=style,
-                response_format=response_format
+                response_format=response_format,
             )
             self.logger.info(f"Generating {n} image(s) with model {model}")
         except Exception as e:
             error_message = format_openai_error(e)
-            self.logger.error(f"Error creating image parameters: {error_message}", exc_info=True)
+            self.logger.error(
+                f"Error creating image parameters: {error_message}", exc_info=True
+            )
             await ctx.send_followup(
                 embed=Embed(
                     title="Error",
@@ -691,10 +706,10 @@ class OpenAIAPI(commands.Cog):
             image_data = []
             for data_item in response.data:
                 # Check if it has url attribute (DALL-E style)
-                if hasattr(data_item, 'url') and data_item.url:
+                if hasattr(data_item, "url") and data_item.url:
                     image_urls.append(data_item.url)
                 # Check if it has b64_json attribute (base64 style)
-                elif hasattr(data_item, 'b64_json') and data_item.b64_json:
+                elif hasattr(data_item, "b64_json") and data_item.b64_json:
                     image_data.append(data_item.b64_json)
 
             if image_urls or image_data:
@@ -705,7 +720,9 @@ class OpenAIAPI(commands.Cog):
                     async with aiohttp.ClientSession() as session:
                         async with session.get(url) as resp:
                             if resp.status != 200:
-                                self.logger.warning(f"Failed to download image {idx}, status: {resp.status}")
+                                self.logger.warning(
+                                    f"Failed to download image {idx}, status: {resp.status}"
+                                )
                                 continue
                             data = io.BytesIO(await resp.read())
                             filename = f"image{idx}.png"
@@ -716,6 +733,7 @@ class OpenAIAPI(commands.Cog):
                 for idx, b64_data in enumerate(image_data):
                     try:
                         import base64
+
                         image_bytes = base64.b64decode(b64_data)
                         data = io.BytesIO(image_bytes)
                         filename = f"image{len(image_urls) + idx}.png"
@@ -745,7 +763,9 @@ class OpenAIAPI(commands.Cog):
                     color=Colour.blue(),
                 )
                 await ctx.send_followup(embed=embed, files=image_files)
-                self.logger.info(f"Successfully generated and sent {len(image_files)} image(s)")
+                self.logger.info(
+                    f"Successfully generated and sent {len(image_files)} image(s)"
+                )
 
         except Exception as e:
             description = format_openai_error(e)
@@ -858,7 +878,9 @@ class OpenAIAPI(commands.Cog):
         speech_file_path = None
         try:
             response = await self.openai.audio.speech.create(**params.to_dict())
-            speech_file_path = Path(__file__).parent / f"{voice}_speech.{response_format}"
+            speech_file_path = (
+                Path(__file__).parent / f"{voice}_speech.{response_format}"
+            )
             response.write_to_file(speech_file_path)
 
             description = (
@@ -870,10 +892,18 @@ class OpenAIAPI(commands.Cog):
                 + f"**Speed:** {params.speed}\n"
             )
 
-            embed = Embed(title="Text-to-Speech", description=description, color=Colour.blue())
+            embed = Embed(
+                title="Text-to-Speech", description=description, color=Colour.blue()
+            )
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
         except Exception as e:
-            await ctx.send_followup(embed=Embed(title="Error", description=format_openai_error(e), color=Colour.red()))
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error",
+                    description=format_openai_error(e),
+                    color=Colour.red(),
+                )
+            )
         finally:
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
@@ -955,19 +985,35 @@ class OpenAIAPI(commands.Cog):
 
             with open(speech_file_path, "rb") as speech_file:
                 if action == "transcription":
-                    response = await self.openai.audio.transcriptions.create(model=model, file=speech_file)
+                    response = await self.openai.audio.transcriptions.create(
+                        model=model, file=speech_file
+                    )
                 else:  # translation
-                    response = await self.openai.audio.translations.create(model=model, file=speech_file)
+                    response = await self.openai.audio.translations.create(
+                        model=model, file=speech_file
+                    )
 
             description = (
-                f"**Model:** {model}\n" +
-                f"**Action:** {action}\n" +
-                (f"**Output:** {response.text}\n" if getattr(response, 'text', None) else "")
+                f"**Model:** {model}\n"
+                + f"**Action:** {action}\n"
+                + (
+                    f"**Output:** {response.text}\n"
+                    if getattr(response, "text", None)
+                    else ""
+                )
             )
-            embed = Embed(title="Speech-to-Text", description=description, color=Colour.blue())
+            embed = Embed(
+                title="Speech-to-Text", description=description, color=Colour.blue()
+            )
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
         except Exception as e:
-            await ctx.send_followup(embed=Embed(title="Error", description=format_openai_error(e), color=Colour.red()))
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error",
+                    description=format_openai_error(e),
+                    color=Colour.red(),
+                )
+            )
         finally:
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
