@@ -651,8 +651,7 @@ class OpenAIAPI(commands.Cog):
 
         # Set medium quality for GPT-4 Image if an unsupported quality is provided
         if (
-            model == "gpt-image-1"
-            or model == "gpt-image-1-mini"
+            (model == "gpt-image-1" or model == "gpt-image-1-mini")
             and quality not in ["low", "medium", "high", "auto"]
         ):
             quality = "medium"
