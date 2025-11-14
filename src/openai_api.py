@@ -262,10 +262,13 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models. (default: GPT-5)",
+        description="Choose from the following GPT models. (default: GPT-5.1)",
         required=False,
         type=str,
         choices=[
+            OptionChoice(name="GPT-5.1", value="gpt-5.1-chat-latest"),
+            OptionChoice(name="GPT-5.1 Codex", value="gpt-5.1-codex"),
+            OptionChoice(name="GPT-5.1 Mini", value="gpt-5.1-mini"),
             OptionChoice(name="GPT-5", value="gpt-5-chat-latest"),
             OptionChoice(name="GPT-5 Mini", value="gpt-5-mini"),
             OptionChoice(name="GPT-5 Nano", value="gpt-5-nano"),
@@ -325,7 +328,7 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-5-chat-latest",
+        model: str = "gpt-5.1-chat-latest",
         attachment: Optional[Attachment] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
@@ -518,6 +521,7 @@ class OpenAIAPI(commands.Cog):
         type=str,
         choices=[
             OptionChoice(name="GPT-4 Image", value="gpt-image-1"),
+            OptionChoice(name="GPT-4 Image Mini", value="gpt-image-1-mini"),
             OptionChoice(name="DALL-E 3", value="dall-e-3"),
             OptionChoice(name="DALL-E 2", value="dall-e-2"),
         ],
@@ -638,7 +642,7 @@ class OpenAIAPI(commands.Cog):
         if model == "dall-e-2":
             style = None
             quality = None
-        if model == "gpt-image-1":
+        if model == "gpt-image-1" or model == "gpt-image-1-mini":
             style = None
 
         # Set HD quality for DALL-E 3 if an unsupported quality is provided
@@ -646,7 +650,11 @@ class OpenAIAPI(commands.Cog):
             quality = "hd"
 
         # Set medium quality for GPT-4 Image if an unsupported quality is provided
-        if model == "gpt-image-1" and quality not in ["low", "medium", "high", "auto"]:
+        if (
+            model == "gpt-image-1"
+            or model == "gpt-image-1-mini"
+            and quality not in ["low", "medium", "high", "auto"]
+        ):
             quality = "medium"
 
         # Initialize parameters for the image generation API
