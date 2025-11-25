@@ -1,16 +1,14 @@
 # Discord OpenAI Bot
 
-<div align="center">
-
 ![Badge](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2Fjdmsharpe%2Fdiscord-openai-bot%2F&label=discord-openai-bot&icon=github&color=%23198754&message=&style=flat&tz=UTC)
-<a href="https://hub.docker.com/r/jsgreen152/discord-openai-bot" target="_blank" rel="noopener noreferrer">![Workflow](https://github.com/jdmsharpe/discord-openai-bot/actions/workflows/main.yml/badge.svg)</a>
-  
-</div>
+[![Workflow](https://github.com/jdmsharpe/discord-openai-bot/actions/workflows/main.yml/badge.svg)](https://hub.docker.com/r/jsgreen152/discord-openai-bot)
 
 ## Overview
+
 This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Development/pycord) that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, and speech-to-text capabilities all accessible via modern slash commands. Whether you’re looking to chat with a state-of-the-art model, generate creative visuals, or convert text and speech, this bot offers an interactive interface that enhances your Discord server experience.
 
 ## Features
+
 - **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/converse`. The bot maintains conversation history as you write further messages in the same channel, and even accepts image attachments.
 - **Image Generation:** Create images from text prompts with `/generate_image` using GPT-4 Image (`gpt-image-1`) or DALL-E 3 / DALL-E 2, with controls for quality, aspect ratio, and style.
 - **Text-to-Speech:** Convert text into lifelike audio using `/text_to_speech`, with customizable voice, audio format, and speed.
@@ -20,6 +18,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 ## Commands
 
 ### `/converse`
+
 - **Usage:** `/converse prompt:<text>`
 - **What it does:** Opens a thread with the selected GPT model and keeps the whole conversation in context for follow-up replies in the same channel.
 - **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5`.
@@ -28,6 +27,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 - **Advanced tuning:** Frequency penalty, presence penalty, temperature (or nucleus sampling via `top_p`), and `seed` are all optional. Reasoning models ignore custom temperature/`top_p` and fall back to their defaults automatically.
 
 ### `/generate_image`
+
 - **Usage:** `/generate_image prompt:<text>`
 - **What it does:** Creates 1-10 images (model-dependent) using GPT-4 Image, DALL-E 3, or DALL-E 2.
 - **Defaults:** Uses `gpt-image-1`, medium quality, and 1024x1024 images. When you switch models the bot adjusts defaults (e.g., DALL-E 3 becomes HD quality, DALL-E 2 becomes Standard quality).
@@ -35,12 +35,14 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 - **Delivery:** GPT-4 Image returns base64 data that the bot uploads, while DALL-E models stream back hosted URLs.
 
 ### `/text_to_speech`
+
 - **Usage:** `/text_to_speech input:<text>`
 - **What it does:** Generates audio with OpenAI's TTS stack and returns the file as an attachment.
 - **Models & voices:** Pick between `gpt-4o-mini-tts`, `tts-1`, and `tts-1-hd`. Rich voices (`ash`, `ballad`, `coral`, `sage`, `verse`) are exclusive to GPT-4o Mini TTS, while the classic set (alloy, echo, fable, onyx, nova, shimmer) works everywhere. Instructions are only honoured by GPT-4o based TTS models.
 - **Format & speed:** Select MP3/WAV/Opus/AAC/FLAC/PCM output and tweak playback speed (default `1.0`).
 
 ### `/speech_to_text`
+
 - **Usage:** `/speech_to_text attachment:<audio>`
 - **What it does:** Transcribes or translates uploaded audio that is <=25 MB (mp3, mp4, mpeg, mpga, m4a, wav, webm).
 - **Model choices:** `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1`.
@@ -71,17 +73,19 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 ## Setup & Installation
 
 ### Prerequisites
+
 - A Discord account and a server where you can add the bot.
 - An OpenAI API key (get one at [OpenAI API Keys](https://platform.openai.com/api-keys)).
 
 ### Creating and Inviting Your Bot
+
 1. Follow the [Discord Bot Creation Guide](https://docs.pycord.dev/en/master/discord.html#:~:text=Make%20sure%20you're%20logged%20on%20to%20the%20Discord%20website.&text=Click%20on%20the%20%E2%80%9CNew%20Application,and%20clicking%20%E2%80%9CAdd%20Bot%E2%80%9D) to create your application and bot.
 2. Invite the bot to your server using the correct permissions.
 
 #### Required Permissions
+
 - **Bot Permissions Integer:** `397821737984`
 - **Intents:** Ensure the bot has access to read messages and message history.
-
 
 <div align="center">
 
@@ -91,14 +95,17 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 </div>
 
 ### Build and Run with Docker (Recommended)
+
 #### Build and run the image locally
-+ Build the image with `docker build -t python-bot .` in the root directory
-+ Run the bot with `docker run -e BOT_TOKEN=<YOUR BOT TOKEN> -e GUILD_IDS=<YOUR GUILD IDS IN LIST FORMAT> -e OPENAI_API_KEY=<YOUR OPENAI API KEY> python-bot` in the root directory
+
+- Build the image with `docker build -t python-bot .` in the root directory
+- Run the bot with `docker run -e BOT_TOKEN=<YOUR BOT TOKEN> -e GUILD_IDS=<YOUR GUILD IDS IN LIST FORMAT> -e OPENAI_API_KEY=<YOUR OPENAI API KEY> python-bot` in the root directory
 
 ### Running from source
-+ (Recommended) Create a virtual environment
-+ Install the dependencies from `requirements.txt` with `pip install -r requirements.txt` in the root directory
-+ Set an environment variable for BOT_TOKEN with your bot's token
-+ Set an environment variable for GUILD_IDS with the Discord guild ids (servers) you wish to deploy the bot on
-+ Set an environment variable for OPENAI_API_KEY with the OpenAI API key (available at <a href="https://platform.openai.com/api-keys">OpenAI API Platform</a>)
-+ Run the bot with `python src/bot.py` in the root directory
+
+- (Recommended) Create a virtual environment
+- Install the dependencies from `requirements.txt` with `pip install -r requirements.txt` in the root directory
+- Set an environment variable for BOT_TOKEN with your bot's token
+- Set an environment variable for GUILD_IDS with the Discord guild ids (servers) you wish to deploy the bot on
+- Set an environment variable for OPENAI_API_KEY with the OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
+- Run the bot with `python src/bot.py` in the root directory
