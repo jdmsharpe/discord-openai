@@ -1,2 +1,2 @@
-openai~=2.8.0
+openai~=2.8
 py-cord~=2.6
