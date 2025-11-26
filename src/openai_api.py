@@ -1046,23 +1046,21 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=str,
         choices=[
-            OptionChoice(name="720p Landscape (1280x720)", value="1280x720"),
-            OptionChoice(name="1080p Landscape (1920x1080)", value="1920x1080"),
-            OptionChoice(name="1080p Portrait (1080x1920)", value="1080x1920"),
-            OptionChoice(name="Square (480x480)", value="480x480"),
+            OptionChoice(name="Landscape (1280x720)", value="1280x720"),
+            OptionChoice(name="Portrait (720x1280)", value="720x1280"),
+            OptionChoice(name="Wide Landscape (1792x1024)", value="1792x1024"),
+            OptionChoice(name="Tall Portrait (1024x1792)", value="1024x1792"),
         ],
     )
     @option(
         "seconds",
         description="Duration of the video in seconds. (default: 8)",
         required=False,
-        type=int,
+        type=str,
         choices=[
-            OptionChoice(name="5 seconds", value=5),
-            OptionChoice(name="8 seconds", value=8),
-            OptionChoice(name="10 seconds", value=10),
-            OptionChoice(name="15 seconds", value=15),
-            OptionChoice(name="20 seconds", value=20),
+            OptionChoice(name="4 seconds", value="4"),
+            OptionChoice(name="8 seconds", value="8"),
+            OptionChoice(name="12 seconds", value="12"),
         ],
     )
     async def generate_video(
@@ -1071,7 +1069,7 @@ class OpenAIAPI(commands.Cog):
         prompt: str,
         model: str = "sora-2",
         size: str = "1280x720",
-        seconds: int = 8,
+        seconds: str = "8",
     ):
         """
         Generates a video from a prompt using OpenAI's Sora model.
@@ -1082,7 +1080,7 @@ class OpenAIAPI(commands.Cog):
             model: The Sora model to use. 'sora-2' is faster for iteration,
                 'sora-2-pro' produces higher quality output.
             size: The resolution of the generated video.
-            seconds: The duration of the video in seconds (5, 8, 10, 15, or 20).
+            seconds: The duration of the video in seconds ('4', '8', or '12').
         """
         await ctx.defer()
 

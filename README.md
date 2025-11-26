@@ -65,8 +65,8 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 - **Model choices:**
   - `sora-2` (Fast) - Ideal for quick iteration and experimentation
   - `sora-2-pro` (High Quality) - Best for production-quality output
-- **Size options:** 720p landscape (1280x720), 1080p landscape (1920x1080), 1080p portrait (1080x1920), or square (480x480).
-- **Duration:** 5, 8, 10, 15, or 20 seconds.
+- **Size options:** Landscape (1280x720), Portrait (720x1280), Wide Landscape (1792x1024), or Tall Portrait (1024x1792).
+- **Duration:** 4, 8, or 12 seconds.
 - **Prompting tips:** For best results, describe shot type, subject, action, setting, and lighting (e.g., "Wide shot of a child flying a red kite in a grassy park, golden hour sunlight, camera slowly pans upward").
 - **Restrictions:** Content must be suitable for all audiences. Copyrighted characters, copyrighted music, and real people (including public figures) cannot be generated.
 

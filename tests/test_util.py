@@ -195,13 +195,13 @@ class TestVideoGenerationParameters(unittest.TestCase):
             prompt="A cat playing piano",
             model="sora-2",
             size="1280x720",
-            seconds=8,
+            seconds="8",
         )
         result = params.to_dict()
         self.assertEqual(result["prompt"], "A cat playing piano")
         self.assertEqual(result["model"], "sora-2")
         self.assertEqual(result["size"], "1280x720")
-        self.assertEqual(result["seconds"], 8)
+        self.assertEqual(result["seconds"], "8")
 
     def test_defaults(self):
         params = VideoGenerationParameters(prompt="Test video")
@@ -209,35 +209,43 @@ class TestVideoGenerationParameters(unittest.TestCase):
         self.assertEqual(result["prompt"], "Test video")
         self.assertEqual(result["model"], "sora-2")
         self.assertEqual(result["size"], "1280x720")
-        self.assertEqual(result["seconds"], 8)
+        self.assertEqual(result["seconds"], "8")
 
     def test_sora_pro_model(self):
         params = VideoGenerationParameters(
             prompt="High quality video",
             model="sora-2-pro",
-            size="1920x1080",
-            seconds=20,
+            size="1792x1024",
+            seconds="12",
         )
         result = params.to_dict()
         self.assertEqual(result["model"], "sora-2-pro")
-        self.assertEqual(result["size"], "1920x1080")
-        self.assertEqual(result["seconds"], 20)
+        self.assertEqual(result["size"], "1792x1024")
+        self.assertEqual(result["seconds"], "12")
 
     def test_portrait_size(self):
         params = VideoGenerationParameters(
             prompt="Portrait video",
-            size="1080x1920",
+            size="720x1280",
         )
         result = params.to_dict()
-        self.assertEqual(result["size"], "1080x1920")
+        self.assertEqual(result["size"], "720x1280")
 
-    def test_square_size(self):
+    def test_tall_portrait_size(self):
         params = VideoGenerationParameters(
-            prompt="Square video",
-            size="480x480",
+            prompt="Tall portrait video",
+            size="1024x1792",
         )
         result = params.to_dict()
-        self.assertEqual(result["size"], "480x480")
+        self.assertEqual(result["size"], "1024x1792")
+
+    def test_four_seconds(self):
+        params = VideoGenerationParameters(
+            prompt="Short video",
+            seconds="4",
+        )
+        result = params.to_dict()
+        self.assertEqual(result["seconds"], "4")
 
 
 class TestChunkText(unittest.TestCase):

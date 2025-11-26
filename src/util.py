@@ -144,7 +144,7 @@ class VideoGenerationParameters:
         prompt: str = "",
         model: str = "sora-2",
         size: str = "1280x720",
-        seconds: int = 8,
+        seconds: str = "8",
     ):
         self.prompt = prompt
         self.model = model
