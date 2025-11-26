@@ -23,7 +23,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 - **What it does:** Opens a thread with the selected GPT model and keeps the whole conversation in context for follow-up replies in the same channel.
 - **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5.1`.
 - **Model choices:**
-  - GPT-5.1 (standard/codex/mini)
+  - GPT-5.1 (standard/mini)
   - GPT-5 (standard/mini/nano)
   - GPT-4.1 (standard/mini/nano)
   - `o4-mini`, `o3`, `o3-mini`, `o1`, `o1-mini`

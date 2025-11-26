@@ -278,7 +278,6 @@ class OpenAIAPI(commands.Cog):
         type=str,
         choices=[
             OptionChoice(name="GPT-5.1", value="gpt-5.1-chat-latest"),
-            OptionChoice(name="GPT-5.1 Codex", value="gpt-5.1-codex"),
             OptionChoice(name="GPT-5.1 Mini", value="gpt-5.1-mini"),
             OptionChoice(name="GPT-5", value="gpt-5-chat-latest"),
             OptionChoice(name="GPT-5 Mini", value="gpt-5-mini"),
