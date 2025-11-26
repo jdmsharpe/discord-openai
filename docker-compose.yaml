@@ -1,9 +1,7 @@
 services:
   python-bot:
     build: .
-    environment:
-      - BOT_TOKEN=${BOT_TOKEN}
-      - GUILD_IDS=${GUILD_IDS}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    container_name: python-bot
+    env_file:
+      - .env
+    container_name: discord-openai-bot
     command: python src/bot.py
