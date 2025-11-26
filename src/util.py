@@ -5,6 +5,16 @@ from openai import APIError
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
 REASONING_MODELS = ["o4-mini", "o3", "o3-mini", "o1", "o1-mini"]
+
+# Input content types for Responses API
+# For multimodal input, use content blocks within a message item
+INPUT_TEXT_TYPE = "text"
+INPUT_IMAGE_TYPE = "image_url"
+
+# Reasoning effort levels for o-series models
+REASONING_EFFORT_LOW = "low"
+REASONING_EFFORT_MEDIUM = "medium"
+REASONING_EFFORT_HIGH = "high"
 RICH_TTS_MODELS = ["gpt-4o-tts", "gpt-4o-mini-tts"]
 
 RICH_TTS_VOICES = {"ash", "ballad", "coral", "sage", "verse"}
@@ -79,6 +89,89 @@ class ChatCompletionParameters:
             payload["temperature"] = self.temperature
         if self.top_p is not None:
             payload["top_p"] = self.top_p
+
+        return payload
+
+
+class ResponseParameters:
+    """Parameters for OpenAI Responses API (replacement for Chat Completions)."""
+
+    def __init__(
+        self,
+        model: str = "gpt-5.1",
+        instructions: str = "You are a helpful assistant.",
+        input: Any = None,  # Can be string or list of content items
+        previous_response_id: Optional[str] = None,
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        seed: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        reasoning: Optional[dict] = None,
+        # Discord-specific fields (not sent to API)
+        conversation_starter: Optional[Any] = None,
+        conversation_id: Optional[int] = None,
+        channel_id: Optional[int] = None,
+        paused: bool = False,
+        # For regeneration support
+        response_id_history: Optional[List[str]] = None,
+    ):
+        self.model = model
+        self.instructions = instructions
+        # Input can be a string or a list of content items
+        self.input = input if input is not None else ""
+        self.previous_response_id = previous_response_id
+
+        # Handle reasoning models differently
+        if model in REASONING_MODELS:
+            # Reasoning models use reasoning parameter instead of temperature/top_p
+            self.temperature = None
+            self.top_p = None
+            self.reasoning = reasoning if reasoning else {"effort": REASONING_EFFORT_MEDIUM}
+        else:
+            self.temperature = temperature
+            self.top_p = top_p
+            self.reasoning = None
+
+        self.frequency_penalty = frequency_penalty
+        self.presence_penalty = presence_penalty
+        self.seed = seed
+
+        # Discord-specific fields
+        self.conversation_starter = conversation_starter
+        self.conversation_id = conversation_id
+        self.channel_id = channel_id
+        self.paused = paused
+
+        # Response ID history for regeneration
+        self.response_id_history = (
+            response_id_history if response_id_history is not None else []
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API calls (excludes Discord-specific fields)."""
+        payload: Dict[str, Any] = {
+            "model": self.model,
+        }
+
+        if self.instructions:
+            payload["instructions"] = self.instructions
+        if self.input:
+            payload["input"] = self.input
+        if self.previous_response_id:
+            payload["previous_response_id"] = self.previous_response_id
+        if self.frequency_penalty is not None:
+            payload["frequency_penalty"] = self.frequency_penalty
+        if self.presence_penalty is not None:
+            payload["presence_penalty"] = self.presence_penalty
+        if self.seed is not None:
+            payload["seed"] = self.seed
+        if self.temperature is not None:
+            payload["temperature"] = self.temperature
+        if self.top_p is not None:
+            payload["top_p"] = self.top_p
+        if self.reasoning is not None:
+            payload["reasoning"] = self.reasoning
 
         return payload
 

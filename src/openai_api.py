@@ -20,7 +20,10 @@ from util import (
     chunk_text,
     format_openai_error,
     ImageGenerationParameters,
+    INPUT_IMAGE_TYPE,
+    INPUT_TEXT_TYPE,
     REASONING_MODELS,
+    ResponseParameters,
     TextToSpeechParameters,
     VideoGenerationParameters,
 )
@@ -78,13 +81,12 @@ class OpenAIAPI(commands.Cog):
 
     async def handle_new_message_in_conversation(self, message, conversation):
         """
-        Handles a new message in an ongoing conversation.
+        Handles a new message in an ongoing conversation using the Responses API.
 
         Args:
             message: The incoming Discord Message object.
-            conversation: The conversation object, which is of type ChatCompletionParameters.
+            conversation: The conversation object, which is of type ResponseParameters.
         """
-        # Determine the role based on the sender
         self.logger.info(
             f"Handling new message in conversation {conversation.conversation_id}"
         )
@@ -95,53 +97,56 @@ class OpenAIAPI(commands.Cog):
             # Start typing indicator
             typing_task = asyncio.create_task(self.keep_typing(message.channel))
 
-            # Determine the role based on the sender
-            role = (
-                "user"
-                if message.author == conversation.conversation_starter
-                else "assistant"
-            )
-
-            # Convert the Discord message to OpenAI input format
-            content = {
-                "role": role,
-                "content": [{"type": "text", "text": message.content}],
-            }
+            # Build input for Responses API
+            # For text-only, use a simple string. For multimodal, use content array.
             if message.attachments:
+                input_content = [{"type": INPUT_TEXT_TYPE, "text": message.content}]
                 for attachment in message.attachments:
-                    content["content"].append(
+                    input_content.append(
                         {
-                            "type": "image_url",
-                            "image_url": {"url": attachment.url},
+                            "type": INPUT_IMAGE_TYPE,
+                            "image_url": attachment.url,
                         }
                     )
-            self.logger.debug(f"Converted message to OpenAI input format: {content}")
+            else:
+                input_content = message.content  # Simple string for text-only
+            self.logger.debug(f"Built input content: {input_content}")
 
-            # Append the user's message to the conversation history
-            conversation.messages.append(content)
-            self.logger.debug(f"Appended user message to conversation: {content}")
+            # Build API call parameters
+            api_params = {
+                "model": conversation.model,
+                "input": input_content,
+            }
 
-            # API call
-            self.logger.debug("Making API call to OpenAI.")
-            response = await self.openai.chat.completions.create(
-                **conversation.to_dict()
-            )
-            response_text = (
-                response.choices[0].message.content
-                if response.choices
-                else "No response."
-            )
+            # Add previous_response_id for conversation chaining
+            if conversation.previous_response_id:
+                api_params["previous_response_id"] = conversation.previous_response_id
+
+            # Add optional parameters if set
+            if conversation.frequency_penalty is not None:
+                api_params["frequency_penalty"] = conversation.frequency_penalty
+            if conversation.presence_penalty is not None:
+                api_params["presence_penalty"] = conversation.presence_penalty
+            if conversation.seed is not None:
+                api_params["seed"] = conversation.seed
+            if conversation.temperature is not None:
+                api_params["temperature"] = conversation.temperature
+            if conversation.top_p is not None:
+                api_params["top_p"] = conversation.top_p
+            if conversation.reasoning is not None:
+                api_params["reasoning"] = conversation.reasoning
+
+            # API call using Responses API
+            self.logger.debug("Making API call to OpenAI Responses API.")
+            response = await self.openai.responses.create(**api_params)
+            response_text = response.output_text if response.output_text else "No response."
             self.logger.debug(f"Received response from OpenAI: {response_text}")
 
-            # Now that response is generated, add that to conversation history
-            conversation.messages.append(
-                {
-                    "role": "assistant",
-                    "content": {"type": "text", "text": response_text},
-                }
-            )
+            # Update conversation state with new response ID
+            conversation.previous_response_id = response.id
+            conversation.response_id_history.append(response.id)
             self.logger.debug(
-                f"Appended assistant response to conversation: {response_text}"
+                f"Updated previous_response_id to: {response.id}"
             )
 
             # Assemble the response
@@ -392,52 +397,39 @@ class OpenAIAPI(commands.Cog):
                 )
                 return
 
-        # Determine if the chosen model supports system messages
-        if model in REASONING_MODELS:
-            # For models that don't support system messages, merge persona with prompt
-            combined_prompt = f"{persona}\n\n{prompt}"
-            messages = [
-                {"role": "user", "content": [{"type": "text", "text": combined_prompt}]}
+        # Build input for Responses API
+        # For text-only, use a simple string. For multimodal, use content array.
+        if attachment is not None:
+            input_content = [
+                {"type": INPUT_TEXT_TYPE, "text": prompt},
+                {"type": INPUT_IMAGE_TYPE, "image_url": attachment.url},
             ]
         else:
-            # For models that support system messages, use the standard two-message format
-            messages = [
-                {"role": "system", "content": [{"type": "text", "text": persona}]},
-                {"role": "user", "content": [{"type": "text", "text": prompt}]},
-            ]
+            input_content = prompt  # Simple string for text-only input
 
-        # Build the parameters dictionary for ChatCompletionParameters
-        params_dict = {
-            "messages": messages,
-            "model": model,
-            "persona": persona,
-            "frequency_penalty": frequency_penalty,
-            "presence_penalty": presence_penalty,
-            "seed": seed,
-            "conversation_starter": ctx.author,
-            "conversation_id": ctx.interaction.id,
-            "channel_id": ctx.channel_id,
-        }
-
-        if model in REASONING_MODELS:
-            # For reasoning models, force the default temperature (1.0) and omit top_p
-            params_dict["temperature"] = 1.0
-        else:
-            # For non-reasoning models, include temperature and top_p if provided
-            if temperature is not None:
-                params_dict["temperature"] = temperature
-            if top_p is not None:
-                params_dict["top_p"] = top_p
-
-        # Finally, create the ChatCompletionParameters object using the parameters dictionary
-        params = ChatCompletionParameters(**params_dict)
+        # Create ResponseParameters for the new Responses API
+        params = ResponseParameters(
+            model=model,
+            instructions=persona,
+            input=input_content,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            seed=seed,
+            temperature=temperature if model not in REASONING_MODELS else None,
+            top_p=top_p if model not in REASONING_MODELS else None,
+            reasoning={"effort": "medium"} if model in REASONING_MODELS else None,
+            conversation_starter=ctx.author,
+            conversation_id=ctx.interaction.id,
+            channel_id=ctx.channel_id,
+            response_id_history=[],
+        )
 
         try:
             # Update initial response description based on input parameters
             description = ""
             description += f"**Prompt:** {prompt}\n"
             description += f"**Model:** {params.model}\n"
-            description += f"**Persona:** {params.persona}\n"
+            description += f"**Persona:** {params.instructions}\n"
             description += (
                 f"**Frequency Penalty:** {params.frequency_penalty}\n"
                 if params.frequency_penalty
@@ -455,26 +447,22 @@ class OpenAIAPI(commands.Cog):
             description += (
                 f"**Nucleus Sampling:** {params.top_p}\n" if params.top_p else ""
             )
-
-            if attachment is not None:
-                user_message = params.messages[-1]
-                if not isinstance(user_message.get("content"), list):
-                    user_message["content"] = [user_message["content"]]
-                user_message["content"].append(
-                    {"type": "image_url", "image_url": {"url": attachment.url}}
-                )
+            if params.reasoning:
+                description += f"**Reasoning Effort:** {params.reasoning.get('effort', 'medium')}\n"
 
             self.logger.info(
-                f"converse: Conversation history and parameters initialized for interaction ID {ctx.interaction.id}."
+                f"converse: Conversation parameters initialized for interaction ID {ctx.interaction.id}."
             )
 
-            # API call
-            response = await self.openai.chat.completions.create(**params.to_dict())
-            response_text = (
-                response.choices[0].message.content
-                if response.choices
-                else "No response."
-            )
+            # API call using Responses API
+            response = await self.openai.responses.create(**params.to_dict())
+            response_text = response.output_text if response.output_text else "No response."
+
+            # Store response ID for conversation chaining
+            params.previous_response_id = response.id
+            params.response_id_history.append(response.id)
+            # Clear input after first call (subsequent calls use previous_response_id)
+            params.input = []
 
             # Assemble the response
             embeds = [
@@ -500,14 +488,8 @@ class OpenAIAPI(commands.Cog):
                 embeds=embeds,
                 view=self.views[ctx.author],
             )
-            params.messages.append(
-                {
-                    "role": "assistant",
-                    "content": {"type": "text", "text": response_text},
-                }
-            )
 
-            # Store the conversation history as a new entry in the dictionary
+            # Store the conversation as a new entry in the dictionary
             self.conversation_histories[ctx.interaction.id] = params
 
         except Exception as e:

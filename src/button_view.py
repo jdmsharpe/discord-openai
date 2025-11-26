@@ -42,11 +42,19 @@ class ButtonView(View):
 
             await interaction.response.defer(ephemeral=True)
 
-            # Modify the conversation history and regenerate the response
+            # Get the conversation and revert to previous response state
             conversation = self.cog.conversation_histories[self.conversation_id]
-            if len(conversation.messages) >= 2:
-                conversation.messages.pop()  # Remove the last assistant message
-                conversation.messages.pop()  # Remove the last user message
+
+            # Go back to the previous response ID (skip the last exchange)
+            if len(conversation.response_id_history) >= 1:
+                # Remove the last response ID
+                conversation.response_id_history.pop()
+                # Set previous_response_id to the one before that (or None if at start)
+                conversation.previous_response_id = (
+                    conversation.response_id_history[-1]
+                    if conversation.response_id_history
+                    else None
+                )
 
             # For now, get the last user message from the channel history
             if interaction.channel is None or not hasattr(

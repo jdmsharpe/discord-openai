@@ -18,16 +18,17 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
 
         # Properly setting up mocks for the command functions and context
         self.bot.sync_commands = AsyncMock()
-        self.bot.chat = AsyncMock()
+        self.bot.converse = AsyncMock()
         self.bot.generate_image = AsyncMock()
         self.bot.text_to_speech = AsyncMock()
         self.bot.speech_to_text = AsyncMock()
         self.bot.generate_video = AsyncMock()
 
         # Setting up specific return values for the mock calls
-        mock_chat_embed = MagicMock(Embed)
-        mock_chat_embed.description = "Hello, World!"
-        self.bot.chat.return_value = mock_chat_embed
+        # Mock for converse command (using Responses API)
+        mock_converse_embed = MagicMock(Embed)
+        mock_converse_embed.description = "Hello, World!"
+        self.bot.converse.return_value = mock_converse_embed
 
         mock_image_embed = MagicMock(Embed)
         mock_image_embed.file = "image.png"
@@ -49,8 +50,8 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         await self.bot.cogs["OpenAIAPI"].on_ready()
         self.bot.sync_commands.assert_called_once()
 
-    async def test_chat_command(self):
-        embed = await self.bot.chat("Hello")
+    async def test_converse_command(self):
+        embed = await self.bot.converse("Hello")
         self.assertIn("Hello, World!", embed.description)
 
     async def test_generate_image_command(self):

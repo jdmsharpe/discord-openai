@@ -3,6 +3,11 @@ from openai import APIError
 from util import (
     ChatCompletionParameters,
     ImageGenerationParameters,
+    INPUT_IMAGE_TYPE,
+    INPUT_TEXT_TYPE,
+    REASONING_EFFORT_HIGH,
+    REASONING_EFFORT_MEDIUM,
+    ResponseParameters,
     TextToSpeechParameters,
     VideoGenerationParameters,
     chunk_text,
@@ -68,6 +73,142 @@ class TestChatCompletionParameters(unittest.TestCase):
         params_two = ChatCompletionParameters()
         self.assertEqual(params_two.messages, [])
         self.assertIsNot(params_one.messages, params_two.messages)
+
+
+class TestResponseParameters(unittest.TestCase):
+    def test_to_dict_basic(self):
+        """Test basic to_dict output for non-reasoning model."""
+        params = ResponseParameters(
+            model="gpt-5.1",
+            instructions="You are a helpful assistant.",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Hello!"}],
+            frequency_penalty=0.5,
+            presence_penalty=0.3,
+            seed=42,
+            temperature=0.8,
+            top_p=0.9,
+        )
+        result = params.to_dict()
+        self.assertEqual(result["model"], "gpt-5.1")
+        self.assertEqual(result["instructions"], "You are a helpful assistant.")
+        self.assertEqual(result["input"], [{"type": INPUT_TEXT_TYPE, "text": "Hello!"}])
+        self.assertEqual(result["frequency_penalty"], 0.5)
+        self.assertEqual(result["presence_penalty"], 0.3)
+        self.assertEqual(result["seed"], 42)
+        self.assertEqual(result["temperature"], 0.8)
+        self.assertEqual(result["top_p"], 0.9)
+        self.assertNotIn("reasoning", result)
+        self.assertNotIn("previous_response_id", result)
+
+    def test_reasoning_model_behavior(self):
+        """Test that reasoning models use reasoning parameter instead of temperature/top_p."""
+        params = ResponseParameters(
+            model="o1",  # Reasoning model
+            instructions="Test instructions",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            temperature=0.5,  # Should be ignored
+            top_p=0.8,  # Should be ignored
+        )
+        result = params.to_dict()
+        self.assertEqual(result["model"], "o1")
+        self.assertNotIn("temperature", result)
+        self.assertNotIn("top_p", result)
+        self.assertIn("reasoning", result)
+        self.assertEqual(result["reasoning"]["effort"], REASONING_EFFORT_MEDIUM)
+
+    def test_reasoning_model_custom_effort(self):
+        """Test that custom reasoning effort is respected."""
+        params = ResponseParameters(
+            model="o3",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            reasoning={"effort": REASONING_EFFORT_HIGH},
+        )
+        result = params.to_dict()
+        self.assertEqual(result["reasoning"]["effort"], REASONING_EFFORT_HIGH)
+
+    def test_non_reasoning_model_behavior(self):
+        """Test that non-reasoning models use temperature and top_p."""
+        params = ResponseParameters(
+            model="gpt-5",  # Not a reasoning model
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            temperature=0.7,
+            top_p=0.9,
+        )
+        result = params.to_dict()
+        self.assertEqual(result["temperature"], 0.7)
+        self.assertEqual(result["top_p"], 0.9)
+        self.assertNotIn("reasoning", result)
+
+    def test_previous_response_id(self):
+        """Test that previous_response_id is included when set."""
+        params = ResponseParameters(
+            model="gpt-5.1",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Follow-up"}],
+            previous_response_id="resp_abc123",
+        )
+        result = params.to_dict()
+        self.assertEqual(result["previous_response_id"], "resp_abc123")
+
+    def test_input_with_image(self):
+        """Test input with text and image content."""
+        params = ResponseParameters(
+            model="gpt-5.1",
+            input=[
+                {"type": INPUT_TEXT_TYPE, "text": "What's in this image?"},
+                {"type": INPUT_IMAGE_TYPE, "image_url": "https://example.com/image.jpg"},
+            ],
+        )
+        result = params.to_dict()
+        self.assertEqual(len(result["input"]), 2)
+        self.assertEqual(result["input"][0]["type"], "text")
+        self.assertEqual(result["input"][1]["type"], "image_url")
+
+    def test_discord_fields_excluded(self):
+        """Test that Discord-specific fields are not included in to_dict."""
+        params = ResponseParameters(
+            model="gpt-5.1",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            conversation_starter="user123",
+            conversation_id=123456,
+            channel_id=789012,
+            paused=True,
+            response_id_history=["resp_1", "resp_2"],
+        )
+        result = params.to_dict()
+        self.assertNotIn("conversation_starter", result)
+        self.assertNotIn("conversation_id", result)
+        self.assertNotIn("channel_id", result)
+        self.assertNotIn("paused", result)
+        self.assertNotIn("response_id_history", result)
+
+    def test_input_string_format(self):
+        """Test that input can be a simple string."""
+        params = ResponseParameters(
+            model="gpt-5.1",
+            input="Hello, world!",
+        )
+        result = params.to_dict()
+        self.assertEqual(result["input"], "Hello, world!")
+
+    def test_input_list_format(self):
+        """Test that input can be a list of content items for multimodal."""
+        params = ResponseParameters(
+            model="gpt-5.1",
+            input=[
+                {"type": INPUT_TEXT_TYPE, "text": "What's in this?"},
+                {"type": INPUT_IMAGE_TYPE, "image_url": "https://example.com/img.jpg"},
+            ],
+        )
+        result = params.to_dict()
+        self.assertEqual(len(result["input"]), 2)
+
+    def test_response_id_history_default_isolated(self):
+        """Test that response_id_history list is isolated between instances."""
+        params_one = ResponseParameters()
+        params_one.response_id_history.append("resp_123")
+        params_two = ResponseParameters()
+        self.assertEqual(params_two.response_id_history, [])
+        self.assertIsNot(params_one.response_id_history, params_two.response_id_history)
 
 
 class TestImageGenerationParameters(unittest.TestCase):
