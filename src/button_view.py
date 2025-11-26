@@ -49,7 +49,9 @@ class ButtonView(View):
                 conversation.messages.pop()  # Remove the last user message
 
             # For now, get the last user message from the channel history
-            if interaction.channel is None or not hasattr(interaction.channel, "history"):
+            if interaction.channel is None or not hasattr(
+                interaction.channel, "history"
+            ):
                 await interaction.followup.send(
                     "Cannot access channel history.", ephemeral=True
                 )
