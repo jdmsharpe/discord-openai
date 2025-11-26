@@ -23,7 +23,7 @@ class ChatCompletionParameters:
     def __init__(
         self,
         messages: Optional[List[dict]] = None,
-        model: str = "gpt-5.1-chat-latest",
+        model: str = "gpt-5.1",
         persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
