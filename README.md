@@ -21,8 +21,15 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 
 - **Usage:** `/converse prompt:<text>`
 - **What it does:** Opens a thread with the selected GPT model and keeps the whole conversation in context for follow-up replies in the same channel.
-- **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5`.
-- **Model choices:** GPT-5 (standard/mini/nano), GPT-4.1 (standard/mini/nano), `o4-mini`, `o3`, `o3-mini`, `o1`, `o1-mini`, GPT-4o (standard/mini), GPT-4 / GPT-4 Turbo, and GPT-3.5 Turbo.
+- **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5.1`.
+- **Model choices:**
+  - GPT-5.1 (standard/codex/mini)
+  - GPT-5 (standard/mini/nano)
+  - GPT-4.1 (standard/mini/nano)
+  - `o4-mini`, `o3`, `o3-mini`, `o1`, `o1-mini`
+  - GPT-4o (standard/mini)
+  - GPT-4 / GPT-4 Turbo
+  - GPT-3.5 Turbo
 - **Attachments:** Add an image to the initial message and it will be sent to compatible multimodal models.
 - **Advanced tuning:** Frequency penalty, presence penalty, temperature (or nucleus sampling via `top_p`), and `seed` are all optional. Reasoning models ignore custom temperature/`top_p` and fall back to their defaults automatically.
 
@@ -104,8 +111,9 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 ### Running from source
 
 - (Recommended) Create a virtual environment
-- Install the dependencies from `requirements.txt` with `pip install -r requirements.txt` in the root directory
-- Set an environment variable for BOT_TOKEN with your bot's token
-- Set an environment variable for GUILD_IDS with the Discord guild ids (servers) you wish to deploy the bot on
-- Set an environment variable for OPENAI_API_KEY with the OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
-- Run the bot with `python src/bot.py` in the root directory
+- Install the dependencies with `pip install -r requirements.txt`
+- Copy `.env.example` to `.env` and fill in your values:
+  - `BOT_TOKEN`: Your Discord bot token
+  - `GUILD_IDS`: Comma-separated list of Discord server IDs to deploy the bot on
+  - `OPENAI_API_KEY`: Your OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
+- Run the bot with `python src/bot.py`
