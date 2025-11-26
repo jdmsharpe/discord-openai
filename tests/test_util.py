@@ -4,6 +4,7 @@ from util import (
     ChatCompletionParameters,
     ImageGenerationParameters,
     TextToSpeechParameters,
+    VideoGenerationParameters,
     chunk_text,
     extract_urls,
     format_openai_error,
@@ -186,6 +187,57 @@ class TestTextToSpeechParameters(unittest.TestCase):
         )
         self.assertEqual(params.voice, "ash")
         self.assertEqual(params.instructions, "whisper tone")
+
+
+class TestVideoGenerationParameters(unittest.TestCase):
+    def test_to_dict(self):
+        params = VideoGenerationParameters(
+            prompt="A cat playing piano",
+            model="sora-2",
+            size="1280x720",
+            seconds=8,
+        )
+        result = params.to_dict()
+        self.assertEqual(result["prompt"], "A cat playing piano")
+        self.assertEqual(result["model"], "sora-2")
+        self.assertEqual(result["size"], "1280x720")
+        self.assertEqual(result["seconds"], 8)
+
+    def test_defaults(self):
+        params = VideoGenerationParameters(prompt="Test video")
+        result = params.to_dict()
+        self.assertEqual(result["prompt"], "Test video")
+        self.assertEqual(result["model"], "sora-2")
+        self.assertEqual(result["size"], "1280x720")
+        self.assertEqual(result["seconds"], 8)
+
+    def test_sora_pro_model(self):
+        params = VideoGenerationParameters(
+            prompt="High quality video",
+            model="sora-2-pro",
+            size="1920x1080",
+            seconds=20,
+        )
+        result = params.to_dict()
+        self.assertEqual(result["model"], "sora-2-pro")
+        self.assertEqual(result["size"], "1920x1080")
+        self.assertEqual(result["seconds"], 20)
+
+    def test_portrait_size(self):
+        params = VideoGenerationParameters(
+            prompt="Portrait video",
+            size="1080x1920",
+        )
+        result = params.to_dict()
+        self.assertEqual(result["size"], "1080x1920")
+
+    def test_square_size(self):
+        params = VideoGenerationParameters(
+            prompt="Square video",
+            size="480x480",
+        )
+        result = params.to_dict()
+        self.assertEqual(result["size"], "480x480")
 
 
 class TestChunkText(unittest.TestCase):

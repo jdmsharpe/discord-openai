@@ -136,6 +136,31 @@ class ImageGenerationParameters:
         return payload
 
 
+class VideoGenerationParameters:
+    """Parameters for OpenAI Video (Sora) API."""
+
+    def __init__(
+        self,
+        prompt: str = "",
+        model: str = "sora-2",
+        size: str = "1280x720",
+        seconds: int = 8,
+    ):
+        self.prompt = prompt
+        self.model = model
+        self.size = size
+        self.seconds = seconds
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API calls."""
+        return {
+            "prompt": self.prompt,
+            "model": self.model,
+            "size": self.size,
+            "seconds": self.seconds,
+        }
+
+
 class TextToSpeechParameters:
     def __init__(
         self,

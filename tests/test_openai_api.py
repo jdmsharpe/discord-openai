@@ -22,6 +22,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.bot.generate_image = AsyncMock()
         self.bot.text_to_speech = AsyncMock()
         self.bot.speech_to_text = AsyncMock()
+        self.bot.generate_video = AsyncMock()
 
         # Setting up specific return values for the mock calls
         mock_chat_embed = MagicMock(Embed)
@@ -39,6 +40,10 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         mock_speech_to_text_embed = MagicMock(Embed)
         mock_speech_to_text_embed.description = "Hello, World!"
         self.bot.speech_to_text.return_value = mock_speech_to_text_embed
+
+        mock_generate_video_embed = MagicMock(Embed)
+        mock_generate_video_embed.file = "video.mp4"
+        self.bot.generate_video.return_value = mock_generate_video_embed
 
     async def test_on_ready(self):
         await self.bot.cogs["OpenAIAPI"].on_ready()
@@ -59,6 +64,10 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     async def test_speech_to_text_command(self):
         embed = await self.bot.speech_to_text("audio.mp3")
         self.assertEqual("Hello, World!", embed.description)
+
+    async def test_generate_video_command(self):
+        embed = await self.bot.generate_video("A cat playing piano")
+        self.assertEqual("video.mp4", embed.file)
 
 
 if __name__ == "__main__":

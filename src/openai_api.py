@@ -22,6 +22,7 @@ from util import (
     ImageGenerationParameters,
     REASONING_MODELS,
     TextToSpeechParameters,
+    VideoGenerationParameters,
 )
 from config.auth import GUILD_IDS, OPENAI_API_KEY
 
@@ -1017,3 +1018,146 @@ class OpenAIAPI(commands.Cog):
         finally:
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
+
+    @slash_command(
+        name="generate_video",
+        description="Generates a video based on a prompt using Sora.",
+        guild_ids=GUILD_IDS,
+    )
+    @option(
+        "prompt",
+        description="Prompt for video generation (describe shot type, subject, action, setting, lighting).",
+        required=True,
+        type=str,
+    )
+    @option(
+        "model",
+        description="Choose Sora model for video generation. (default: Sora 2)",
+        required=False,
+        type=str,
+        choices=[
+            OptionChoice(name="Sora 2 (Fast)", value="sora-2"),
+            OptionChoice(name="Sora 2 Pro (High Quality)", value="sora-2-pro"),
+        ],
+    )
+    @option(
+        "size",
+        description="Resolution of the generated video. (default: 1280x720)",
+        required=False,
+        type=str,
+        choices=[
+            OptionChoice(name="720p Landscape (1280x720)", value="1280x720"),
+            OptionChoice(name="1080p Landscape (1920x1080)", value="1920x1080"),
+            OptionChoice(name="1080p Portrait (1080x1920)", value="1080x1920"),
+            OptionChoice(name="Square (480x480)", value="480x480"),
+        ],
+    )
+    @option(
+        "seconds",
+        description="Duration of the video in seconds. (default: 8)",
+        required=False,
+        type=int,
+        choices=[
+            OptionChoice(name="5 seconds", value=5),
+            OptionChoice(name="8 seconds", value=8),
+            OptionChoice(name="10 seconds", value=10),
+            OptionChoice(name="15 seconds", value=15),
+            OptionChoice(name="20 seconds", value=20),
+        ],
+    )
+    async def generate_video(
+        self,
+        ctx: ApplicationContext,
+        prompt: str,
+        model: str = "sora-2",
+        size: str = "1280x720",
+        seconds: int = 8,
+    ):
+        """
+        Generates a video from a prompt using OpenAI's Sora model.
+
+        Args:
+            prompt: A text description of the desired video. For best results, describe
+                shot type, subject, action, setting, and lighting.
+            model: The Sora model to use. 'sora-2' is faster for iteration,
+                'sora-2-pro' produces higher quality output.
+            size: The resolution of the generated video.
+            seconds: The duration of the video in seconds (5, 8, 10, 15, or 20).
+        """
+        await ctx.defer()
+
+        video_params = VideoGenerationParameters(
+            prompt=prompt,
+            model=model,
+            size=size,
+            seconds=seconds,
+        )
+
+        video_file_path = None
+        try:
+            # Start the video generation job
+            self.logger.info(f"Starting video generation with model {model}")
+            video = await self.openai.videos.create(**video_params.to_dict())
+
+            self.logger.info(f"Video job started: {video.id}, status: {video.status}")
+
+            # Poll for completion
+            progress = video.progress if hasattr(video, "progress") and video.progress else 0
+            poll_count = 0
+            max_polls = 60  # 10 minutes with 10-second intervals
+
+            while video.status in ("queued", "in_progress"):
+                if poll_count >= max_polls:
+                    raise Exception("Video generation timed out after 10 minutes")
+
+                await asyncio.sleep(10)
+                video = await self.openai.videos.retrieve(video.id)
+                progress = video.progress if hasattr(video, "progress") and video.progress else 0
+                poll_count += 1
+                self.logger.debug(
+                    f"Poll {poll_count}: status={video.status}, progress={progress}%"
+                )
+
+            if video.status == "failed":
+                raise Exception("Video generation failed. Please try a different prompt.")
+
+            if video.status != "completed":
+                raise Exception(f"Unexpected video status: {video.status}")
+
+            self.logger.info(f"Video generation completed: {video.id}")
+
+            # Download the video
+            content = await self.openai.videos.download_content(video.id)
+            video_bytes = await content.aread()
+
+            video_file_path = Path(__file__).parent / f"video_{video.id}.mp4"
+            video_file_path.write_bytes(video_bytes)
+
+            # Build response embed
+            description = f"**Prompt:** {video_params.prompt}\n"
+            description += f"**Model:** {video_params.model}\n"
+            description += f"**Size:** {video_params.size}\n"
+            description += f"**Duration:** {video_params.seconds} seconds\n"
+
+            embed = Embed(
+                title="Video Generation",
+                description=description,
+                color=Colour.blue(),
+            )
+
+            await ctx.send_followup(embed=embed, file=File(video_file_path))
+            self.logger.info("Successfully sent generated video")
+
+        except Exception as e:
+            error_message = format_openai_error(e)
+            self.logger.error(f"Video generation failed: {error_message}", exc_info=True)
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error",
+                    description=error_message,
+                    color=Colour.red(),
+                )
+            )
+        finally:
+            if video_file_path and video_file_path.exists():
+                video_file_path.unlink(missing_ok=True)

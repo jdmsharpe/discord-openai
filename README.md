@@ -13,6 +13,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 - **Image Generation:** Create images from text prompts with `/generate_image` using GPT-4 Image (`gpt-image-1`) or DALL-E 3 / DALL-E 2, with controls for quality, aspect ratio, and style.
 - **Text-to-Speech:** Convert text into lifelike audio using `/text_to_speech`, with customizable voice, audio format, and speed.
 - **Speech-to-Text:** Transform audio attachments into text with `/speech_to_text` and pick Whisper or GPT-4o transcription models, plus transcription or translation into English.
+- **Video Generation:** Create videos from text prompts with `/generate_video` using OpenAI's Sora models, with controls for resolution and duration.
 - **Interactive UI:** Incorporates button-based controls and real-time feedback.
 
 ## Commands
@@ -55,6 +56,19 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 - **Model choices:** `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1`.
 - **Actions:** Switch between verbatim `transcription` (default) or English `translation`.
 - **Output:** Results are streamed back in an embed, and long responses are automatically chunked to fit Discord limits.
+
+### `/generate_video`
+
+- **Usage:** `/generate_video prompt:<text>`
+- **What it does:** Generates videos from text prompts using OpenAI's Sora models. Video generation is asynchronous and can take several minutes.
+- **Defaults:** Uses `sora-2` model, 1280x720 resolution, and 8 seconds duration.
+- **Model choices:**
+  - `sora-2` (Fast) - Ideal for quick iteration and experimentation
+  - `sora-2-pro` (High Quality) - Best for production-quality output
+- **Size options:** 720p landscape (1280x720), 1080p landscape (1920x1080), 1080p portrait (1080x1920), or square (480x480).
+- **Duration:** 5, 8, 10, 15, or 20 seconds.
+- **Prompting tips:** For best results, describe shot type, subject, action, setting, and lighting (e.g., "Wide shot of a child flying a red kite in a grassy park, golden hour sunlight, camera slowly pans upward").
+- **Restrictions:** Content must be suitable for all audiences. Copyrighted characters, copyrighted music, and real people (including public figures) cannot be generated.
 
 ## UI
 
