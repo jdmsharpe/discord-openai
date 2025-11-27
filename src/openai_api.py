@@ -12,7 +12,7 @@ from discord import (
     File,
 )
 from discord.ext import commands
-from discord.commands import command, option, OptionChoice, slash_command
+from discord.commands import command, option, OptionChoice, SlashCommandGroup
 from pathlib import Path
 from typing import Optional
 from util import (
@@ -59,6 +59,8 @@ def append_response_embeds(embeds, response_text):
 
 
 class OpenAIAPI(commands.Cog):
+    openai = SlashCommandGroup("openai", "OpenAI commands", guild_ids=GUILD_IDS)
+
     def __init__(self, bot):
         """
         Initialize the OpenAIAPI class.
@@ -72,7 +74,7 @@ class OpenAIAPI(commands.Cog):
         )
         self.logger = logging.getLogger(__name__)
         self.bot = bot
-        self.openai = AsyncOpenAI(api_key=OPENAI_API_KEY)
+        self.openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
         # Dictionary to store conversation histories for each converse interaction
         self.conversation_histories = {}
@@ -138,7 +140,7 @@ class OpenAIAPI(commands.Cog):
 
             # API call using Responses API
             self.logger.debug("Making API call to OpenAI Responses API.")
-            response = await self.openai.responses.create(**api_params)
+            response = await self.openai_client.responses.create(**api_params)
             response_text = response.output_text if response.output_text else "No response."
             self.logger.debug(f"Received response from OpenAI: {response_text}")
 
@@ -257,10 +259,9 @@ class OpenAIAPI(commands.Cog):
         """
         self.logger.error(f"Error in event {event}: {args} {kwargs}", exc_info=True)
 
-    @slash_command(
+    @openai.command(
         name="check_permissions",
         description="Check if bot has necessary permissions in this channel",
-        guild_ids=GUILD_IDS,
     )
     async def check_permissions(self, ctx: ApplicationContext):
         permissions = ctx.channel.permissions_for(ctx.guild.me)
@@ -269,10 +270,9 @@ class OpenAIAPI(commands.Cog):
         else:
             await ctx.respond("Bot is missing necessary permissions in this channel.")
 
-    @slash_command(
+    @openai.command(
         name="converse",
         description="Starts a conversation with a model.",
-        guild_ids=GUILD_IDS,
     )
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
@@ -459,7 +459,7 @@ class OpenAIAPI(commands.Cog):
             )
 
             # API call using Responses API
-            response = await self.openai.responses.create(**params.to_dict())
+            response = await self.openai_client.responses.create(**params.to_dict())
             response_text = response.output_text if response.output_text else "No response."
 
             # Store response ID for conversation chaining
@@ -506,10 +506,9 @@ class OpenAIAPI(commands.Cog):
                 )
             )
 
-    @slash_command(
-        name="generate_image",
+    @openai.command(
+        name="image",
         description="Generates image from a prompt.",
-        guild_ids=GUILD_IDS,
     )
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
@@ -686,7 +685,7 @@ class OpenAIAPI(commands.Cog):
             return
 
         try:
-            response = await self.openai.images.generate(**image_params.to_dict())
+            response = await self.openai_client.images.generate(**image_params.to_dict())
 
             # Extract image data from response
             image_urls = []
@@ -761,10 +760,9 @@ class OpenAIAPI(commands.Cog):
                 embed=Embed(title="Error", description=description, color=Colour.red())
             )
 
-    @slash_command(
-        name="text_to_speech",
+    @openai.command(
+        name="tts",
         description="Generates lifelike audio from the input text.",
-        guild_ids=GUILD_IDS,
     )
     @option(
         "input",
@@ -864,7 +862,7 @@ class OpenAIAPI(commands.Cog):
         )
         speech_file_path = None
         try:
-            response = await self.openai.audio.speech.create(**params.to_dict())
+            response = await self.openai_client.audio.speech.create(**params.to_dict())
             speech_file_path = (
                 Path(__file__).parent / f"{voice}_speech.{response_format}"
             )
@@ -895,10 +893,9 @@ class OpenAIAPI(commands.Cog):
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
 
-    @slash_command(
-        name="speech_to_text",
+    @openai.command(
+        name="stt",
         description="Generates text from the input audio.",
-        guild_ids=GUILD_IDS,
     )
     @option(
         "attachment",
@@ -972,11 +969,11 @@ class OpenAIAPI(commands.Cog):
 
             with open(speech_file_path, "rb") as speech_file:
                 if action == "transcription":
-                    response = await self.openai.audio.transcriptions.create(
+                    response = await self.openai_client.audio.transcriptions.create(
                         model=model, file=speech_file
                     )
                 else:  # translation
-                    response = await self.openai.audio.translations.create(
+                    response = await self.openai_client.audio.translations.create(
                         model=model, file=speech_file
                     )
 
@@ -1005,10 +1002,9 @@ class OpenAIAPI(commands.Cog):
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
 
-    @slash_command(
-        name="generate_video",
+    @openai.command(
+        name="video",
         description="Generates a video based on a prompt using Sora.",
-        guild_ids=GUILD_IDS,
     )
     @option(
         "prompt",
@@ -1081,7 +1077,7 @@ class OpenAIAPI(commands.Cog):
         try:
             # Start the video generation job
             self.logger.info(f"Starting video generation with model {model}")
-            video = await self.openai.videos.create(**video_params.to_dict())
+            video = await self.openai_client.videos.create(**video_params.to_dict())
 
             self.logger.info(f"Video job started: {video.id}, status: {video.status}")
 
@@ -1095,7 +1091,7 @@ class OpenAIAPI(commands.Cog):
                     raise Exception("Video generation timed out after 10 minutes")
 
                 await asyncio.sleep(10)
-                video = await self.openai.videos.retrieve(video.id)
+                video = await self.openai_client.videos.retrieve(video.id)
                 progress = video.progress if hasattr(video, "progress") and video.progress else 0
                 poll_count += 1
                 self.logger.debug(
@@ -1111,7 +1107,7 @@ class OpenAIAPI(commands.Cog):
             self.logger.info(f"Video generation completed: {video.id}")
 
             # Download the video
-            content = await self.openai.videos.download_content(video.id)
+            content = await self.openai_client.videos.download_content(video.id)
             video_bytes = await content.aread()
 
             video_file_path = Path(__file__).parent / f"video_{video.id}.mp4"

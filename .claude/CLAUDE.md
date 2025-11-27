@@ -29,7 +29,7 @@ discord-chatgpt/
 
 ### Parameter Classes (`src/util.py`)
 
-- **ResponseParameters**: Parameters for the Responses API (used by `/converse`)
+- **ResponseParameters**: Parameters for the Responses API (used by `/openai converse`)
   - Supports `previous_response_id` for conversation chaining
   - Handles reasoning models (o-series) with `reasoning` parameter
   - Discord-specific fields for conversation management
@@ -50,13 +50,16 @@ discord-chatgpt/
 
 ### Commands (`src/openai_api.py`)
 
+All commands are grouped under the `/openai` slash command group using Pycord's `SlashCommandGroup`.
+
 | Command | Description | API |
 |---------|-------------|-----|
-| `/converse` | Multi-turn conversations | Responses API |
-| `/generate_image` | Image generation | Images API |
-| `/generate_video` | Video generation | Videos API (Sora) |
-| `/text_to_speech` | Text to audio | Audio Speech API |
-| `/speech_to_text` | Audio to text | Audio Transcriptions API |
+| `/openai converse` | Multi-turn conversations | Responses API |
+| `/openai image` | Image generation | Images API |
+| `/openai video` | Video generation | Videos API (Sora) |
+| `/openai tts` | Text to audio | Audio Speech API |
+| `/openai stt` | Audio to text | Audio Transcriptions API |
+| `/openai check_permissions` | Check bot permissions | N/A |
 
 ### Conversation Management
 
@@ -67,28 +70,34 @@ discord-chatgpt/
 
 ## Recent Changes (November 2025)
 
-### Video Generation (`/generate_video`)
+### Video Generation (`/openai video`)
+
 Added support for OpenAI's Sora video generation:
+
 - Models: `sora-2` (fast) and `sora-2-pro` (high quality)
 - Sizes: 1280x720, 720x1280, 1792x1024, 1024x1792
 - Durations: 4, 8, or 12 seconds
 - Async polling with 10-minute timeout
 
 ### Chat Completions → Responses API Migration
-Migrated `/converse` from Chat Completions API to the new Responses API:
+
+Migrated `/openai converse` from Chat Completions API to the new Responses API:
 
 **Before (Chat Completions):**
+
 - Stored full message history in `messages` array
 - Sent entire conversation with each API call
 - Manual message management
 
 **After (Responses API):**
+
 - Uses `previous_response_id` for conversation chaining
 - API manages context automatically
 - Simpler state management - just store response IDs
 - Native `reasoning` parameter for o-series models
 
 **Key changes:**
+
 - `ChatCompletionParameters` → `ResponseParameters`
 - `chat.completions.create()` → `responses.create()`
 - `response.choices[0].message.content` → `response.output_text`
@@ -111,7 +120,8 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 
 ## Models Supported
 
-### Conversational Models (via `/converse`)
+### Conversational Models (via `/openai converse`)
+
 - GPT-5.1, GPT-5.1 Mini, GPT-5.1 Nano
 - GPT-5, GPT-5 Mini, GPT-5 Nano
 - GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano
@@ -121,21 +131,25 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 - GPT-3.5 Turbo
 
 ### Image Generation Models
+
 - `gpt-image-1` (GPT-4 Image)
 - `gpt-image-1-mini`
 - `dall-e-3`
 - `dall-e-2`
 
 ### Video Generation Models
+
 - `sora-2` (fast)
 - `sora-2-pro` (high quality)
 
 ### TTS Models
+
 - `gpt-4o-mini-tts` (supports rich voices)
 - `tts-1`
 - `tts-1-hd`
 
 ### STT Models
+
 - `gpt-4o-transcribe`
 - `gpt-4o-mini-transcribe`
 - `whisper-1`
