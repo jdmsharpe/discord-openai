@@ -6,7 +6,7 @@ This is a Discord bot built on Pycord 2.0 that integrates multiple OpenAI APIs t
 
 ## Project Structure
 
-```
+```text
 discord-chatgpt/
 ├── src/
 │   ├── bot.py              # Main bot entry point

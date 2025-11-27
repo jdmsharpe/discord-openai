@@ -748,6 +748,9 @@ class OpenAIAPI(commands.Cog):
                     description=description,
                     color=Colour.blue(),
                 )
+                # Embed the first image inside the embed container
+                if image_files:
+                    embed.set_image(url=f"attachment://{image_files[0].filename}")
                 await ctx.send_followup(embed=embed, files=image_files)
                 self.logger.info(
                     f"Successfully generated and sent {len(image_files)} image(s)"
@@ -878,7 +881,7 @@ class OpenAIAPI(commands.Cog):
             )
 
             embed = Embed(
-                title="Text-to-Speech", description=description, color=Colour.blue()
+                title="Text-to-Speech Generation", description=description, color=Colour.blue()
             )
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
         except Exception as e:
