@@ -977,7 +977,8 @@ class OpenAIAPI(commands.Cog):
                         response = await self.openai_client.audio.transcriptions.create(
                             model=model,
                             file=speech_file,
-                            chunking_strategy={"type": "auto"},
+                            chunking_strategy="auto",
+                            response_format="json",
                         )
                     else:
                         response = await self.openai_client.audio.transcriptions.create(
