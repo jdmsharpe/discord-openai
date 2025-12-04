@@ -289,7 +289,6 @@ class OpenAIAPI(commands.Cog):
         choices=[
             OptionChoice(name="GPT-5.1", value="gpt-5.1"),
             OptionChoice(name="GPT-5.1 Mini", value="gpt-5.1-mini"),
-            OptionChoice(name="GPT-5.1 Nano", value="gpt-5.1-nano"),
             OptionChoice(name="GPT-5", value="gpt-5"),
             OptionChoice(name="GPT-5 Mini", value="gpt-5-mini"),
             OptionChoice(name="GPT-5 Nano", value="gpt-5-nano"),
@@ -779,9 +778,9 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=str,
         choices=[
+            OptionChoice(name="GPT-4o Mini TTS", value="gpt-4o-mini-tts"),
             OptionChoice(name="TTS-1", value="tts-1"),
             OptionChoice(name="TTS-1 HD", value="tts-1-hd"),
-            OptionChoice(name="GPT-4o Mini TTS", value="gpt-4o-mini-tts"),
         ],
     )
     @option(
@@ -912,9 +911,10 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=str,
         choices=[
-            OptionChoice(name="Whisper", value="whisper-1"),
             OptionChoice(name="GPT-4o Transcribe", value="gpt-4o-transcribe"),
             OptionChoice(name="GPT-4o Mini Transcribe", value="gpt-4o-mini-transcribe"),
+            OptionChoice(name="GPT-4o Transcribe Diarize", value="gpt-4o-transcribe-diarize"),
+            OptionChoice(name="Whisper", value="whisper-1"),
         ],
     )
     @option(

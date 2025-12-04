@@ -55,7 +55,7 @@ All commands are grouped under the `/openai` slash command group.
 
 - **Usage:** `/openai stt attachment:<audio>`
 - **What it does:** Transcribes or translates uploaded audio that is <=25 MB (mp3, mp4, mpeg, mpga, m4a, wav, webm).
-- **Model choices:** `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1`.
+- **Model choices:** `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `gpt-4o-transcribe-diarize`, or `whisper-1`.
 - **Actions:** Switch between verbatim `transcription` (default) or English `translation`.
 - **Output:** Results are streamed back in an embed, and long responses are automatically chunked to fit Discord limits.
 
