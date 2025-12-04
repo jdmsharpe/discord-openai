@@ -972,9 +972,17 @@ class OpenAIAPI(commands.Cog):
 
             with open(speech_file_path, "rb") as speech_file:
                 if action == "transcription":
-                    response = await self.openai_client.audio.transcriptions.create(
-                        model=model, file=speech_file
-                    )
+                    # Diarization models require chunking_strategy
+                    if model == "gpt-4o-transcribe-diarize":
+                        response = await self.openai_client.audio.transcriptions.create(
+                            model=model,
+                            file=speech_file,
+                            chunking_strategy={"type": "auto"},
+                        )
+                    else:
+                        response = await self.openai_client.audio.transcriptions.create(
+                            model=model, file=speech_file
+                        )
                 else:  # translation
                     response = await self.openai_client.audio.translations.create(
                         model=model, file=speech_file
