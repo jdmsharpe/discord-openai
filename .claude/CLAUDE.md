@@ -122,6 +122,7 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 
 ### Conversational Models (via `/openai converse`)
 
+- GPT-5.2 (default), GPT-5.2 Pro
 - GPT-5.1, GPT-5.1 Mini
 - GPT-5, GPT-5 Mini, GPT-5 Nano
 - GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano
