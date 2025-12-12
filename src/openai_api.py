@@ -283,10 +283,12 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models. (default: GPT-5.1)",
+        description="Choose from the following GPT models. (default: GPT-5.2)",
         required=False,
         type=str,
         choices=[
+            OptionChoice(name="GPT-5.2", value="gpt-5.2"),
+            OptionChoice(name="GPT-5.2 Pro", value="gpt-5.2-pro"),
             OptionChoice(name="GPT-5.1", value="gpt-5.1"),
             OptionChoice(name="GPT-5.1 Mini", value="gpt-5.1-mini"),
             OptionChoice(name="GPT-5", value="gpt-5"),
@@ -348,7 +350,7 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-5.1",
+        model: str = "gpt-5.2",
         attachment: Optional[Attachment] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
