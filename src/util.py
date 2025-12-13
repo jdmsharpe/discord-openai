@@ -299,6 +299,24 @@ def chunk_text(text, size=CHUNK_TEXT_SIZE):
     return list(text[i : i + size] for i in range(0, len(text), size))
 
 
+def truncate_text(text, max_length, suffix="..."):
+    """Truncate text to max_length, adding suffix if truncated.
+
+    Args:
+        text: The text to truncate
+        max_length: Maximum length before truncation
+        suffix: String to append when truncated (default "...")
+
+    Returns:
+        Original text if under max_length, otherwise truncated with suffix
+    """
+    if text is None:
+        return None
+    if len(text) <= max_length:
+        return text
+    return text[:max_length] + suffix
+
+
 def extract_urls(text):
     url_pattern = (
         r"http[s]?://(?:[a-zA-Z0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"

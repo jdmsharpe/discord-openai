@@ -25,6 +25,7 @@ from util import (
     REASONING_MODELS,
     ResponseParameters,
     TextToSpeechParameters,
+    truncate_text,
     VideoGenerationParameters,
 )
 from config.auth import GUILD_IDS, OPENAI_API_KEY
@@ -431,8 +432,9 @@ class OpenAIAPI(commands.Cog):
 
         try:
             # Update initial response description based on input parameters
+            # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
             description = ""
-            description += f"**Prompt:** {prompt}\n"
+            description += f"**Prompt:** {truncate_text(prompt, 2000)}\n"
             description += f"**Model:** {params.model}\n"
             description += f"**Persona:** {params.instructions}\n"
             description += (
@@ -733,8 +735,9 @@ class OpenAIAPI(commands.Cog):
                 if len(image_files) <= 0:
                     raise Exception("No images were generated.")
 
+                # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
                 description = ""
-                description += f"**Prompt:** {image_params.prompt}\n"
+                description += f"**Prompt:** {truncate_text(image_params.prompt, 2000)}\n"
                 description += f"**Model:** {image_params.model}\n"
                 description += f"**Size:** {image_params.size}\n"
                 if image_params.n > 1:
@@ -872,11 +875,12 @@ class OpenAIAPI(commands.Cog):
             )
             response.write_to_file(speech_file_path)
 
+            # Truncate text and instructions to avoid exceeding Discord's 4096 char embed limit
             description = (
-                f"**Text:** {params.input}\n"
+                f"**Text:** {truncate_text(params.input, 1500)}\n"
                 f"**Model:** {params.model}\n"
                 f"**Voice:** {params.voice}\n"
-                + (f"**Instructions:** {instructions}\n" if params.instructions else "")
+                + (f"**Instructions:** {truncate_text(instructions, 500)}\n" if params.instructions else "")
                 + f"**Response Format:** {response_format}\n"
                 + f"**Speed:** {params.speed}\n"
             )
@@ -991,14 +995,12 @@ class OpenAIAPI(commands.Cog):
                         model=model, file=speech_file
                     )
 
+            # Truncate transcription to avoid exceeding Discord's 4096 char embed limit
+            transcription_text = truncate_text(getattr(response, "text", None), 3500)
             description = (
                 f"**Model:** {model}\n"
                 + f"**Action:** {action}\n"
-                + (
-                    f"**Output:** {response.text}\n"
-                    if getattr(response, "text", None)
-                    else ""
-                )
+                + (f"**Output:** {transcription_text}\n" if transcription_text else "")
             )
             embed = Embed(
                 title="Speech-to-Text", description=description, color=Colour.blue()
@@ -1128,7 +1130,8 @@ class OpenAIAPI(commands.Cog):
             video_file_path.write_bytes(video_bytes)
 
             # Build response embed
-            description = f"**Prompt:** {video_params.prompt}\n"
+            # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
+            description = f"**Prompt:** {truncate_text(video_params.prompt, 2000)}\n"
             description += f"**Model:** {video_params.model}\n"
             description += f"**Size:** {video_params.size}\n"
             description += f"**Duration:** {video_params.seconds} seconds\n"

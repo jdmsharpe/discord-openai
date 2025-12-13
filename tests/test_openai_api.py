@@ -1,8 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import unittest
 import config.auth  # imported for OpenAIAPI class dependency
-from openai_api import OpenAIAPI
-from discord import Bot, Embed, Intents
+from openai_api import OpenAIAPI, append_response_embeds
+from discord import Bot, Colour, Embed, Intents
 
 
 class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
@@ -69,6 +69,77 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     async def test_generate_video_command(self):
         embed = await self.bot.generate_video("A cat playing piano")
         self.assertEqual("video.mp4", embed.file)
+
+
+class TestAppendResponseEmbeds(unittest.TestCase):
+    def test_append_short_response(self):
+        """Short responses should be added as a single embed."""
+        embeds = []
+        append_response_embeds(embeds, "Hello, world!")
+        self.assertEqual(len(embeds), 1)
+        self.assertEqual(embeds[0].title, "Response")
+        self.assertEqual(embeds[0].description, "Hello, world!")
+
+    def test_append_to_existing_embeds(self):
+        """Response should be appended to existing embeds list."""
+        embeds = [Embed(title="Prompt", description="Test prompt", color=Colour.green())]
+        append_response_embeds(embeds, "Response text")
+        self.assertEqual(len(embeds), 2)
+        self.assertEqual(embeds[1].title, "Response")
+
+    def test_chunk_long_response(self):
+        """Responses over 3500 chars should be chunked into multiple embeds."""
+        embeds = []
+        long_response = "x" * 4000  # Over 3500 char chunk size
+        append_response_embeds(embeds, long_response)
+        self.assertEqual(len(embeds), 2)
+        self.assertEqual(embeds[0].title, "Response")
+        self.assertEqual(embeds[1].title, "Response (Part 2)")
+
+    def test_respects_total_limit(self):
+        """Response should be truncated to respect 6000 char total limit."""
+        # Create existing embed that uses some of the 6000 char budget
+        existing_embed = Embed(title="Prompt", description="x" * 3000)
+        embeds = [existing_embed]
+        # Try to add a response that would exceed 6000 total
+        long_response = "y" * 5000
+        append_response_embeds(embeds, long_response)
+        # Calculate total chars across all embeds
+        total_chars = sum(
+            len(embed.description or "") + len(embed.title or "")
+            for embed in embeds
+        )
+        # Should be under 6000 (with some buffer)
+        self.assertLess(total_chars, 6100)
+
+    def test_truncation_message(self):
+        """Truncated responses should include truncation notice."""
+        existing_embed = Embed(title="Prompt", description="x" * 4000)
+        embeds = [existing_embed]
+        long_response = "y" * 5000
+        append_response_embeds(embeds, long_response)
+        # Check if any embed contains the truncation message
+        all_descriptions = " ".join(embed.description or "" for embed in embeds)
+        self.assertIn("truncated", all_descriptions.lower())
+
+    def test_empty_response(self):
+        """Empty response should still create an embed."""
+        embeds = []
+        append_response_embeds(embeds, "")
+        self.assertEqual(len(embeds), 1)
+        self.assertEqual(embeds[0].description, "")
+
+    def test_multiple_chunks_numbered(self):
+        """Multiple chunks should be numbered correctly."""
+        embeds = []
+        # Create response that needs 3 chunks (3500 * 3 = 10500 chars)
+        # But limited by 6000 total, so will be truncated first
+        long_response = "z" * 7000
+        append_response_embeds(embeds, long_response)
+        # First embed should be "Response", subsequent should be "Response (Part N)"
+        self.assertEqual(embeds[0].title, "Response")
+        if len(embeds) > 1:
+            self.assertIn("Part", embeds[1].title)
 
 
 if __name__ == "__main__":

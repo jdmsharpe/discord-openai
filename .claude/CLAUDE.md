@@ -68,6 +68,33 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 - Pause/resume functionality via button controls
 - Automatic conversation state cleanup on stop
 
+### Discord Embed Limits
+
+Discord enforces strict limits on embed content. The bot handles these automatically:
+
+| Limit | Value |
+|-------|-------|
+| Embed description | 4096 chars |
+| Total embed content | 6000 chars |
+
+**Truncation strategy by command:**
+
+| Command | Field | Limit | Reason |
+|---------|-------|-------|--------|
+| converse | user prompt | 2000 chars | Leave room for metadata |
+| converse | model response | 3500 char chunks | Via `append_response_embeds()` |
+| image | user prompt | 2000 chars | Leave room for metadata |
+| tts | input text | 1500 chars | Leave room for instructions |
+| tts | instructions | 500 chars | Secondary field |
+| video | user prompt | 2000 chars | Leave room for metadata |
+| stt | transcription | 3500 chars | Primary output field |
+
+**Key functions:**
+
+- `append_response_embeds()` in `openai_api.py` - Chunks model responses and enforces 6000 char total limit
+- `truncate_text()` in `util.py` - Truncates text with suffix (e.g., `truncate_text(prompt, 2000)` → "text...")
+- `chunk_text()` in `util.py` - Splits text into 3500 char segments (configurable via `CHUNK_TEXT_SIZE`)
+
 ## Recent Changes (November 2025)
 
 ### Video Generation (`/openai video`)
