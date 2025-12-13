@@ -431,8 +431,10 @@ class OpenAIAPI(commands.Cog):
 
         try:
             # Update initial response description based on input parameters
+            # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
+            truncated_prompt = prompt[:2000] + "..." if len(prompt) > 2000 else prompt
             description = ""
-            description += f"**Prompt:** {prompt}\n"
+            description += f"**Prompt:** {truncated_prompt}\n"
             description += f"**Model:** {params.model}\n"
             description += f"**Persona:** {params.instructions}\n"
             description += (
@@ -733,8 +735,14 @@ class OpenAIAPI(commands.Cog):
                 if len(image_files) <= 0:
                     raise Exception("No images were generated.")
 
+                # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
+                truncated_prompt = (
+                    image_params.prompt[:2000] + "..."
+                    if len(image_params.prompt) > 2000
+                    else image_params.prompt
+                )
                 description = ""
-                description += f"**Prompt:** {image_params.prompt}\n"
+                description += f"**Prompt:** {truncated_prompt}\n"
                 description += f"**Model:** {image_params.model}\n"
                 description += f"**Size:** {image_params.size}\n"
                 if image_params.n > 1:
@@ -872,11 +880,16 @@ class OpenAIAPI(commands.Cog):
             )
             response.write_to_file(speech_file_path)
 
+            # Truncate text and instructions to avoid exceeding Discord's 4096 char embed limit
+            truncated_text = params.input[:1500] + "..." if len(params.input) > 1500 else params.input
+            truncated_instructions = (
+                instructions[:500] + "..." if instructions and len(instructions) > 500 else instructions
+            )
             description = (
-                f"**Text:** {params.input}\n"
+                f"**Text:** {truncated_text}\n"
                 f"**Model:** {params.model}\n"
                 f"**Voice:** {params.voice}\n"
-                + (f"**Instructions:** {instructions}\n" if params.instructions else "")
+                + (f"**Instructions:** {truncated_instructions}\n" if params.instructions else "")
                 + f"**Response Format:** {response_format}\n"
                 + f"**Speed:** {params.speed}\n"
             )
@@ -991,14 +1004,20 @@ class OpenAIAPI(commands.Cog):
                         model=model, file=speech_file
                     )
 
+            # Truncate transcription to avoid exceeding Discord's 4096 char embed limit
+            transcription_text = getattr(response, "text", None)
+            if transcription_text:
+                truncated_output = (
+                    transcription_text[:3500] + "..."
+                    if len(transcription_text) > 3500
+                    else transcription_text
+                )
+            else:
+                truncated_output = None
             description = (
                 f"**Model:** {model}\n"
                 + f"**Action:** {action}\n"
-                + (
-                    f"**Output:** {response.text}\n"
-                    if getattr(response, "text", None)
-                    else ""
-                )
+                + (f"**Output:** {truncated_output}\n" if truncated_output else "")
             )
             embed = Embed(
                 title="Speech-to-Text", description=description, color=Colour.blue()
@@ -1128,7 +1147,13 @@ class OpenAIAPI(commands.Cog):
             video_file_path.write_bytes(video_bytes)
 
             # Build response embed
-            description = f"**Prompt:** {video_params.prompt}\n"
+            # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
+            truncated_prompt = (
+                video_params.prompt[:2000] + "..."
+                if len(video_params.prompt) > 2000
+                else video_params.prompt
+            )
+            description = f"**Prompt:** {truncated_prompt}\n"
             description += f"**Model:** {video_params.model}\n"
             description += f"**Size:** {video_params.size}\n"
             description += f"**Duration:** {video_params.seconds} seconds\n"
