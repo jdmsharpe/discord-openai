@@ -123,11 +123,11 @@ class TestAppendResponseEmbeds(unittest.TestCase):
         self.assertIn("truncated", all_descriptions.lower())
 
     def test_empty_response(self):
-        """Empty response should still create an embed."""
+        """Empty response should not create an embed."""
         embeds = []
         append_response_embeds(embeds, "")
-        self.assertEqual(len(embeds), 1)
-        self.assertEqual(embeds[0].description, "")
+        # chunk_text("") returns [], so no embed is created
+        self.assertEqual(len(embeds), 0)
 
     def test_multiple_chunks_numbered(self):
         """Multiple chunks should be numbered correctly."""
