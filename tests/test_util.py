@@ -13,6 +13,7 @@ from util import (
     chunk_text,
     extract_urls,
     format_openai_error,
+    truncate_text,
 )
 
 
@@ -410,6 +411,58 @@ class TestChunkText(unittest.TestCase):
         size = 1024
         result = list(chunk_text(text, size))
         self.assertEqual(len(result[0]), size)
+
+
+class TestTruncateText(unittest.TestCase):
+    def test_truncate_short_text(self):
+        """Text under max_length should be returned unchanged."""
+        text = "Hello, world!"
+        result = truncate_text(text, 100)
+        self.assertEqual(result, "Hello, world!")
+
+    def test_truncate_exact_length(self):
+        """Text exactly at max_length should be returned unchanged."""
+        text = "12345"
+        result = truncate_text(text, 5)
+        self.assertEqual(result, "12345")
+
+    def test_truncate_long_text(self):
+        """Text over max_length should be truncated with suffix."""
+        text = "This is a very long string that needs truncation"
+        result = truncate_text(text, 10)
+        self.assertEqual(result, "This is a ...")
+        self.assertEqual(len(result), 13)  # 10 + len("...")
+
+    def test_truncate_none(self):
+        """None input should return None."""
+        result = truncate_text(None, 100)
+        self.assertIsNone(result)
+
+    def test_truncate_custom_suffix(self):
+        """Custom suffix should be used when truncating."""
+        text = "This is a long string"
+        result = truncate_text(text, 10, suffix="[...]")
+        self.assertEqual(result, "This is a [...]")
+
+    def test_truncate_empty_suffix(self):
+        """Empty suffix should truncate without adding anything."""
+        text = "Hello, world!"
+        result = truncate_text(text, 5, suffix="")
+        self.assertEqual(result, "Hello")
+
+    def test_truncate_embed_prompt_limit(self):
+        """Test with actual embed prompt limit (2000 chars)."""
+        long_prompt = "x" * 2500
+        result = truncate_text(long_prompt, 2000)
+        self.assertEqual(len(result), 2003)  # 2000 + len("...")
+        self.assertTrue(result.endswith("..."))
+
+    def test_truncate_embed_response_limit(self):
+        """Test with actual embed response limit (3500 chars)."""
+        long_response = "y" * 4000
+        result = truncate_text(long_response, 3500)
+        self.assertEqual(len(result), 3503)  # 3500 + len("...")
+        self.assertTrue(result.endswith("..."))
 
 
 class TestExtractUrls(unittest.TestCase):

@@ -92,6 +92,7 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 **Key functions:**
 
 - `append_response_embeds()` in `openai_api.py` - Chunks model responses and enforces 6000 char total limit
+- `truncate_text()` in `util.py` - Truncates text with suffix (e.g., `truncate_text(prompt, 2000)` → "text...")
 - `chunk_text()` in `util.py` - Splits text into 3500 char segments (configurable via `CHUNK_TEXT_SIZE`)
 
 ## Recent Changes (November 2025)
