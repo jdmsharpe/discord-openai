@@ -133,8 +133,11 @@ Migrated `/openai converse` from Chat Completions API to the new Responses API:
 ## Running Tests
 
 ```bash
-cd discord-chatgpt
-PYTHONPATH=src python -m unittest discover -s tests -v
+# Windows PowerShell (with venv)
+PYTHONPATH=src .venv/Scripts/python.exe -m unittest discover -s tests -v
+
+# Unix/macOS (with venv)
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ```
 
 ## Environment Variables

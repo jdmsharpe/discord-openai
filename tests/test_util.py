@@ -21,7 +21,7 @@ class TestChatCompletionParameters(unittest.TestCase):
     def test_to_dict(self):
         params = ChatCompletionParameters(
             messages=[{"role": "system", "content": "You are a helpful assistant."}],
-            model="gpt-5.1",
+            model="gpt-5.2",
             frequency_penalty=0.5,
             presence_penalty=0.5,
             seed=42,
@@ -33,7 +33,7 @@ class TestChatCompletionParameters(unittest.TestCase):
             result["messages"],
             [{"role": "system", "content": ["You are a helpful assistant."]}],
         )
-        self.assertEqual(result["model"], "gpt-5.1")
+        self.assertEqual(result["model"], "gpt-5.2")
         self.assertEqual(result["frequency_penalty"], 0.5)
         self.assertEqual(result["presence_penalty"], 0.5)
         self.assertEqual(result["seed"], 42)
@@ -80,7 +80,7 @@ class TestResponseParameters(unittest.TestCase):
     def test_to_dict_basic(self):
         """Test basic to_dict output for non-reasoning model."""
         params = ResponseParameters(
-            model="gpt-5.1",
+            model="gpt-5.2",
             instructions="You are a helpful assistant.",
             input=[{"type": INPUT_TEXT_TYPE, "text": "Hello!"}],
             frequency_penalty=0.5,
@@ -90,7 +90,7 @@ class TestResponseParameters(unittest.TestCase):
             top_p=0.9,
         )
         result = params.to_dict()
-        self.assertEqual(result["model"], "gpt-5.1")
+        self.assertEqual(result["model"], "gpt-5.2")
         self.assertEqual(result["instructions"], "You are a helpful assistant.")
         self.assertEqual(result["input"], [{"type": INPUT_TEXT_TYPE, "text": "Hello!"}])
         self.assertEqual(result["frequency_penalty"], 0.5)
@@ -143,7 +143,7 @@ class TestResponseParameters(unittest.TestCase):
     def test_previous_response_id(self):
         """Test that previous_response_id is included when set."""
         params = ResponseParameters(
-            model="gpt-5.1",
+            model="gpt-5.2",
             input=[{"type": INPUT_TEXT_TYPE, "text": "Follow-up"}],
             previous_response_id="resp_abc123",
         )
@@ -153,7 +153,7 @@ class TestResponseParameters(unittest.TestCase):
     def test_input_with_image(self):
         """Test input with text and image content."""
         params = ResponseParameters(
-            model="gpt-5.1",
+            model="gpt-5.2",
             input=[
                 {"type": INPUT_TEXT_TYPE, "text": "What's in this image?"},
                 {
@@ -170,7 +170,7 @@ class TestResponseParameters(unittest.TestCase):
     def test_discord_fields_excluded(self):
         """Test that Discord-specific fields are not included in to_dict."""
         params = ResponseParameters(
-            model="gpt-5.1",
+            model="gpt-5.2",
             input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
             conversation_starter="user123",
             conversation_id=123456,
@@ -188,7 +188,7 @@ class TestResponseParameters(unittest.TestCase):
     def test_input_string_format(self):
         """Test that input can be a simple string."""
         params = ResponseParameters(
-            model="gpt-5.1",
+            model="gpt-5.2",
             input="Hello, world!",
         )
         result = params.to_dict()
@@ -197,7 +197,7 @@ class TestResponseParameters(unittest.TestCase):
     def test_input_list_format(self):
         """Test that input can be a list of content items for multimodal."""
         params = ResponseParameters(
-            model="gpt-5.1",
+            model="gpt-5.2",
             input=[
                 {"type": INPUT_TEXT_TYPE, "text": "What's in this?"},
                 {"type": INPUT_IMAGE_TYPE, "image_url": "https://example.com/img.jpg"},

@@ -24,8 +24,9 @@ All commands are grouped under the `/openai` slash command group.
 
 - **Usage:** `/openai converse prompt:<text>`
 - **What it does:** Opens a thread with the selected GPT model and keeps the whole conversation in context for follow-up replies in the same channel.
-- **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5.1`.
+- **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5.2`.
 - **Model choices:**
+  - GPT-5.2 (standard/pro)
   - GPT-5.1 (standard/mini)
   - GPT-5 (standard/mini/nano)
   - GPT-4.1 (standard/mini/nano)
