@@ -10,7 +10,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 ## Features
 
 - **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/openai converse`. The bot maintains conversation history as you write further messages in the same channel, and even accepts image attachments.
-- **Image Generation:** Create images from text prompts with `/openai image` using GPT-4 Image (`gpt-image-1`) or DALL-E 3 / DALL-E 2, with controls for quality, aspect ratio, and style.
+- **Image Generation:** Create images from text prompts with `/openai image` using either GPT Image or DALL-E, with controls for quality, aspect ratio, and style.
 - **Text-to-Speech:** Convert text into lifelike audio using `/openai tts`, with customizable voice, audio format, and speed.
 - **Speech-to-Text:** Transform audio attachments into text with `/openai stt` and pick Whisper or GPT-4o transcription models, plus transcription or translation into English.
 - **Video Generation:** Create videos from text prompts with `/openai video` using OpenAI's Sora models, with controls for resolution and duration.
@@ -39,10 +39,10 @@ All commands are grouped under the `/openai` slash command group.
 ### `/openai image`
 
 - **Usage:** `/openai image prompt:<text>`
-- **What it does:** Creates 1-10 images (model-dependent) using GPT-4 Image, DALL-E 3, or DALL-E 2.
-- **Defaults:** Uses `gpt-image-1`, medium quality, and 1024x1024 images. When you switch models the bot adjusts defaults (e.g., DALL-E 3 becomes HD quality, DALL-E 2 becomes Standard quality).
-- **Options:** Choose `n` images (DALL-E 3 and GPT-4 Image only support 1), quality presets, supported aspect ratios (portrait/landscape sizes are only for DALL-E 3 and GPT-4 Image), and the `style` toggle (vivid/natural) when DALL-E 3 is selected.
-- **Delivery:** GPT-4 Image returns base64 data that the bot uploads, while DALL-E models stream back hosted URLs.
+- **What it does:** Creates 1-10 images (model-dependent) using GPT Image or DALL-E.
+- **Defaults:** Uses `gpt-image-1.5`, medium quality, and 1024x1024 images. When you switch models the bot adjusts defaults (e.g., DALL-E 3 becomes HD quality, DALL-E 2 becomes Standard quality).
+- **Options:** Choose `n` images (DALL-E 3 and GPT Image only support 1), quality presets, supported aspect ratios (portrait/landscape sizes are only for DALL-E 3 and GPT Image), and the `style` toggle (vivid/natural) when DALL-E 3 is selected.
+- **Delivery:** GPT Image returns base64 data that the bot uploads, while DALL-E models stream back hosted URLs.
 
 ### `/openai tts`
 

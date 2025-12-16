@@ -156,7 +156,10 @@ class TestResponseParameters(unittest.TestCase):
             model="gpt-5.1",
             input=[
                 {"type": INPUT_TEXT_TYPE, "text": "What's in this image?"},
-                {"type": INPUT_IMAGE_TYPE, "image_url": "https://example.com/image.jpg"},
+                {
+                    "type": INPUT_IMAGE_TYPE,
+                    "image_url": "https://example.com/image.jpg",
+                },
             ],
         )
         result = params.to_dict()
@@ -253,10 +256,10 @@ class TestImageGenerationParameters(unittest.TestCase):
         self.assertEqual(result["quality"], "standard")
 
     def test_quality_defaults_gpt_image(self):
-        # Test that gpt-image-1 keeps "medium" as is
+        # Test that GPT Image models keep "medium" as is
         params = ImageGenerationParameters(
             prompt="Test prompt",
-            model="gpt-image-1",
+            model="gpt-image-1.5",
             quality="medium",  # This should stay "medium"
         )
         result = params.to_dict()
@@ -271,21 +274,21 @@ class TestImageGenerationParameters(unittest.TestCase):
         self.assertEqual(result["response_format"], "url")
 
     def test_response_format_gpt_image(self):
-        # Test that response_format is NOT included for gpt-image-1 even when provided
+        # Test that response_format is NOT included for GPT Image models even when provided
         params = ImageGenerationParameters(
             prompt="Test prompt",
-            model="gpt-image-1",
+            model="gpt-image-1.5",
             response_format="url",  # This should be ignored
         )
         result = params.to_dict()
         self.assertNotIn("response_format", result)
 
     def test_style_removal_gpt_image(self):
-        # Test that style is set to None for gpt-image-1 in the constructor
+        # Test that style is set to None for GPT Image models in the constructor
         params = ImageGenerationParameters(
-            prompt="Test prompt", model="gpt-image-1", style="natural"
+            prompt="Test prompt", model="gpt-image-1.5", style="natural"
         )
-        # Style should be None for gpt-image-1, but let's verify the to_dict behavior
+        # Style should be None, but let's verify the to_dict behavior
         result = params.to_dict()
         # Style should not be included when None
         if params.style is None:

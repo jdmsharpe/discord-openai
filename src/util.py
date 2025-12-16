@@ -5,6 +5,7 @@ from openai import APIError
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
 REASONING_MODELS = ["o4-mini", "o3", "o3-mini", "o1", "o1-mini"]
+GPT_IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
 
 # Input content types for Responses API
 # For multimodal input, use content blocks within a message item
@@ -180,7 +181,7 @@ class ImageGenerationParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "gpt-image-1",
+        model: str = "gpt-image-1.5",
         n: int = 1,
         quality: Optional[str] = "medium",
         size: Optional[str] = "1024x1024",
@@ -198,7 +199,7 @@ class ImageGenerationParameters:
             elif model == "dall-e-2":
                 self.quality = "standard"  # DALL-E 2 only supports "standard"
             else:
-                self.quality = quality  # Keep "medium" for gpt-image-1
+                self.quality = quality  # Keep "medium" for GPT Image models
         else:
             self.quality = quality
 

@@ -35,7 +35,7 @@ discord-chatgpt/
   - Discord-specific fields for conversation management
 
 - **ImageGenerationParameters**: Parameters for image generation
-  - Supports GPT-4 Image, DALL-E 3, DALL-E 2
+  - Supports GPT Image 1.5, GPT Image 1, GPT Image 1 Mini, DALL-E 3, DALL-E 2
   - Handles model-specific quality defaults
 
 - **VideoGenerationParameters**: Parameters for Sora video generation
@@ -160,7 +160,8 @@ PYTHONPATH=src python -m unittest discover -s tests -v
 
 ### Image Generation Models
 
-- `gpt-image-1` (GPT-4 Image)
+- `gpt-image-1.5` (default)
+- `gpt-image-1`
 - `gpt-image-1-mini`
 - `dall-e-3`
 - `dall-e-2`

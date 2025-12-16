@@ -19,6 +19,7 @@ from util import (
     ChatCompletionParameters,
     chunk_text,
     format_openai_error,
+    GPT_IMAGE_MODELS,
     ImageGenerationParameters,
     INPUT_IMAGE_TYPE,
     INPUT_TEXT_TYPE,
@@ -142,15 +143,15 @@ class OpenAIAPI(commands.Cog):
             # API call using Responses API
             self.logger.debug("Making API call to OpenAI Responses API.")
             response = await self.openai_client.responses.create(**api_params)
-            response_text = response.output_text if response.output_text else "No response."
+            response_text = (
+                response.output_text if response.output_text else "No response."
+            )
             self.logger.debug(f"Received response from OpenAI: {response_text}")
 
             # Update conversation state with new response ID
             conversation.previous_response_id = response.id
             conversation.response_id_history.append(response.id)
-            self.logger.debug(
-                f"Updated previous_response_id to: {response.id}"
-            )
+            self.logger.debug(f"Updated previous_response_id to: {response.id}")
 
             # Assemble the response
             append_response_embeds(embeds, response_text)
@@ -267,7 +268,9 @@ class OpenAIAPI(commands.Cog):
     async def check_permissions(self, ctx: ApplicationContext):
         permissions = ctx.channel.permissions_for(ctx.guild.me)
         if permissions.read_messages and permissions.read_message_history:
-            await ctx.respond("Bot has permission to read messages and message history.")
+            await ctx.respond(
+                "Bot has permission to read messages and message history."
+            )
         else:
             await ctx.respond("Bot is missing necessary permissions in this channel.")
 
@@ -463,7 +466,9 @@ class OpenAIAPI(commands.Cog):
 
             # API call using Responses API
             response = await self.openai_client.responses.create(**params.to_dict())
-            response_text = response.output_text if response.output_text else "No response."
+            response_text = (
+                response.output_text if response.output_text else "No response."
+            )
 
             # Store response ID for conversation chaining
             params.previous_response_id = response.id
@@ -516,12 +521,13 @@ class OpenAIAPI(commands.Cog):
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
         "model",
-        description="Choose from the following image generation models. (default: GPT-4 Image)",
+        description="Choose from the following image generation models. (default: GPT Image 1.5)",
         required=False,
         type=str,
         choices=[
-            OptionChoice(name="GPT-4 Image", value="gpt-image-1"),
-            OptionChoice(name="GPT-4 Image Mini", value="gpt-image-1-mini"),
+            OptionChoice(name="GPT Image 1.5", value="gpt-image-1.5"),
+            OptionChoice(name="GPT Image 1", value="gpt-image-1"),
+            OptionChoice(name="GPT Image 1 Mini", value="gpt-image-1-mini"),
             OptionChoice(name="DALL-E 3", value="dall-e-3"),
             OptionChoice(name="DALL-E 2", value="dall-e-2"),
         ],
@@ -534,14 +540,14 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "quality",
-        description="Image quality. Only supported for GPT-4 Image and DALL-E 3. (default: medium, HD for DALL-E 3)",
+        description="Image quality. Only supported for GPT Image and DALL-E 3. (default: medium, HD for DALL-E 3)",
         required=False,
         type=str,
         choices=[
-            OptionChoice(name="Low (GPT-4 Image only)", value="low"),
-            OptionChoice(name="Medium (GPT-4 Image only)", value="medium"),
-            OptionChoice(name="High (GPT-4 Image only)", value="high"),
-            OptionChoice(name="Auto (GPT-4 Image only)", value="auto"),
+            OptionChoice(name="Low (GPT Image only)", value="low"),
+            OptionChoice(name="Medium (GPT Image only)", value="medium"),
+            OptionChoice(name="High (GPT Image only)", value="high"),
+            OptionChoice(name="Auto (GPT Image only)", value="auto"),
             OptionChoice(name="Standard (DALL-E 3 only)", value="standard"),
             OptionChoice(name="HD (DALL-E 3 only)", value="hd"),
         ],
@@ -573,7 +579,7 @@ class OpenAIAPI(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "gpt-image-1",
+        model: str = "gpt-image-1.5",
         n: int = 1,
         quality: Optional[str] = "medium",
         size: Optional[str] = "1024x1024",
@@ -586,14 +592,14 @@ class OpenAIAPI(commands.Cog):
           prompt: A text description of the desired image(s). The maximum length is 1000
               characters for `dall-e-2` and 4000 characters for `dall-e-3`.
 
-          model: The model to use for image generation. Defaults to `gpt-image-1` (a GPT-4
+          model: The model to use for image generation. Defaults to `gpt-image-1.5` (a GPT
               based image generation model). You can also select `dall-e-2` or `dall-e-3`.
 
           n: The number of images to generate. Must be between 1 and 10. For `dall-e-3` and
-              `gpt-image-1`, only `n=1` is supported.
+              GPT Image models, only `n=1` is supported.
 
           quality: The quality of the image that will be generated. This param is only supported
-              for `dall-e-3` and `gpt-image-1`.
+              for `dall-e-3` and GPT Image models.
 
           size: The size of the generated images. Must be one of `256x256`, `512x512`, or
               `1024x1024` for `dall-e-2`. Must be one of `1024x1024`, `1792x1024`, or
@@ -603,7 +609,7 @@ class OpenAIAPI(commands.Cog):
               causes the model to lean towards generating hyper-real and dramatic images.
               Natural causes the model to produce more natural, less hyper-real looking
               images. This param is only supported for `dall-e-3`. Ignored when using
-              the default `gpt-image-1` model.
+              GPT Image models.
         """
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
@@ -642,15 +648,15 @@ class OpenAIAPI(commands.Cog):
         if model == "dall-e-2":
             style = None
             quality = None
-        if model == "gpt-image-1" or model == "gpt-image-1-mini":
+        if model in GPT_IMAGE_MODELS:
             style = None
 
         # Set HD quality for DALL-E 3 if an unsupported quality is provided
         if model == "dall-e-3" and quality not in ["standard", "hd"]:
             quality = "hd"
 
-        # Set medium quality for GPT-4 Image if an unsupported quality is provided
-        if (model == "gpt-image-1" or model == "gpt-image-1-mini") and quality not in [
+        # Set medium quality for GPT Image if an unsupported quality is provided
+        if model in GPT_IMAGE_MODELS and quality not in [
             "low",
             "medium",
             "high",
@@ -688,7 +694,9 @@ class OpenAIAPI(commands.Cog):
             return
 
         try:
-            response = await self.openai_client.images.generate(**image_params.to_dict())
+            response = await self.openai_client.images.generate(
+                **image_params.to_dict()
+            )
 
             # Extract image data from response
             image_urls = []
@@ -737,7 +745,9 @@ class OpenAIAPI(commands.Cog):
 
                 # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
                 description = ""
-                description += f"**Prompt:** {truncate_text(image_params.prompt, 2000)}\n"
+                description += (
+                    f"**Prompt:** {truncate_text(image_params.prompt, 2000)}\n"
+                )
                 description += f"**Model:** {image_params.model}\n"
                 description += f"**Size:** {image_params.size}\n"
                 if image_params.n > 1:
@@ -880,13 +890,19 @@ class OpenAIAPI(commands.Cog):
                 f"**Text:** {truncate_text(params.input, 1500)}\n"
                 f"**Model:** {params.model}\n"
                 f"**Voice:** {params.voice}\n"
-                + (f"**Instructions:** {truncate_text(instructions, 500)}\n" if params.instructions else "")
+                + (
+                    f"**Instructions:** {truncate_text(instructions, 500)}\n"
+                    if params.instructions
+                    else ""
+                )
                 + f"**Response Format:** {response_format}\n"
                 + f"**Speed:** {params.speed}\n"
             )
 
             embed = Embed(
-                title="Text-to-Speech Generation", description=description, color=Colour.blue()
+                title="Text-to-Speech Generation",
+                description=description,
+                color=Colour.blue(),
             )
             await ctx.send_followup(embed=embed, file=File(speech_file_path))
         except Exception as e:
@@ -919,7 +935,9 @@ class OpenAIAPI(commands.Cog):
         choices=[
             OptionChoice(name="GPT-4o Transcribe", value="gpt-4o-transcribe"),
             OptionChoice(name="GPT-4o Mini Transcribe", value="gpt-4o-mini-transcribe"),
-            OptionChoice(name="GPT-4o Transcribe Diarize", value="gpt-4o-transcribe-diarize"),
+            OptionChoice(
+                name="GPT-4o Transcribe Diarize", value="gpt-4o-transcribe-diarize"
+            ),
             OptionChoice(name="Whisper", value="whisper-1"),
         ],
     )
@@ -1098,7 +1116,9 @@ class OpenAIAPI(commands.Cog):
             self.logger.info(f"Video job started: {video.id}, status: {video.status}")
 
             # Poll for completion
-            progress = video.progress if hasattr(video, "progress") and video.progress else 0
+            progress = (
+                video.progress if hasattr(video, "progress") and video.progress else 0
+            )
             poll_count = 0
             max_polls = 60  # 10 minutes with 10-second intervals
 
@@ -1108,14 +1128,20 @@ class OpenAIAPI(commands.Cog):
 
                 await asyncio.sleep(10)
                 video = await self.openai_client.videos.retrieve(video.id)
-                progress = video.progress if hasattr(video, "progress") and video.progress else 0
+                progress = (
+                    video.progress
+                    if hasattr(video, "progress") and video.progress
+                    else 0
+                )
                 poll_count += 1
                 self.logger.debug(
                     f"Poll {poll_count}: status={video.status}, progress={progress}%"
                 )
 
             if video.status == "failed":
-                raise Exception("Video generation failed. Please try a different prompt.")
+                raise Exception(
+                    "Video generation failed. Please try a different prompt."
+                )
 
             if video.status != "completed":
                 raise Exception(f"Unexpected video status: {video.status}")
@@ -1147,7 +1173,9 @@ class OpenAIAPI(commands.Cog):
 
         except Exception as e:
             error_message = format_openai_error(e)
-            self.logger.error(f"Video generation failed: {error_message}", exc_info=True)
+            self.logger.error(
+                f"Video generation failed: {error_message}", exc_info=True
+            )
             await ctx.send_followup(
                 embed=Embed(
                     title="Error",
