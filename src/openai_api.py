@@ -266,6 +266,9 @@ class OpenAIAPI(commands.Cog):
         description="Check if bot has necessary permissions in this channel",
     )
     async def check_permissions(self, ctx: ApplicationContext):
+        """
+        Checks and reports the bot's permissions in the current channel.
+        """
         permissions = ctx.channel.permissions_for(ctx.guild.me)
         if permissions.read_messages and permissions.read_message_history:
             await ctx.respond(
