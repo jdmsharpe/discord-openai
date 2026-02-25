@@ -36,9 +36,7 @@ All commands are grouped under the `/openai` slash command group.
   - GPT-3.5 Turbo
 - **Attachments:** Add an image to the initial message and it will be sent to compatible multimodal models.
 - **Advanced tuning:** Frequency penalty, presence penalty, temperature (or nucleus sampling via `top_p`), and `seed` are all optional. Reasoning models ignore custom temperature/`top_p` and fall back to their defaults automatically.
-- **Built-in tools:** Optional tool calling supports `web_search`, `code_interpreter`, `file_search`, and `shell`.
-  - `file_search` requires `OPENAI_VECTOR_STORE_IDS` in your environment. Set up a vector store within the API.
-  - `shell` is currently guarded to GPT-5 series models in this bot configuration.
+- **Built-in tools:** Optional tool calling supports `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), and `shell` (GPT-5 series models only).
 
 ### `/openai image`
 
