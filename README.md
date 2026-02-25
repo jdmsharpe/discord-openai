@@ -136,5 +136,5 @@ All commands are grouped under the `/openai` slash command group.
   - `BOT_TOKEN`: Your Discord bot token
   - `GUILD_IDS`: Comma-separated list of Discord server IDs to deploy the bot on
   - `OPENAI_API_KEY`: Your OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
-  - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai converse` file search tool
+  - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai converse` file search tool (Optional)
 - Run the bot with `python src/bot.py`
