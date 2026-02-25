@@ -11,7 +11,7 @@ discord-chatgpt/
 ├── src/
 │   ├── bot.py              # Main bot entry point
 │   ├── openai_api.py       # OpenAI API cog with all slash commands
-│   ├── button_view.py      # Discord UI button handlers (regenerate, pause, stop)
+│   ├── button_view.py      # Discord UI handlers (regenerate, pause, stop, tool select)
 │   ├── util.py             # Parameter classes and utility functions
 │   └── config/
 │       └── auth.py         # Authentication configuration (BOT_TOKEN, GUILD_IDS, OPENAI_API_KEY)
@@ -32,6 +32,7 @@ discord-chatgpt/
 - **ResponseParameters**: Parameters for the Responses API (used by `/openai converse`)
   - Supports `previous_response_id` for conversation chaining
   - Handles reasoning models (o-series) with `reasoning` parameter
+  - Supports `tools` for built-in tool calling (`web_search`, `code_interpreter`, `file_search`, `shell`)
   - Discord-specific fields for conversation management
 
 - **ImageGenerationParameters**: Parameters for image generation
@@ -52,42 +53,48 @@ discord-chatgpt/
 
 All commands are grouped under the `/openai` slash command group using Pycord's `SlashCommandGroup`.
 
-| Command | Description | API |
-|---------|-------------|-----|
-| `/openai converse` | Multi-turn conversations | Responses API |
-| `/openai image` | Image generation | Images API |
-| `/openai video` | Video generation | Videos API (Sora) |
-| `/openai tts` | Text to audio | Audio Speech API |
-| `/openai stt` | Audio to text | Audio Transcriptions API |
-| `/openai check_permissions` | Check bot permissions | N/A |
+| Command  | Field            | Limit              | Reason                           |
+|----------|------------------|--------------------|----------------------------------|
+| converse | user prompt      | 2000 chars         | Leave room for metadata          |
+| converse | model response   | 3500 char chunks   | Via `append_response_embeds()`   |
+| image    | user prompt      | 2000 chars         | Leave room for metadata          |
+| tts      | input text       | 1500 chars         | Leave room for instructions      |
+| tts      | instructions     | 500 chars          | Secondary field                  |
+| video    | user prompt      | 2000 chars         | Leave room for metadata          |
+| stt      | transcription    | 3500 chars         | Primary output field             |
+
+`/openai converse` parameters (13 total, previously 11): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `seed`, `temperature`, `top_p`, `web_search`, `code_interpreter`, `file_search`, `shell`.
 
 ### Conversation Management
 
 - Conversations are tracked per user per channel
 - `response_id_history` enables regeneration by reverting to previous response IDs
 - Pause/resume functionality via button controls
+- Tool enable/disable toggling via Select Menu on conversation views
+- `file_search` requires `OPENAI_VECTOR_STORE_IDS` in environment config
+- `shell` is guarded to GPT-5 series models in this bot configuration
 - Automatic conversation state cleanup on stop
 
 ### Discord Embed Limits
 
 Discord enforces strict limits on embed content. The bot handles these automatically:
 
-| Limit | Value |
-|-------|-------|
-| Embed description | 4096 chars |
-| Total embed content | 6000 chars |
+| Limit                  | Value       |
+|------------------------|-------------|
+| Embed description      | 4096 chars  |
+| Total embed content    | 6000 chars  |
 
 **Truncation strategy by command:**
 
-| Command | Field | Limit | Reason |
-|---------|-------|-------|--------|
-| converse | user prompt | 2000 chars | Leave room for metadata |
-| converse | model response | 3500 char chunks | Via `append_response_embeds()` |
-| image | user prompt | 2000 chars | Leave room for metadata |
-| tts | input text | 1500 chars | Leave room for instructions |
-| tts | instructions | 500 chars | Secondary field |
-| video | user prompt | 2000 chars | Leave room for metadata |
-| stt | transcription | 3500 chars | Primary output field |
+| Command  | Field            | Limit              | Reason                           |
+|----------|------------------|--------------------|----------------------------------|
+| converse | user prompt      | 2000 chars         | Leave room for metadata          |
+| converse | model response   | 3500 char chunks   | Via `append_response_embeds()`   |
+| image    | user prompt      | 2000 chars         | Leave room for metadata          |
+| tts      | input text       | 1500 chars         | Leave room for instructions      |
+| tts      | instructions     | 500 chars          | Secondary field                  |
+| video    | user prompt      | 2000 chars         | Leave room for metadata          |
+| stt      | transcription    | 3500 chars         | Primary output field             |
 
 **Key functions:**
 
@@ -142,11 +149,11 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `BOT_TOKEN` | Discord bot token |
-| `GUILD_IDS` | Comma-separated Discord server IDs |
-| `OPENAI_API_KEY` | OpenAI API key |
+| Variable        | Description                         |
+|-----------------|-------------------------------------|
+| `BOT_TOKEN`     | Discord bot token                   |
+| `GUILD_IDS`     | Comma‑separated Discord server IDs  |
+| `OPENAI_API_KEY`| OpenAI API key                      |
 
 ## Models Supported
 

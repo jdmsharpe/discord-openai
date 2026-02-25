@@ -6,6 +6,16 @@ from openai import APIError
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
 REASONING_MODELS = ["o4-mini", "o3", "o3-mini", "o1", "o1-mini"]
 GPT_IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
+TOOL_WEB_SEARCH = {"type": "web_search"}
+TOOL_CODE_INTERPRETER = {"type": "code_interpreter", "container": {"type": "auto"}}
+TOOL_FILE_SEARCH = {"type": "file_search"}
+TOOL_SHELL = {"type": "shell", "environment": {"type": "container_auto"}}
+AVAILABLE_TOOLS = {
+    "web_search": TOOL_WEB_SEARCH,
+    "code_interpreter": TOOL_CODE_INTERPRETER,
+    "file_search": TOOL_FILE_SEARCH,
+    "shell": TOOL_SHELL,
+}
 
 # Input content types for Responses API
 # For multimodal input, use content blocks within a message item
@@ -109,6 +119,7 @@ class ResponseParameters:
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         reasoning: Optional[dict] = None,
+        tools: Optional[List[dict]] = None,
         # Discord-specific fields (not sent to API)
         conversation_starter: Optional[Any] = None,
         conversation_id: Optional[int] = None,
@@ -133,6 +144,7 @@ class ResponseParameters:
             self.temperature = temperature
             self.top_p = top_p
             self.reasoning = None
+        self.tools = [tool.copy() for tool in tools] if tools is not None else []
 
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
@@ -173,6 +185,8 @@ class ResponseParameters:
             payload["top_p"] = self.top_p
         if self.reasoning is not None:
             payload["reasoning"] = self.reasoning
+        if self.tools:
+            payload["tools"] = self.tools
 
         return payload
 

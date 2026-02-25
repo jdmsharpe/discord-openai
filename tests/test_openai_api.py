@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import unittest
-import config.auth  # imported for OpenAIAPI class dependency
-from openai_api import OpenAIAPI, append_response_embeds
+from typing import Any, cast
+from openai_api import OpenAIAPI, append_response_embeds, extract_tool_info
 from discord import Bot, Colour, Embed, Intents
 
 
@@ -12,7 +12,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         intents.presences = False
         intents.members = True
         intents.message_content = True
-        self.bot = Bot(intents=intents)
+        self.bot: Any = Bot(intents=intents)
         self.bot.add_cog(OpenAIAPI(bot=self.bot))
         self.bot.owner_id = 1234567890
 
@@ -47,7 +47,8 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.bot.generate_video.return_value = mock_generate_video_embed
 
     async def test_on_ready(self):
-        await self.bot.cogs["OpenAIAPI"].on_ready()
+        cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
+        await cog.on_ready()
         self.bot.sync_commands.assert_called_once()
 
     async def test_converse_command(self):
@@ -69,6 +70,31 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     async def test_generate_video_command(self):
         embed = await self.bot.generate_video("A cat playing piano")
         self.assertEqual("video.mp4", embed.file)
+
+    async def test_resolve_selected_tools_file_search_requires_vector_store(self):
+        cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
+        with patch("openai_api.OPENAI_VECTOR_STORE_IDS", []):
+            tools, error = cog.resolve_selected_tools(["file_search"], "gpt-5.2")
+        self.assertEqual(tools, [])
+        self.assertIn("OPENAI_VECTOR_STORE_IDS", error)
+
+    async def test_resolve_selected_tools_file_search_success(self):
+        cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
+        with patch("openai_api.OPENAI_VECTOR_STORE_IDS", ["vs_123"]):
+            tools, error = cog.resolve_selected_tools(["file_search"], "gpt-5.2")
+        self.assertIsNone(error)
+        self.assertEqual(tools[0]["type"], "file_search")
+        self.assertEqual(tools[0]["vector_store_ids"], ["vs_123"])
+
+    async def test_resolve_selected_tools_shell_model_guard(self):
+        cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
+        tools, error = cog.resolve_selected_tools(["shell"], "gpt-4.1")
+        self.assertEqual(tools, [])
+        self.assertIn("GPT-5", error)
+
+        tools, error = cog.resolve_selected_tools(["shell"], "gpt-5.2")
+        self.assertIsNone(error)
+        self.assertEqual(tools[0]["type"], "shell")
 
 
 class TestAppendResponseEmbeds(unittest.TestCase):
@@ -140,6 +166,72 @@ class TestAppendResponseEmbeds(unittest.TestCase):
         self.assertEqual(embeds[0].title, "Response")
         if len(embeds) > 1:
             self.assertIn("Part", embeds[1].title)
+
+
+class TestExtractToolInfo(unittest.TestCase):
+    def test_extract_tool_info_empty_output(self):
+        response = MagicMock()
+        response.output = []
+
+        result = extract_tool_info(response)
+
+        self.assertEqual(result["tool_types"], [])
+        self.assertEqual(result["citations"], [])
+
+    def test_extract_tool_info_web_search(self):
+        response = MagicMock()
+        response.output = [
+            {"type": "web_search_call"},
+            {
+                "type": "message",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "annotations": [
+                            {
+                                "type": "url_citation",
+                                "title": "Example Source",
+                                "url": "https://example.com",
+                            }
+                        ],
+                    }
+                ],
+            },
+        ]
+
+        result = extract_tool_info(response)
+
+        self.assertIn("web_search", result["tool_types"])
+        self.assertEqual(len(result["citations"]), 1)
+        self.assertEqual(result["citations"][0]["title"], "Example Source")
+        self.assertEqual(result["citations"][0]["url"], "https://example.com")
+
+    def test_extract_tool_info_code_interpreter(self):
+        response = MagicMock()
+        response.output = [{"type": "code_interpreter_call"}]
+
+        result = extract_tool_info(response)
+
+        self.assertIn("code_interpreter", result["tool_types"])
+        self.assertEqual(result["citations"], [])
+
+    def test_extract_tool_info_file_search(self):
+        response = MagicMock()
+        response.output = [{"type": "file_search_call"}]
+
+        result = extract_tool_info(response)
+
+        self.assertIn("file_search", result["tool_types"])
+        self.assertEqual(result["citations"], [])
+
+    def test_extract_tool_info_shell(self):
+        response = MagicMock()
+        response.output = [{"type": "shell_call"}]
+
+        result = extract_tool_info(response)
+
+        self.assertIn("shell", result["tool_types"])
+        self.assertEqual(result["citations"], [])
 
 
 if __name__ == "__main__":

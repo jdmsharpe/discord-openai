@@ -12,11 +12,11 @@ from discord import (
     File,
 )
 from discord.ext import commands
-from discord.commands import command, option, OptionChoice, SlashCommandGroup
+from discord.commands import option, OptionChoice, SlashCommandGroup
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, cast
 from util import (
-    ChatCompletionParameters,
+    AVAILABLE_TOOLS,
     chunk_text,
     format_openai_error,
     GPT_IMAGE_MODELS,
@@ -25,11 +25,23 @@ from util import (
     INPUT_TEXT_TYPE,
     REASONING_MODELS,
     ResponseParameters,
+    TOOL_FILE_SEARCH,
+    TOOL_SHELL,
     TextToSpeechParameters,
     truncate_text,
     VideoGenerationParameters,
 )
-from config.auth import GUILD_IDS, OPENAI_API_KEY
+from config.auth import GUILD_IDS, OPENAI_API_KEY, OPENAI_VECTOR_STORE_IDS
+
+
+class ToolInfo(TypedDict):
+    tool_types: List[str]
+    citations: List[Dict[str, str]]
+
+
+class PermissionAwareChannel(Protocol):
+    def permissions_for(self, member: Any) -> Any:
+        ...
 
 
 def append_response_embeds(embeds, response_text):
@@ -60,6 +72,89 @@ def append_response_embeds(embeds, response_text):
         )
 
 
+def extract_tool_info(response: Any) -> ToolInfo:
+    """Extract tool usage and web citations from a Responses API object."""
+
+    def get_value(item: Any, key: str, default: Any = None) -> Any:
+        if isinstance(item, dict):
+            return item.get(key, default)
+        return getattr(item, key, default)
+
+    citations: List[Dict[str, str]] = []
+    seen_urls = set()
+    tools_used = set()
+
+    output_items = get_value(response, "output", []) or []
+    for output_item in output_items:
+        output_type = get_value(output_item, "type")
+        item_name = get_value(output_item, "name")
+
+        if output_type == "web_search_call" or item_name == "web_search":
+            tools_used.add("web_search")
+        if output_type == "code_interpreter_call" or item_name == "code_interpreter":
+            tools_used.add("code_interpreter")
+        if output_type == "file_search_call" or item_name == "file_search":
+            tools_used.add("file_search")
+        if output_type == "shell_call" or item_name == "shell":
+            tools_used.add("shell")
+        if output_type in AVAILABLE_TOOLS:
+            tools_used.add(output_type)
+
+        content_blocks = get_value(output_item, "content", []) or []
+        for content_block in content_blocks:
+            annotations = get_value(content_block, "annotations", []) or []
+            for annotation in annotations:
+                annotation_type = get_value(annotation, "type")
+                if annotation_type != "url_citation":
+                    continue
+
+                url = get_value(annotation, "url")
+                title = get_value(annotation, "title") or url
+                if not url or url in seen_urls:
+                    continue
+
+                seen_urls.add(url)
+                citations.append({"title": title, "url": url})
+                tools_used.add("web_search")
+
+    return {"tool_types": sorted(tools_used), "citations": citations}
+
+
+def append_sources_embed(embeds: List[Embed], citations: List[Dict[str, str]]) -> None:
+    """Append a sources embed if there is remaining embed space."""
+    if not citations:
+        return
+
+    lines = [
+        f"{index}. [{citation['title']}]({citation['url']})"
+        for index, citation in enumerate(citations, start=1)
+    ]
+    description = "\n".join(lines)
+
+    current_total = sum(
+        len(embed.description or "") + len(embed.title or "") for embed in embeds
+    )
+    remaining_chars = 6000 - current_total - len("Sources")
+
+    if remaining_chars < 50:
+        return
+
+    max_description_length = min(4096, remaining_chars)
+    if max_description_length <= 0:
+        return
+
+    if len(description) > max_description_length:
+        description = truncate_text(description, max_description_length - 3)
+
+    embeds.append(
+        Embed(
+            title="Sources",
+            description=description,
+            color=Colour.blurple(),
+        )
+    )
+
+
 class OpenAIAPI(commands.Cog):
     openai = SlashCommandGroup("openai", "OpenAI commands", guild_ids=GUILD_IDS)
 
@@ -82,6 +177,39 @@ class OpenAIAPI(commands.Cog):
         self.conversation_histories = {}
         # Dictionary to store UI views for each conversation
         self.views = {}
+
+    def resolve_selected_tools(
+        self, selected_tool_names: List[str], model: str
+    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """Build tool payloads for selected tool names and model constraints."""
+        tools: List[Dict[str, Any]] = []
+
+        for tool_name in selected_tool_names:
+            if tool_name == "file_search":
+                if not OPENAI_VECTOR_STORE_IDS:
+                    return (
+                        [],
+                        "File search requires OPENAI_VECTOR_STORE_IDS to be set in your .env.",
+                    )
+                tool: Dict[str, Any] = TOOL_FILE_SEARCH.copy()
+                tool["vector_store_ids"] = OPENAI_VECTOR_STORE_IDS.copy()
+                tools.append(tool)
+                continue
+
+            if tool_name == "shell":
+                # Hosted shell examples and current reliability are strongest on GPT-5 series.
+                if not model.startswith("gpt-5"):
+                    return (
+                        [],
+                        "Shell currently requires a GPT-5 series model in this bot configuration.",
+                    )
+                tools.append(TOOL_SHELL.copy())
+                continue
+
+            if tool_name in AVAILABLE_TOOLS:
+                tools.append(AVAILABLE_TOOLS[tool_name].copy())
+
+        return tools, None
 
     async def handle_new_message_in_conversation(self, message, conversation):
         """
@@ -139,6 +267,8 @@ class OpenAIAPI(commands.Cog):
                 api_params["top_p"] = conversation.top_p
             if conversation.reasoning is not None:
                 api_params["reasoning"] = conversation.reasoning
+            if conversation.tools:
+                api_params["tools"] = conversation.tools
 
             # API call using Responses API
             self.logger.debug("Making API call to OpenAI Responses API.")
@@ -147,6 +277,7 @@ class OpenAIAPI(commands.Cog):
                 response.output_text if response.output_text else "No response."
             )
             self.logger.debug(f"Received response from OpenAI: {response_text}")
+            tool_info = extract_tool_info(response)
 
             # Update conversation state with new response ID
             conversation.previous_response_id = response.id
@@ -155,6 +286,8 @@ class OpenAIAPI(commands.Cog):
 
             # Assemble the response
             append_response_embeds(embeds, response_text)
+            if "web_search" in tool_info["tool_types"]:
+                append_sources_embed(embeds, tool_info["citations"])
 
             if embeds:
                 await message.reply(
@@ -269,7 +402,23 @@ class OpenAIAPI(commands.Cog):
         """
         Checks and reports the bot's permissions in the current channel.
         """
-        permissions = ctx.channel.permissions_for(ctx.guild.me)
+        guild = ctx.guild
+        channel = ctx.channel
+
+        if guild is None or channel is None:
+            await ctx.respond("This command can only be used in a server channel.")
+            return
+
+        me = guild.me
+        if me is None:
+            await ctx.respond("Unable to resolve bot member for this server.")
+            return
+
+        if not hasattr(channel, "permissions_for"):
+            await ctx.respond("Cannot check permissions for this channel type.")
+            return
+
+        permissions = cast(PermissionAwareChannel, channel).permissions_for(me)
         if permissions.read_messages and permissions.read_message_history:
             await ctx.respond(
                 "Bot has permission to read messages and message history."
@@ -352,6 +501,30 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=float,
     )
+    @option(
+        "web_search",
+        description="Enable web search to find current information. (default: false)",
+        required=False,
+        type=bool,
+    )
+    @option(
+        "code_interpreter",
+        description="Enable code interpreter to run Python code. (default: false)",
+        required=False,
+        type=bool,
+    )
+    @option(
+        "file_search",
+        description="Enable file search over configured vector stores. (default: false)",
+        required=False,
+        type=bool,
+    )
+    @option(
+        "shell",
+        description="Enable hosted shell command execution (GPT-5 models). (default: false)",
+        required=False,
+        type=bool,
+    )
     async def converse(
         self,
         ctx: ApplicationContext,
@@ -364,6 +537,10 @@ class OpenAIAPI(commands.Cog):
         seed: Optional[int] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        web_search: bool = False,
+        code_interpreter: bool = False,
+        file_search: bool = False,
+        shell: bool = False,
     ):
         """
         Creates a model response for the given chat conversation.
@@ -389,6 +566,14 @@ class OpenAIAPI(commands.Cog):
           (Advanced) temperature: Controls the randomness of the model.
 
           (Advanced) top_p: Nucleus sampling.
+
+          web_search: Enable web search to find current information.
+
+          code_interpreter: Enable code interpreter to run Python code.
+
+          file_search: Enable file search over configured vector stores.
+
+          shell: Enable hosted shell command execution (GPT-5 models).
 
           Please see https://platform.openai.com/docs/guides/text-generation for more information on advanced parameters.
         """
@@ -418,6 +603,26 @@ class OpenAIAPI(commands.Cog):
             ]
         else:
             input_content = prompt  # Simple string for text-only input
+        selected_tool_names = []
+        if web_search:
+            selected_tool_names.append("web_search")
+        if code_interpreter:
+            selected_tool_names.append("code_interpreter")
+        if file_search:
+            selected_tool_names.append("file_search")
+        if shell:
+            selected_tool_names.append("shell")
+
+        tools, tool_error = self.resolve_selected_tools(selected_tool_names, model)
+        if tool_error:
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error",
+                    description=tool_error,
+                    color=Colour.red(),
+                )
+            )
+            return
 
         # Create ResponseParameters for the new Responses API
         params = ResponseParameters(
@@ -430,6 +635,7 @@ class OpenAIAPI(commands.Cog):
             temperature=temperature if model not in REASONING_MODELS else None,
             top_p=top_p if model not in REASONING_MODELS else None,
             reasoning={"effort": "medium"} if model in REASONING_MODELS else None,
+            tools=tools,
             conversation_starter=ctx.author,
             conversation_id=ctx.interaction.id,
             channel_id=ctx.channel_id,
@@ -443,6 +649,11 @@ class OpenAIAPI(commands.Cog):
             description += f"**Prompt:** {truncate_text(prompt, 2000)}\n"
             description += f"**Model:** {params.model}\n"
             description += f"**Persona:** {params.instructions}\n"
+            description += (
+                f"**Tools:** {', '.join(tool['type'] for tool in params.tools)}\n"
+                if params.tools
+                else "**Tools:** none\n"
+            )
             description += (
                 f"**Frequency Penalty:** {params.frequency_penalty}\n"
                 if params.frequency_penalty
@@ -472,6 +683,7 @@ class OpenAIAPI(commands.Cog):
             response_text = (
                 response.output_text if response.output_text else "No response."
             )
+            tool_info = extract_tool_info(response)
 
             # Store response ID for conversation chaining
             params.previous_response_id = response.id
@@ -496,7 +708,14 @@ class OpenAIAPI(commands.Cog):
                     )
                 )
             append_response_embeds(embeds, response_text)
-            self.views[ctx.author] = ButtonView(self, ctx.author, ctx.interaction.id)
+            if "web_search" in tool_info["tool_types"]:
+                append_sources_embed(embeds, tool_info["citations"])
+            self.views[ctx.author] = ButtonView(
+                self,
+                ctx.author,
+                ctx.interaction.id,
+                initial_tools=tools,
+            )
 
             # Send response
             await ctx.send_followup(

@@ -1,4 +1,5 @@
 import unittest
+import httpx
 from openai import APIError
 from util import (
     ChatCompletionParameters,
@@ -9,6 +10,10 @@ from util import (
     REASONING_EFFORT_MEDIUM,
     ResponseParameters,
     TextToSpeechParameters,
+    TOOL_CODE_INTERPRETER,
+    TOOL_FILE_SEARCH,
+    TOOL_SHELL,
+    TOOL_WEB_SEARCH,
     VideoGenerationParameters,
     chunk_text,
     extract_urls,
@@ -213,6 +218,42 @@ class TestResponseParameters(unittest.TestCase):
         params_two = ResponseParameters()
         self.assertEqual(params_two.response_id_history, [])
         self.assertIsNot(params_one.response_id_history, params_two.response_id_history)
+
+    def test_tools_default_empty(self):
+        """Tools should default to an empty list and be omitted from payload."""
+        params = ResponseParameters()
+        self.assertEqual(params.tools, [])
+        self.assertNotIn("tools", params.to_dict())
+
+    def test_tools_single_included_in_payload(self):
+        """Tools should be included in API payload when configured."""
+        params = ResponseParameters(tools=[TOOL_WEB_SEARCH])
+        result = params.to_dict()
+        self.assertIn("tools", result)
+        self.assertEqual(result["tools"], [TOOL_WEB_SEARCH])
+
+    def test_tools_multiple_included_in_payload(self):
+        """Multiple tools should be serialized in order."""
+        params = ResponseParameters(tools=[TOOL_WEB_SEARCH, TOOL_CODE_INTERPRETER])
+        result = params.to_dict()
+        self.assertEqual(
+            result["tools"],
+            [TOOL_WEB_SEARCH, TOOL_CODE_INTERPRETER],
+        )
+
+    def test_tools_file_search_and_shell_included(self):
+        """Additional tools should be serialized correctly."""
+        params = ResponseParameters(tools=[TOOL_FILE_SEARCH, TOOL_SHELL])
+        result = params.to_dict()
+        self.assertEqual(result["tools"], [TOOL_FILE_SEARCH, TOOL_SHELL])
+
+    def test_tools_default_isolated_between_instances(self):
+        """Default tools list should not be shared across instances."""
+        params_one = ResponseParameters()
+        params_one.tools.append(TOOL_WEB_SEARCH.copy())
+        params_two = ResponseParameters()
+        self.assertEqual(params_two.tools, [])
+        self.assertIsNot(params_one.tools, params_two.tools)
 
 
 class TestImageGenerationParameters(unittest.TestCase):
@@ -483,11 +524,7 @@ class TestFormatOpenAIError(unittest.TestCase):
     def test_format_openai_error_api_error(self):
         class DummyStatusError(APIError):
             def __init__(self, response_body):
-                request = type(
-                    "Request",
-                    (),
-                    {"method": "POST", "url": "https://api.example.com/test"},
-                )()
+                request = httpx.Request("POST", "https://api.example.com/test")
                 super().__init__("Error code: 400", request, body=response_body)
                 self.status_code = 400
 
