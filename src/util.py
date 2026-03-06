@@ -44,7 +44,7 @@ class ChatCompletionParameters:
     def __init__(
         self,
         messages: Optional[List[dict]] = None,
-        model: str = "gpt-5.2",
+        model: str = "gpt-5.4",
         persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
@@ -109,7 +109,7 @@ class ResponseParameters:
 
     def __init__(
         self,
-        model: str = "gpt-5.2",
+        model: str = "gpt-5.4",
         instructions: str = "You are a helpful assistant.",
         input: Any = None,  # Can be string or list of content items
         previous_response_id: Optional[str] = None,
