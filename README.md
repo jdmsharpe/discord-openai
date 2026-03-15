@@ -27,11 +27,12 @@ All commands are grouped under the `/openai` slash command group.
 - **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5.4`.
 - **Model choices:**
   - GPT-5.4 (standard/pro)
+  - GPT-5.3
   - GPT-5.2 (standard/pro)
-  - GPT-5.1 (standard/mini)
-  - GPT-5 (standard/mini/nano)
+  - GPT-5.1
+  - GPT-5 (standard/pro/mini/nano)
   - GPT-4.1 (standard/mini/nano)
-  - `o4-mini`, `o3`, `o3-mini`, `o1`, `o1-mini`
+  - `o4-mini`, `o3-pro`, `o3`, `o3-mini`, `o1-pro`, `o1`
   - GPT-4o (standard/mini)
   - GPT-4 / GPT-4 Turbo
   - GPT-3.5 Turbo

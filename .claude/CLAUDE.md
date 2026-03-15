@@ -160,11 +160,12 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 ### Conversational Models (via `/openai chat`)
 
 - GPT-5.4 (default), GPT-5.4 Pro
+- GPT-5.3
 - GPT-5.2, GPT-5.2 Pro
-- GPT-5.1, GPT-5.1 Mini
-- GPT-5, GPT-5 Mini, GPT-5 Nano
+- GPT-5.1
+- GPT-5, GPT-5 Pro, GPT-5 Mini, GPT-5 Nano
 - GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano
-- o4-mini, o3, o3-mini, o1, o1-mini (reasoning models)
+- o4-mini, o3-pro, o3, o3-mini, o1-pro, o1 (reasoning models)
 - GPT-4o, GPT-4o Mini
 - GPT-4, GPT-4 Turbo
 - GPT-3.5 Turbo

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from openai import APIError
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
-REASONING_MODELS = ["o4-mini", "o3", "o3-mini", "o1", "o1-mini"]
+REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
 GPT_IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
 TOOL_WEB_SEARCH = {"type": "web_search"}
 TOOL_CODE_INTERPRETER = {"type": "code_interpreter", "container": {"type": "auto"}}
