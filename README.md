@@ -9,7 +9,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 
 ## Features
 
-- **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/openai converse`. The bot maintains conversation history as you write further messages in the same channel, and even accepts image attachments.
+- **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/openai chat`. The bot maintains conversation history as you write further messages in the same channel, and even accepts image attachments.
 - **Image Generation:** Create images from text prompts with `/openai image` using either GPT Image or DALL-E, with controls for quality, aspect ratio, and style.
 - **Text-to-Speech:** Convert text into lifelike audio using `/openai tts`, with customizable voice, audio format, and speed.
 - **Speech-to-Text:** Transform audio attachments into text with `/openai stt` and pick Whisper or GPT-4o transcription models, plus transcription or translation into English.
@@ -20,9 +20,9 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 
 All commands are grouped under the `/openai` slash command group.
 
-### `/openai converse`
+### `/openai chat`
 
-- **Usage:** `/openai converse prompt:<text>`
+- **Usage:** `/openai chat prompt:<text>`
 - **What it does:** Opens a thread with the selected GPT model and keeps the whole conversation in context for follow-up replies in the same channel.
 - **Defaults:** Persona is `You are a helpful assistant.` and the default model is `gpt-5.2`.
 - **Model choices:**
@@ -134,5 +134,5 @@ All commands are grouped under the `/openai` slash command group.
   - `BOT_TOKEN`: Your Discord bot token
   - `GUILD_IDS`: Comma-separated list of Discord server IDs to deploy the bot on
   - `OPENAI_API_KEY`: Your OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
-  - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai converse` file search tool (Optional)
+  - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai chat` file search tool (Optional)
 - Run the bot with `python src/bot.py`

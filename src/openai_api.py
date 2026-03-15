@@ -173,7 +173,7 @@ class OpenAIAPI(commands.Cog):
         self.bot = bot
         self.openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-        # Dictionary to store conversation histories for each converse interaction
+        # Dictionary to store conversation histories for each chat interaction
         self.conversation_histories = {}
         # Dictionary to store UI views for each conversation
         self.views = {}
@@ -427,7 +427,7 @@ class OpenAIAPI(commands.Cog):
             await ctx.respond("Bot is missing necessary permissions in this channel.")
 
     @openai.command(
-        name="converse",
+        name="chat",
         description="Starts a conversation with a model.",
     )
     @option("prompt", description="Prompt", required=True, type=str)
@@ -527,7 +527,7 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=bool,
     )
-    async def converse(
+    async def chat(
         self,
         ctx: ApplicationContext,
         prompt: str,
@@ -677,7 +677,7 @@ class OpenAIAPI(commands.Cog):
                 description += f"**Reasoning Effort:** {params.reasoning.get('effort', 'medium')}\n"
 
             self.logger.info(
-                f"converse: Conversation parameters initialized for interaction ID {ctx.interaction.id}."
+                f"chat: Conversation parameters initialized for interaction ID {ctx.interaction.id}."
             )
 
             # API call using Responses API

@@ -29,7 +29,7 @@ discord-chatgpt/
 
 ### Parameter Classes (`src/util.py`)
 
-- **ResponseParameters**: Parameters for the Responses API (used by `/openai converse`)
+- **ResponseParameters**: Parameters for the Responses API (used by `/openai chat`)
   - Supports `previous_response_id` for conversation chaining
   - Handles reasoning models (o-series) with `reasoning` parameter
   - Supports `tools` for built-in tool calling (`web_search`, `code_interpreter`, `file_search`, `shell`)
@@ -55,15 +55,15 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 
 | Command  | Field            | Limit              | Reason                           |
 |----------|------------------|--------------------|----------------------------------|
-| converse | user prompt      | 2000 chars         | Leave room for metadata          |
-| converse | model response   | 3500 char chunks   | Via `append_response_embeds()`   |
+| chat     | user prompt      | 2000 chars         | Leave room for metadata          |
+| chat     | model response   | 3500 char chunks   | Via `append_response_embeds()`   |
 | image    | user prompt      | 2000 chars         | Leave room for metadata          |
 | tts      | input text       | 1500 chars         | Leave room for instructions      |
 | tts      | instructions     | 500 chars          | Secondary field                  |
 | video    | user prompt      | 2000 chars         | Leave room for metadata          |
 | stt      | transcription    | 3500 chars         | Primary output field             |
 
-`/openai converse` parameters (13 total, previously 11): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `seed`, `temperature`, `top_p`, `web_search`, `code_interpreter`, `file_search`, `shell`.
+`/openai chat` parameters (13 total, previously 11): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `seed`, `temperature`, `top_p`, `web_search`, `code_interpreter`, `file_search`, `shell`.
 
 ### Conversation Management
 
@@ -88,8 +88,8 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 
 | Command  | Field            | Limit              | Reason                           |
 |----------|------------------|--------------------|----------------------------------|
-| converse | user prompt      | 2000 chars         | Leave room for metadata          |
-| converse | model response   | 3500 char chunks   | Via `append_response_embeds()`   |
+| chat     | user prompt      | 2000 chars         | Leave room for metadata          |
+| chat     | model response   | 3500 char chunks   | Via `append_response_embeds()`   |
 | image    | user prompt      | 2000 chars         | Leave room for metadata          |
 | tts      | input text       | 1500 chars         | Leave room for instructions      |
 | tts      | instructions     | 500 chars          | Secondary field                  |
@@ -115,7 +115,7 @@ Added support for OpenAI's Sora video generation:
 
 ### Chat Completions → Responses API Migration
 
-Migrated `/openai converse` from Chat Completions API to the new Responses API:
+Migrated `/openai chat` from Chat Completions API to the new Responses API:
 
 **Before (Chat Completions):**
 
@@ -157,7 +157,7 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 
 ## Models Supported
 
-### Conversational Models (via `/openai converse`)
+### Conversational Models (via `/openai chat`)
 
 - GPT-5.2 (default), GPT-5.2 Pro
 - GPT-5.1, GPT-5.1 Mini
