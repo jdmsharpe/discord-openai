@@ -1,3 +1,4 @@
 openai~=2.28
 py-cord~=2.7
+pytest~=9.0
 python-dotenv~=1.2
