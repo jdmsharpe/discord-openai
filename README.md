@@ -10,7 +10,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 ## Features
 
 - **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/openai chat`. The bot maintains conversation history as you write further messages in the same channel, and accepts image, PDF, document, spreadsheet, and code file attachments.
-- **Image Generation:** Create images from text prompts with `/openai image` using either GPT Image or DALL-E, with controls for quality, aspect ratio, and style.
+- **Image Generation:** Create images from text prompts with `/openai image` using GPT Image models, with controls for quality and aspect ratio.
 - **Text-to-Speech:** Convert text into lifelike audio using `/openai tts`, with customizable voice, audio format, and speed.
 - **Speech-to-Text:** Transform audio attachments into text with `/openai stt` and pick Whisper or GPT-4o transcription models, plus transcription or translation into English.
 - **Deep Research:** Run autonomous research tasks with `/openai research` using deep research models that search, read, and synthesize detailed reports with inline citations.
@@ -44,10 +44,9 @@ All commands are grouped under the `/openai` slash command group.
 ### `/openai image`
 
 - **Usage:** `/openai image prompt:<text>`
-- **What it does:** Creates 1-10 images (model-dependent) using GPT Image or DALL-E.
-- **Defaults:** Uses `gpt-image-1.5`, medium quality, and 1024x1024 images. When you switch models the bot adjusts defaults (e.g., DALL-E 3 becomes HD quality, DALL-E 2 becomes Standard quality).
-- **Options:** Choose `n` images (DALL-E 3 and GPT Image only support 1), quality presets, supported aspect ratios (portrait/landscape sizes are only for DALL-E 3 and GPT Image), and the `style` toggle (vivid/natural) when DALL-E 3 is selected.
-- **Delivery:** GPT Image returns base64 data that the bot uploads, while DALL-E models stream back hosted URLs.
+- **What it does:** Creates images using GPT Image models (`gpt-image-1.5`, `gpt-image-1`, `gpt-image-1-mini`).
+- **Defaults:** Uses `gpt-image-1.5` with `auto` quality and `auto` size (model picks the best options based on your prompt).
+- **Options:** Quality presets (low, medium, high, auto) and sizes (auto, 1024x1024, 1024x1536 portrait, 1536x1024 landscape).
 
 ### `/openai tts`
 
@@ -84,8 +83,8 @@ All commands are grouped under the `/openai` slash command group.
 - **Model choices:**
   - `sora-2` (Fast) - Ideal for quick iteration and experimentation
   - `sora-2-pro` (High Quality) - Best for production-quality output
-- **Size options:** Landscape (1280x720), Portrait (720x1280), Wide Landscape (1792x1024), or Tall Portrait (1024x1792).
-- **Duration:** 4, 8, or 12 seconds.
+- **Size options:** Landscape (1280x720), Portrait (720x1280), Wide Landscape (1792x1024), Tall Portrait (1024x1792), 1080p Landscape (1920x1080, Pro only), or 1080p Portrait (1080x1920, Pro only).
+- **Duration:** 4, 8, 12, 16, or 20 seconds.
 - **Prompting tips:** For best results, describe shot type, subject, action, setting, and lighting (e.g., "Wide shot of a child flying a red kite in a grassy park, golden hour sunlight, camera slowly pans upward").
 - **Restrictions:** Content must be suitable for all audiences. Copyrighted characters, copyrighted music, and real people (including public figures) cannot be generated.
 

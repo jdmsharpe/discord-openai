@@ -279,82 +279,43 @@ class TestImageGenerationParameters(unittest.TestCase):
     def test_to_dict(self):
         params = ImageGenerationParameters(
             prompt="A house in the woods",
-            model="dall-e-3",
+            model="gpt-image-1.5",
             n=1,
-            quality="standard",
+            quality="high",
             size="1024x1024",
-            style="artistic",
         )
         result = params.to_dict()
         self.assertEqual(result["prompt"], "A house in the woods")
-        self.assertEqual(result["model"], "dall-e-3")
+        self.assertEqual(result["model"], "gpt-image-1.5")
         self.assertEqual(result["n"], 1)
-        self.assertEqual(result["quality"], "standard")
+        self.assertEqual(result["quality"], "high")
         self.assertEqual(result["size"], "1024x1024")
-        self.assertEqual(result["style"], "artistic")
-        # response_format should not be included when not set
-        self.assertNotIn("response_format", result)
 
-    def test_quality_defaults_dalle3(self):
-        # Test that DALL-E 3 converts "medium" default to "hd"
-        params = ImageGenerationParameters(
-            prompt="Test prompt",
-            model="dall-e-3",
-            quality="medium",  # This should become "hd"
-        )
+    def test_defaults(self):
+        params = ImageGenerationParameters(prompt="Test prompt")
         result = params.to_dict()
-        self.assertEqual(result["quality"], "hd")
+        self.assertEqual(result["model"], "gpt-image-1.5")
+        self.assertEqual(result["quality"], "auto")
+        self.assertEqual(result["size"], "auto")
+        self.assertEqual(result["n"], 1)
 
-    def test_quality_defaults_dalle2(self):
-        # Test that DALL-E 2 converts "medium" default to "standard"
-        params = ImageGenerationParameters(
-            prompt="Test prompt",
-            model="dall-e-2",
-            quality="medium",  # This should become "standard"
-        )
-        result = params.to_dict()
-        self.assertEqual(result["quality"], "standard")
-
-    def test_quality_defaults_gpt_image(self):
-        # Test that GPT Image models keep "medium" as is
+    def test_quality_auto(self):
         params = ImageGenerationParameters(
             prompt="Test prompt",
             model="gpt-image-1.5",
-            quality="medium",  # This should stay "medium"
+            quality="auto",
         )
         result = params.to_dict()
-        self.assertEqual(result["quality"], "medium")
+        self.assertEqual(result["quality"], "auto")
 
-    def test_response_format_dalle_models(self):
-        # Test that response_format is included for DALL-E models when provided
-        params = ImageGenerationParameters(
-            prompt="Test prompt", model="dall-e-3", response_format="url"
-        )
-        result = params.to_dict()
-        self.assertEqual(result["response_format"], "url")
-
-    def test_response_format_gpt_image(self):
-        # Test that response_format is NOT included for GPT Image models even when provided
+    def test_size_auto(self):
         params = ImageGenerationParameters(
             prompt="Test prompt",
             model="gpt-image-1.5",
-            response_format="url",  # This should be ignored
+            size="auto",
         )
         result = params.to_dict()
-        self.assertNotIn("response_format", result)
-
-    def test_style_removal_gpt_image(self):
-        # Test that style is set to None for GPT Image models in the constructor
-        params = ImageGenerationParameters(
-            prompt="Test prompt", model="gpt-image-1.5", style="natural"
-        )
-        # Style should be None, but let's verify the to_dict behavior
-        result = params.to_dict()
-        # Style should not be included when None
-        if params.style is None:
-            self.assertNotIn("style", result)
-        else:
-            self.assertIn("style", result)
+        self.assertEqual(result["size"], "auto")
 
 
 class TestTextToSpeechParameters(unittest.TestCase):

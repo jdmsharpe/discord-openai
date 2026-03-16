@@ -45,7 +45,6 @@ def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
 
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
 DEEP_RESEARCH_MODELS = ["o3-deep-research", "o4-mini-deep-research"]
-GPT_IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
 TOOL_WEB_SEARCH = {"type": "web_search"}
 TOOL_CODE_INTERPRETER = {"type": "code_interpreter", "container": {"type": "auto"}}
 TOOL_FILE_SEARCH = {"type": "file_search", "max_num_results": 5}

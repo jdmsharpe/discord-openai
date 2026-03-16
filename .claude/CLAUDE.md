@@ -36,8 +36,8 @@ discord-chatgpt/
   - Discord-specific fields for conversation management
 
 - **ImageGenerationParameters**: Parameters for image generation
-  - Supports GPT Image 1.5, GPT Image 1, GPT Image 1 Mini, DALL-E 3, DALL-E 2
-  - Handles model-specific quality defaults
+  - Supports GPT Image 1.5, GPT Image 1, GPT Image 1 Mini (DALL-E models removed)
+  - Defaults: quality `auto`, size `auto`
 
 - **ResearchParameters**: Parameters for deep research
   - Supports `o3-deep-research` and `o4-mini-deep-research` models
@@ -46,7 +46,7 @@ discord-chatgpt/
 
 - **VideoGenerationParameters**: Parameters for Sora video generation
   - Supports `sora-2` and `sora-2-pro` models
-  - Size options and duration (4/8/12 seconds)
+  - Size options including 1080p (sora-2-pro only) and duration (4/8/12/16/20 seconds)
 
 - **TextToSpeechParameters**: Parameters for TTS
   - 13 voices with model-specific validation (default: `marin`, fallback: `coral` for non-rich models)
@@ -181,8 +181,8 @@ Routing is handled by `build_attachment_content_block()` in `util.py`, which che
 Added support for OpenAI's Sora video generation:
 
 - Models: `sora-2` (fast) and `sora-2-pro` (high quality)
-- Sizes: 1280x720, 720x1280, 1792x1024, 1024x1792
-- Durations: 4, 8, or 12 seconds
+- Sizes: 1280x720, 720x1280, 1792x1024, 1024x1792, 1920x1080 (Pro only), 1080x1920 (Pro only)
+- Durations: 4, 8, 12, 16, or 20 seconds
 - Async polling with 10-minute timeout
 
 ### Chat Completions → Responses API Migration
@@ -253,13 +253,13 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 - `gpt-image-1.5` (default)
 - `gpt-image-1`
 - `gpt-image-1-mini`
-- `dall-e-3`
-- `dall-e-2`
+
+DALL-E 2 and DALL-E 3 have been removed (deprecated May 2026).
 
 ### Video Generation Models
 
 - `sora-2` (fast)
-- `sora-2-pro` (high quality)
+- `sora-2-pro` (high quality, supports 1080p)
 
 ### TTS Models
 

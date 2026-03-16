@@ -22,7 +22,6 @@ from util import (
     AVAILABLE_TOOLS,
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
-    GPT_IMAGE_MODELS,
     PROMPT_CACHE_RETENTION,
     INPUT_TEXT_TYPE,
     REASONING_MODELS,
@@ -856,28 +855,18 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="GPT Image 1.5", value="gpt-image-1.5"),
             OptionChoice(name="GPT Image 1", value="gpt-image-1"),
             OptionChoice(name="GPT Image 1 Mini", value="gpt-image-1-mini"),
-            OptionChoice(name="DALL-E 3 (Deprecated May 2026)", value="dall-e-3"),
-            OptionChoice(name="DALL-E 2 (Deprecated May 2026)", value="dall-e-2"),
         ],
     )
     @option(
-        "n",
-        description="Number of images to generate. (default: 1)",
-        required=False,
-        type=int,
-    )
-    @option(
         "quality",
-        description="Image quality. Only supported for GPT Image and DALL-E 3. (default: auto, HD for DALL-E 3)",
+        description="Image quality. (default: auto)",
         required=False,
         type=str,
         choices=[
-            OptionChoice(name="Low (GPT Image only)", value="low"),
-            OptionChoice(name="Medium (GPT Image only)", value="medium"),
-            OptionChoice(name="High (GPT Image only)", value="high"),
-            OptionChoice(name="Auto (GPT Image only)", value="auto"),
-            OptionChoice(name="Standard (DALL-E 3 only)", value="standard"),
-            OptionChoice(name="HD (DALL-E 3 only)", value="hd"),
+            OptionChoice(name="Auto", value="auto"),
+            OptionChoice(name="Low", value="low"),
+            OptionChoice(name="Medium", value="medium"),
+            OptionChoice(name="High", value="high"),
         ],
     )
     @option(
@@ -886,24 +875,10 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=str,
         choices=[
-            OptionChoice(name="Auto (GPT Image only)", value="auto"),
-            OptionChoice(name="1024x1024", value="1024x1024"),
-            OptionChoice(name="1024x1536 (portrait, GPT Image only)", value="1024x1536"),
-            OptionChoice(name="1536x1024 (landscape, GPT Image only)", value="1536x1024"),
-            OptionChoice(name="1024x1792 (portrait, DALL-E only)", value="1024x1792"),
-            OptionChoice(name="1792x1024 (landscape, DALL-E only)", value="1792x1024"),
-            OptionChoice(name="256x256 (DALL-E 2 only)", value="256x256"),
-            OptionChoice(name="512x512 (DALL-E 2 only)", value="512x512"),
-        ],
-    )
-    @option(
-        "style",
-        description="Style of the image. Only supported by DALL-E 3. (default: natural, not set for others)",
-        required=False,
-        type=str,
-        choices=[
-            OptionChoice(name="Vivid", value="vivid"),
-            OptionChoice(name="Natural", value="natural"),
+            OptionChoice(name="Auto", value="auto"),
+            OptionChoice(name="1024x1024 (square)", value="1024x1024"),
+            OptionChoice(name="1024x1536 (portrait)", value="1024x1536"),
+            OptionChoice(name="1536x1024 (landscape)", value="1536x1024"),
         ],
     )
     async def image(
@@ -911,195 +886,68 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         model: str = "gpt-image-1.5",
-        n: int = 1,
         quality: Optional[str] = "auto",
         size: Optional[str] = "auto",
-        style: Optional[str] = "natural",
     ):
         """
         Creates an image given a prompt.
 
         Args:
-          prompt: A text description of the desired image(s). The maximum length is 1000
-              characters for `dall-e-2` and 4000 characters for `dall-e-3`.
-
-          model: The model to use for image generation. Defaults to `gpt-image-1.5` (a GPT
-              based image generation model). You can also select `dall-e-2` or `dall-e-3`.
-
-          n: The number of images to generate. Must be between 1 and 10. For `dall-e-3` and
-              GPT Image models, only `n=1` is supported.
-
-          quality: The quality of the image that will be generated. This param is only supported
-              for `dall-e-3` and GPT Image models.
-
-          size: The size of the generated images. Must be one of `256x256`, `512x512`, or
-              `1024x1024` for `dall-e-2`. Must be one of `1024x1024`, `1792x1024`, or
-              `1024x1792` for `dall-e-3` models.
-
-          style: The style of the generated images. Must be one of `vivid` or `natural`. Vivid
-              causes the model to lean towards generating hyper-real and dramatic images.
-              Natural causes the model to produce more natural, less hyper-real looking
-              images. This param is only supported for `dall-e-3`. Ignored when using
-              GPT Image models.
+          prompt: A text description of the desired image(s).
+          model: The GPT Image model to use. Defaults to `gpt-image-1.5`.
+          quality: The quality of the image (low, medium, high, auto).
+          size: The size of the generated image (auto, 1024x1024, 1024x1536, 1536x1024).
         """
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
 
-        # Guard clauses for model-specific constraints
-        if (model == "dall-e-2" and n > 10) or (model == "dall-e-3" and n > 1):
-            error_message = (
-                "The maximum number of images for DALL-E 2 is 10 and for DALL-E 3 is 1."
-            )
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error", description=error_message, color=Colour.red()
-                )
-            )
-            return
-
-        if model == "dall-e-2" and (size == "1024x1792" or size == "1792x1024"):
-            error_message = "The DALL-E 2 model only supports `256x256`, `512x512`, or `1024x1024` image size."
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error", description=error_message, color=Colour.red()
-                )
-            )
-            return
-
-        if model == "dall-e-3" and (size == "256x256" or size == "512x512"):
-            error_message = "The DALL-E 3 model only supports `1024x1024`, `1792x1024`, or `1024x1792` image size."
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error", description=error_message, color=Colour.red()
-                )
-            )
-            return
-
-        # Remove unsupported parameters based on model selection
-        if model == "dall-e-2":
-            style = None
-            quality = None
-        if model in GPT_IMAGE_MODELS:
-            style = None
-
-        # Set HD quality for DALL-E 3 if an unsupported quality is provided
-        if model == "dall-e-3" and quality not in ["standard", "hd"]:
-            quality = "hd"
-
-        # Set medium quality for GPT Image if an unsupported quality is provided
-        if model in GPT_IMAGE_MODELS and quality not in [
-            "low",
-            "medium",
-            "high",
-            "auto",
-        ]:
-            quality = "medium"
-
-        # Initialize parameters for the image generation API
-        try:
-            # Only set response_format for DALL-E models that support it
-            response_format = "url" if model in ["dall-e-2", "dall-e-3"] else None
-
-            image_params = ImageGenerationParameters(
-                prompt=prompt,
-                model=model,
-                n=n,
-                quality=quality,
-                size=size,
-                style=style,
-                response_format=response_format,
-            )
-            self.logger.info(f"Generating {n} image(s) with model {model}")
-        except Exception as e:
-            error_message = format_openai_error(e)
-            self.logger.error(
-                f"Error creating image parameters: {error_message}", exc_info=True
-            )
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=f"Failed to create image parameters: {error_message}",
-                    color=Colour.red(),
-                )
-            )
-            return
+        image_params = ImageGenerationParameters(
+            prompt=prompt,
+            model=model,
+            quality=quality,
+            size=size,
+        )
+        self.logger.info(f"Generating image with model {model}")
 
         try:
             response = await self.openai_client.images.generate(
                 **image_params.to_dict()
             )
 
-            # Extract image data from response
-            image_urls = []
-            image_data = []
-            for data_item in response.data:
-                # Check if it has url attribute (DALL-E style)
-                if hasattr(data_item, "url") and data_item.url:
-                    image_urls.append(data_item.url)
-                # Check if it has b64_json attribute (base64 style)
-                elif hasattr(data_item, "b64_json") and data_item.b64_json:
-                    image_data.append(data_item.b64_json)
+            # Extract base64 image data from response
+            image_files = []
+            for idx, data_item in enumerate(response.data):
+                if hasattr(data_item, "b64_json") and data_item.b64_json:
+                    import base64
 
-            if image_urls or image_data:
-                image_files = []
+                    image_bytes = base64.b64decode(data_item.b64_json)
+                    data = io.BytesIO(image_bytes)
+                    file_obj = File(data, f"image{idx}.png")
+                    image_files.append(file_obj)
 
-                # Process URL-based images (DALL-E models)
-                for idx, url in enumerate(image_urls):
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(url) as resp:
-                            if resp.status != 200:
-                                self.logger.warning(
-                                    f"Failed to download image {idx}, status: {resp.status}"
-                                )
-                                continue
-                            data = io.BytesIO(await resp.read())
-                            filename = f"image{idx}.png"
-                            file_obj = File(data, filename)
-                            image_files.append(file_obj)
+            if not image_files:
+                raise Exception("No images were generated.")
 
-                # Process base64-encoded images (gpt-image-1 model)
-                for idx, b64_data in enumerate(image_data):
-                    try:
-                        import base64
+            # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
+            description = (
+                f"**Prompt:** {truncate_text(image_params.prompt, 2000)}\n"
+                f"**Model:** {image_params.model}\n"
+                f"**Quality:** {image_params.quality}\n"
+                f"**Size:** {image_params.size}\n"
+            )
 
-                        image_bytes = base64.b64decode(b64_data)
-                        data = io.BytesIO(image_bytes)
-                        filename = f"image{len(image_urls) + idx}.png"
-                        file_obj = File(data, filename)
-                        image_files.append(file_obj)
-                    except Exception as e:
-                        self.logger.error(f"Error processing base64 image {idx}: {e}")
-                        continue
-
-                if len(image_files) <= 0:
-                    raise Exception("No images were generated.")
-
-                # Truncate prompt to avoid exceeding Discord's 4096 char embed limit
-                description = ""
-                description += (
-                    f"**Prompt:** {truncate_text(image_params.prompt, 2000)}\n"
-                )
-                description += f"**Model:** {image_params.model}\n"
-                description += f"**Size:** {image_params.size}\n"
-                if image_params.n > 1:
-                    description += f"**Image count:** {image_params.n}\n"
-                if image_params.quality:
-                    description += f"**Quality:** {image_params.quality}\n"
-                if image_params.style:
-                    description += f"**Style:** {image_params.style}\n"
-
-                embed = Embed(
-                    title="Image Generation",
-                    description=description,
-                    color=Colour.blue(),
-                )
-                # Embed the first image inside the embed container
-                if image_files:
-                    embed.set_image(url=f"attachment://{image_files[0].filename}")
-                await ctx.send_followup(embed=embed, files=image_files)
-                self.logger.info(
-                    f"Successfully generated and sent {len(image_files)} image(s)"
-                )
+            embed = Embed(
+                title="Image Generation",
+                description=description,
+                color=Colour.blue(),
+            )
+            # Embed the first image inside the embed container
+            if image_files:
+                embed.set_image(url=f"attachment://{image_files[0].filename}")
+            await ctx.send_followup(embed=embed, files=image_files)
+            self.logger.info(
+                f"Successfully generated and sent {len(image_files)} image(s)"
+            )
 
         except Exception as e:
             description = format_openai_error(e)
