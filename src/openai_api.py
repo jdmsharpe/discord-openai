@@ -202,7 +202,7 @@ def append_pricing_embed(
     """Append a compact pricing embed showing model, cost, and token usage."""
     cost = calculate_cost(model, input_tokens, output_tokens)
     description = (
-        f"{model} · ${cost:.4f} · {input_tokens:,} tokens in / {output_tokens:,} tokens out · daily ${daily_cost:.2f}"
+        f"${cost:.4f} · {input_tokens:,} tokens in / {output_tokens:,} tokens out · daily ${daily_cost:.2f}"
     )
     embeds.append(Embed(description=description, color=Colour.blue()))
 

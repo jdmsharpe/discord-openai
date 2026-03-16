@@ -300,17 +300,12 @@ class TestAppendPricingEmbed(unittest.TestCase):
         self.assertEqual(len(embeds), 1)
         self.assertEqual(embeds[0].color, Colour.blue())
 
-    def test_description_contains_model(self):
-        embeds = []
-        append_pricing_embed(embeds, "gpt-4.1", 2000, 1000, 0.10)
-        self.assertIn("gpt-4.1", embeds[0].description)
-
     def test_description_contains_tokens(self):
         embeds = []
         append_pricing_embed(embeds, "gpt-4o", 1_234, 567, 0.42)
         desc = embeds[0].description
-        self.assertIn("1,234 in", desc)
-        self.assertIn("567 out", desc)
+        self.assertIn("1,234 tokens in", desc)
+        self.assertIn("567 tokens out", desc)
 
     def test_description_contains_daily_cost(self):
         embeds = []
