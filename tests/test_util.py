@@ -2,7 +2,6 @@ import unittest
 import httpx
 from openai import APIError
 from util import (
-    # Constants
     CONTEXT_MANAGEMENT,
     INPUT_FILE_TYPE,
     PROMPT_CACHE_RETENTION,
@@ -14,13 +13,11 @@ from util import (
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
     TOOL_WEB_SEARCH,
-    # Classes
     ChatCompletionParameters,
     ImageGenerationParameters,
     ResponseParameters,
     TextToSpeechParameters,
     VideoGenerationParameters,
-    # Functions
     build_attachment_content_block,
     chunk_text,
     extract_urls,
