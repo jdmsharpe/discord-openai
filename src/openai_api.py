@@ -355,11 +355,9 @@ class OpenAIAPI(commands.Cog):
             # Assemble the response embeds (view attaches to these)
             append_response_embeds(embeds, response_text)
 
-            # Auxiliary embeds (sources, cost) sent separately so view stays with response
-            aux_embeds: list[Embed] = []
             if tool_info["citations"] or tool_info["file_citations"]:
                 append_sources_embed(
-                    aux_embeds, tool_info["citations"], tool_info["file_citations"]
+                    embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
             usage = getattr(response, "usage", None)
@@ -370,7 +368,7 @@ class OpenAIAPI(commands.Cog):
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    aux_embeds, conversation.model, input_tokens, output_tokens, daily_cost
+                    embeds, conversation.model, input_tokens, output_tokens, daily_cost
                 )
 
             # Strip buttons from previous turn's message
@@ -398,9 +396,6 @@ class OpenAIAPI(commands.Cog):
                     view=self.views[message.author],
                 )
                 self.last_view_messages[message.author] = reply_msg
-
-            if aux_embeds:
-                await message.channel.send(embeds=aux_embeds)
 
         except Exception as e:
             description = format_openai_error(e)
@@ -791,11 +786,9 @@ class OpenAIAPI(commands.Cog):
                 )
             append_response_embeds(embeds, response_text)
 
-            # Auxiliary embeds (sources, cost) sent separately so view stays with response
-            aux_embeds: list[Embed] = []
             if tool_info["citations"] or tool_info["file_citations"]:
                 append_sources_embed(
-                    aux_embeds, tool_info["citations"], tool_info["file_citations"]
+                    embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
             usage = getattr(response, "usage", None)
@@ -806,7 +799,7 @@ class OpenAIAPI(commands.Cog):
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    aux_embeds, model, input_tokens, output_tokens, daily_cost
+                    embeds, model, input_tokens, output_tokens, daily_cost
                 )
 
             # Strip buttons from any prior conversation's last message
@@ -819,14 +812,11 @@ class OpenAIAPI(commands.Cog):
                 initial_tools=tools,
             )
 
-            # Send response with view, then auxiliary embeds separately
             reply_msg = await ctx.send_followup(
                 embeds=embeds,
                 view=self.views[ctx.author],
             )
             self.last_view_messages[ctx.author] = reply_msg
-            if aux_embeds:
-                await ctx.send_followup(embeds=aux_embeds)
 
             # Store the conversation as a new entry in the dictionary
             self.conversation_histories[ctx.interaction.id] = params
@@ -1575,18 +1565,9 @@ class OpenAIAPI(commands.Cog):
             ]
             append_response_embeds(embeds, response_text)
 
-            # Edit the original status message with the header embed
-            await status_msg.edit(embed=embeds[0])
-
-            # Send remaining response chunks as new messages
-            if len(embeds) > 1:
-                await ctx.send_followup(embeds=embeds[1:])
-
-            # Auxiliary embeds: sources and pricing
-            aux_embeds: list[Embed] = []
             if tool_info["citations"] or tool_info["file_citations"]:
                 append_sources_embed(
-                    aux_embeds, tool_info["citations"], tool_info["file_citations"]
+                    embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
             usage = getattr(response, "usage", None)
@@ -1597,11 +1578,15 @@ class OpenAIAPI(commands.Cog):
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    aux_embeds, model, input_tokens, output_tokens, daily_cost
+                    embeds, model, input_tokens, output_tokens, daily_cost
                 )
 
-            if aux_embeds:
-                await ctx.send_followup(embeds=aux_embeds)
+            # Edit the original status message with the header embed
+            await status_msg.edit(embed=embeds[0])
+
+            # Send remaining embeds (response chunks, sources, pricing) as follow-up
+            if len(embeds) > 1:
+                await ctx.send_followup(embeds=embeds[1:])
 
         except Exception as e:
             error_message = format_openai_error(e)
