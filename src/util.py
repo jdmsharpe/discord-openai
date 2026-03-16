@@ -1,3 +1,4 @@
+import hashlib
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -239,6 +240,10 @@ class ResponseParameters:
             payload["tools"] = self.tools
         payload["context_management"] = CONTEXT_MANAGEMENT
         payload["prompt_cache_retention"] = PROMPT_CACHE_RETENTION
+        if self.instructions:
+            payload["prompt_cache_key"] = hashlib.sha256(
+                self.instructions.encode()
+            ).hexdigest()[:16]
 
         return payload
 
