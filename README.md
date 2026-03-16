@@ -52,7 +52,7 @@ All commands are grouped under the `/openai` slash command group.
 
 - **Usage:** `/openai tts input:<text>`
 - **What it does:** Generates audio with OpenAI's TTS stack and returns the file as an attachment.
-- **Models & voices:** Pick between `gpt-4o-mini-tts`, `tts-1`, and `tts-1-hd`. Rich voices (`ash`, `ballad`, `coral`, `sage`, `verse`) are exclusive to GPT-4o Mini TTS, while the classic set (alloy, echo, fable, onyx, nova, shimmer) works everywhere. Instructions are only honoured by GPT-4o based TTS models.
+- **Models & voices:** Pick between `gpt-4o-mini-tts`, `tts-1`, and `tts-1-hd`. 13 voices are available: alloy, ash, ballad, cedar, coral, echo, fable, marin, nova, onyx, sage, shimmer, verse. Voices `ballad`, `verse`, `marin`, and `cedar` are exclusive to GPT-4o Mini TTS; the remaining 9 work across all models. Default voice is `marin`. Instructions are only honoured by GPT-4o based TTS models.
 - **Format & speed:** Select MP3/WAV/Opus/AAC/FLAC/PCM output and tweak playback speed (default `1.0`).
 
 ### `/openai stt`
@@ -60,8 +60,9 @@ All commands are grouped under the `/openai` slash command group.
 - **Usage:** `/openai stt attachment:<audio>`
 - **What it does:** Transcribes or translates uploaded audio that is <=25 MB (mp3, mp4, mpeg, mpga, m4a, wav, webm).
 - **Model choices:** `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `gpt-4o-transcribe-diarize`, or `whisper-1`.
-- **Actions:** Switch between verbatim `transcription` (default) or English `translation`.
-- **Output:** Results are streamed back in an embed, and long responses are automatically chunked to fit Discord limits.
+- **Actions:** Switch between verbatim `transcription` (default) or English `translation` (uses `whisper-1` regardless of model selection, as translation is only supported by Whisper).
+- **Diarization:** The `gpt-4o-transcribe-diarize` model produces speaker-labeled transcripts with speaker names and segment boundaries.
+- **Output:** Results are displayed in an embed, and long responses are automatically truncated to fit Discord limits.
 
 ### `/openai video`
 

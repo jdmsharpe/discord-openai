@@ -377,8 +377,8 @@ class TestTextToSpeechParameters(unittest.TestCase):
         self.assertIsNone(params.instructions)
 
     def test_invalid_voice_falls_back_to_default(self):
-        params = TextToSpeechParameters(input="Hi", model="tts-1", voice="ash")
-        self.assertEqual(params.voice, "alloy")
+        params = TextToSpeechParameters(input="Hi", model="tts-1", voice="marin")
+        self.assertEqual(params.voice, "coral")
         self.assertIsNone(params.instructions)
 
     def test_rich_model_retains_voice_and_instructions(self):

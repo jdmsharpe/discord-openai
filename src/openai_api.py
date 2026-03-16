@@ -17,16 +17,21 @@ from discord.commands import option, OptionChoice, SlashCommandGroup
 from pathlib import Path
 from datetime import date
 from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, cast
+import time
 from util import (
     AVAILABLE_TOOLS,
     CONTEXT_MANAGEMENT,
+    DEEP_RESEARCH_MODELS,
     GPT_IMAGE_MODELS,
     PROMPT_CACHE_RETENTION,
     INPUT_TEXT_TYPE,
     REASONING_MODELS,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
+    TOOL_WEB_SEARCH,
+    TOOL_CODE_INTERPRETER,
     ImageGenerationParameters,
+    ResearchParameters,
     ResponseParameters,
     TextToSpeechParameters,
     VideoGenerationParameters,
@@ -1123,25 +1128,23 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "voice",
-        description="The voice to use when generating the audio. (default: Alloy)",
+        description="The voice to use when generating the audio. (default: Marin)",
         required=False,
         type=str,
         choices=[
+            OptionChoice(name="Marin (Only supported with GPT-4o Mini TTS)", value="marin"),
+            OptionChoice(name="Cedar (Only supported with GPT-4o Mini TTS)", value="cedar"),
             OptionChoice(name="Alloy", value="alloy"),
-            OptionChoice(name="Ash (Only supported with GPT-4o Mini TTS)", value="ash"),
+            OptionChoice(name="Ash", value="ash"),
             OptionChoice(
                 name="Ballad (Only supported with GPT-4o Mini TTS)", value="ballad"
             ),
-            OptionChoice(
-                name="Coral (Only supported with GPT-4o Mini TTS)", value="coral"
-            ),
+            OptionChoice(name="Coral", value="coral"),
             OptionChoice(name="Echo", value="echo"),
             OptionChoice(name="Fable", value="fable"),
-            OptionChoice(name="Onyx", value="onyx"),
             OptionChoice(name="Nova", value="nova"),
-            OptionChoice(
-                name="Sage (Only supported with GPT-4o Mini TTS)", value="sage"
-            ),
+            OptionChoice(name="Onyx", value="onyx"),
+            OptionChoice(name="Sage", value="sage"),
             OptionChoice(name="Shimmer", value="shimmer"),
             OptionChoice(
                 name="Verse (Only supported with GPT-4o Mini TTS)", value="verse"
@@ -1179,7 +1182,7 @@ class OpenAIAPI(commands.Cog):
         ctx: ApplicationContext,
         input: str,
         model: str = "gpt-4o-mini-tts",
-        voice: str = "alloy",
+        voice: str = "marin",
         instructions: str = "",
         response_format: str = "mp3",
         speed: float = 1.0,
@@ -1325,23 +1328,34 @@ class OpenAIAPI(commands.Cog):
                             model=model,
                             file=speech_file,
                             chunking_strategy="auto",
-                            response_format="json",
+                            response_format="diarized_json",
                         )
                     else:
                         response = await self.openai_client.audio.transcriptions.create(
                             model=model, file=speech_file
                         )
-                else:  # translation
+                else:  # translation (only whisper-1 supports translations)
                     response = await self.openai_client.audio.translations.create(
-                        model=model, file=speech_file
+                        model="whisper-1", file=speech_file
                     )
 
-            # Truncate transcription to avoid exceeding Discord's 4096 char embed limit
-            transcription_text = truncate_text(getattr(response, "text", None), 3500)
+            # Format diarized output with speaker labels, or plain text for other models
+            if model == "gpt-4o-transcribe-diarize" and hasattr(response, "segments"):
+                lines = []
+                for seg in response.segments:
+                    speaker = getattr(seg, "speaker", "Unknown")
+                    text = getattr(seg, "text", "").strip()
+                    if text:
+                        lines.append(f"**{speaker}:** {text}")
+                transcription_text = truncate_text("\n".join(lines), 3500)
+            else:
+                transcription_text = truncate_text(
+                    getattr(response, "text", None), 3500
+                )
             description = (
                 f"**Model:** {model}\n"
                 + f"**Action:** {action}\n"
-                + (f"**Output:** {transcription_text}\n" if transcription_text else "")
+                + (f"**Output:**\n{transcription_text}\n" if transcription_text else "")
             )
             embed = Embed(
                 title="Speech-to-Text", description=description, color=Colour.blue()

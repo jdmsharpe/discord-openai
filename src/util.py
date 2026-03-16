@@ -24,6 +24,8 @@ MODEL_PRICING: Dict[str, Tuple[float, float]] = {
     "o4-mini": (1.10, 4.40),
     "o3-pro": (20.00, 80.00),
     "o3": (10.00, 40.00),
+    "o3-deep-research": (10.00, 40.00),
+    "o4-mini-deep-research": (1.10, 4.40),
     "o3-mini": (1.10, 4.40),
     "o1-pro": (150.00, 600.00),
     "o1": (15.00, 60.00),
@@ -39,7 +41,10 @@ def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     """Calculate the cost in dollars for a given model and token usage."""
     input_price, output_price = MODEL_PRICING.get(model, (2.50, 10.00))
     return (input_tokens / 1_000_000) * input_price + (output_tokens / 1_000_000) * output_price
+
+
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
+DEEP_RESEARCH_MODELS = ["o3-deep-research", "o4-mini-deep-research"]
 GPT_IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
 TOOL_WEB_SEARCH = {"type": "web_search"}
 TOOL_CODE_INTERPRETER = {"type": "code_interpreter", "container": {"type": "auto"}}
@@ -87,9 +92,10 @@ REASONING_EFFORT_MEDIUM = "medium"
 REASONING_EFFORT_HIGH = "high"
 RICH_TTS_MODELS = ["gpt-4o-tts", "gpt-4o-mini-tts"]
 
-RICH_TTS_VOICES = {"ash", "ballad", "coral", "sage", "verse"}
-STANDARD_TTS_VOICES = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
-DEFAULT_TTS_VOICE = "alloy"
+RICH_TTS_VOICES = {"ballad", "verse", "marin", "cedar"}
+STANDARD_TTS_VOICES = {"alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer"}
+DEFAULT_TTS_VOICE = "marin"
+DEFAULT_STANDARD_TTS_VOICE = "coral"
 MODEL_SUPPORTED_TTS_VOICES = {
     "tts-1": STANDARD_TTS_VOICES,
     "tts-1-hd": STANDARD_TTS_VOICES,
@@ -326,12 +332,41 @@ class VideoGenerationParameters:
         }
 
 
+class ResearchParameters:
+    """Parameters for OpenAI Deep Research via the Responses API with background mode."""
+
+    def __init__(
+        self,
+        prompt: str = "",
+        model: str = "o3-deep-research",
+        file_search: bool = False,
+        code_interpreter: bool = False,
+    ):
+        self.prompt = prompt
+        self.model = model
+        self.file_search = file_search
+        self.code_interpreter = code_interpreter
+
+    def to_dict(self, tools: List[dict]) -> Dict[str, Any]:
+        """Convert to dictionary for API calls.
+
+        Args:
+            tools: Pre-resolved tool list (web_search is always included).
+        """
+        return {
+            "model": self.model,
+            "input": self.prompt,
+            "tools": tools,
+            "background": True,
+        }
+
+
 class TextToSpeechParameters:
     def __init__(
         self,
         input: str = "",
         model: str = "gpt-4o-mini-tts",
-        voice: str = "alloy",
+        voice: str = DEFAULT_TTS_VOICE,
         instructions: str = "",
         response_format: str = "mp3",
         speed: float = 1.0,
@@ -344,8 +379,10 @@ class TextToSpeechParameters:
         )
         if voice in supported_voices:
             self.voice = voice
-        else:
+        elif DEFAULT_TTS_VOICE in supported_voices:
             self.voice = DEFAULT_TTS_VOICE
+        else:
+            self.voice = DEFAULT_STANDARD_TTS_VOICE
 
         if model in RICH_TTS_MODELS:
             self.instructions = instructions

@@ -44,7 +44,7 @@ discord-chatgpt/
   - Size options and duration (4/8/12 seconds)
 
 - **TextToSpeechParameters**: Parameters for TTS
-  - Voice selection with model-specific validation
+  - 13 voices with model-specific validation (default: `marin`, fallback: `coral` for non-rich models)
   - Rich voice instructions for GPT-4o models
 
 - **ChatCompletionParameters**: Legacy parameters (kept for reference)
@@ -238,13 +238,17 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 
 ### TTS Models
 
-- `gpt-4o-mini-tts` (supports rich voices)
-- `tts-1`
-- `tts-1-hd`
+- `gpt-4o-mini-tts` (supports all 13 voices including rich voices `ballad`, `verse`, `marin`, `cedar`)
+- `tts-1` (9 standard voices: alloy, ash, coral, echo, fable, onyx, nova, sage, shimmer)
+- `tts-1-hd` (same 9 standard voices)
+
+Default voice is `marin` (falls back to `coral` for models that don't support it).
 
 ### STT Models
 
 - `gpt-4o-transcribe`
 - `gpt-4o-mini-transcribe`
-- `gpt-4o-transcribe-diarize`
+- `gpt-4o-transcribe-diarize` (uses `diarized_json` response format with speaker-labeled segments)
 - `whisper-1`
+
+Translation (into English) is only supported by `whisper-1`; the bot forces this model when the translation action is selected.
