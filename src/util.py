@@ -106,7 +106,6 @@ class ChatCompletionParameters:
         persona: str = "You are a helpful assistant.",
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
-        seed: Optional[int] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         conversation_starter: Optional[str] = None,
@@ -119,7 +118,6 @@ class ChatCompletionParameters:
         self.persona = persona
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
-        self.seed = seed
 
         # Define the models that do not support custom temperature and top_p.
         if model in REASONING_MODELS:
@@ -152,8 +150,6 @@ class ChatCompletionParameters:
             payload["frequency_penalty"] = self.frequency_penalty
         if self.presence_penalty is not None:
             payload["presence_penalty"] = self.presence_penalty
-        if self.seed is not None:
-            payload["seed"] = self.seed
         if self.temperature is not None:
             payload["temperature"] = self.temperature
         if self.top_p is not None:
@@ -173,7 +169,6 @@ class ResponseParameters:
         previous_response_id: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
-        seed: Optional[int] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         reasoning: Optional[dict] = None,
@@ -206,7 +201,6 @@ class ResponseParameters:
 
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
-        self.seed = seed
 
         # Discord-specific fields
         self.conversation_starter = conversation_starter
@@ -235,8 +229,6 @@ class ResponseParameters:
             payload["frequency_penalty"] = self.frequency_penalty
         if self.presence_penalty is not None:
             payload["presence_penalty"] = self.presence_penalty
-        if self.seed is not None:
-            payload["seed"] = self.seed
         if self.temperature is not None:
             payload["temperature"] = self.temperature
         if self.top_p is not None:

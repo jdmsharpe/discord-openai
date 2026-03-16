@@ -321,8 +321,6 @@ class OpenAIAPI(commands.Cog):
                 api_params["frequency_penalty"] = conversation.frequency_penalty
             if conversation.presence_penalty is not None:
                 api_params["presence_penalty"] = conversation.presence_penalty
-            if conversation.seed is not None:
-                api_params["seed"] = conversation.seed
             if conversation.temperature is not None:
                 api_params["temperature"] = conversation.temperature
             if conversation.top_p is not None:
@@ -565,12 +563,6 @@ class OpenAIAPI(commands.Cog):
         type=float,
     )
     @option(
-        "seed",
-        description="(Advanced) Seed for deterministic outputs. (default: not set)",
-        required=False,
-        type=int,
-    )
-    @option(
         "temperature",
         description="(Advanced) Controls the randomness of the model. Set this or top_p, but not both. (default: not set)",
         required=False,
@@ -615,7 +607,6 @@ class OpenAIAPI(commands.Cog):
         attachment: Optional[Attachment] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
-        seed: Optional[int] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         web_search: bool = False,
@@ -641,8 +632,6 @@ class OpenAIAPI(commands.Cog):
           (Advanced) frequency_penalty: Controls how much the model should repeat itself.
 
           (Advanced) presence_penalty: Controls how much the model should talk about the prompt.
-
-          (Advanced) seed: Seed for deterministic outputs.
 
           (Advanced) temperature: Controls the randomness of the model.
 
@@ -712,7 +701,6 @@ class OpenAIAPI(commands.Cog):
             input=input_content,
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
-            seed=seed,
             temperature=temperature if model not in REASONING_MODELS else None,
             top_p=top_p if model not in REASONING_MODELS else None,
             reasoning={"effort": "medium"} if model in REASONING_MODELS else None,
@@ -745,7 +733,6 @@ class OpenAIAPI(commands.Cog):
                 if params.presence_penalty
                 else ""
             )
-            description += f"**Seed:** {params.seed}\n" if params.seed else ""
             description += (
                 f"**Temperature:** {params.temperature}\n" if params.temperature else ""
             )

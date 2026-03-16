@@ -63,7 +63,7 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 | video    | user prompt      | 2000 chars         | Leave room for metadata          |
 | stt      | transcription    | 3500 chars         | Primary output field             |
 
-`/openai chat` parameters (13 total, previously 11): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `seed`, `temperature`, `top_p`, `web_search`, `code_interpreter`, `file_search`, `shell`.
+`/openai chat` parameters (12 total): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `temperature`, `top_p`, `web_search`, `code_interpreter`, `file_search`, `shell`.
 
 ### Conversation Management
 

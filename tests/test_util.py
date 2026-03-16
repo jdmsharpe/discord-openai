@@ -35,7 +35,6 @@ class TestChatCompletionParameters(unittest.TestCase):
             model="gpt-5.2",
             frequency_penalty=0.5,
             presence_penalty=0.5,
-            seed=42,
             temperature=0.8,
             top_p=0.9,
         )
@@ -47,7 +46,6 @@ class TestChatCompletionParameters(unittest.TestCase):
         self.assertEqual(result["model"], "gpt-5.2")
         self.assertEqual(result["frequency_penalty"], 0.5)
         self.assertEqual(result["presence_penalty"], 0.5)
-        self.assertEqual(result["seed"], 42)
         self.assertEqual(result["temperature"], 0.8)
         self.assertEqual(result["top_p"], 0.9)
 
@@ -96,7 +94,6 @@ class TestResponseParameters(unittest.TestCase):
             input=[{"type": INPUT_TEXT_TYPE, "text": "Hello!"}],
             frequency_penalty=0.5,
             presence_penalty=0.3,
-            seed=42,
             temperature=0.8,
             top_p=0.9,
         )
@@ -106,7 +103,6 @@ class TestResponseParameters(unittest.TestCase):
         self.assertEqual(result["input"], [{"type": INPUT_TEXT_TYPE, "text": "Hello!"}])
         self.assertEqual(result["frequency_penalty"], 0.5)
         self.assertEqual(result["presence_penalty"], 0.3)
-        self.assertEqual(result["seed"], 42)
         self.assertEqual(result["temperature"], 0.8)
         self.assertEqual(result["top_p"], 0.9)
         self.assertNotIn("reasoning", result)
