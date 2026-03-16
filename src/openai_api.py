@@ -229,8 +229,19 @@ class OpenAIAPI(commands.Cog):
         self.conversation_histories = {}
         # Dictionary to store UI views for each conversation
         self.views = {}
+        # Last message with a ButtonView attached, keyed by user — used to strip old buttons
+        self.last_view_messages = {}
         # Daily cost accumulator keyed by (user_id, date_iso)
         self.daily_costs = {}
+
+    async def _strip_previous_view(self, user) -> None:
+        """Edit the last message that had buttons to remove its view."""
+        prev = self.last_view_messages.pop(user, None)
+        if prev is not None:
+            try:
+                await prev.edit(view=None)
+            except Exception:
+                pass  # Message may have been deleted or is no longer editable
 
     def _track_daily_cost(
         self, user_id: int, model: str, input_tokens: int, output_tokens: int
@@ -367,6 +378,9 @@ class OpenAIAPI(commands.Cog):
                     aux_embeds, conversation.model, input_tokens, output_tokens, daily_cost
                 )
 
+            # Strip buttons from previous turn's message
+            await self._strip_previous_view(message.author)
+
             # Recreate the ButtonView so the tool select reflects current state
             self.views[message.author] = ButtonView(
                 self,
@@ -376,17 +390,19 @@ class OpenAIAPI(commands.Cog):
             )
 
             if embeds:
-                await message.reply(
+                reply_msg = await message.reply(
                     embeds=embeds,
                     view=self.views[message.author],
                 )
+                self.last_view_messages[message.author] = reply_msg
                 self.logger.debug("Replied with generated response.")
             else:
                 self.logger.warning("No embeds to send in the reply.")
-                await message.reply(
+                reply_msg = await message.reply(
                     content="An error occurred: No content to send.",
                     view=self.views[message.author],
                 )
+                self.last_view_messages[message.author] = reply_msg
 
             if aux_embeds:
                 await message.channel.send(embeds=aux_embeds)
@@ -801,6 +817,9 @@ class OpenAIAPI(commands.Cog):
                     aux_embeds, model, input_tokens, output_tokens, daily_cost
                 )
 
+            # Strip buttons from any prior conversation's last message
+            await self._strip_previous_view(ctx.author)
+
             self.views[ctx.author] = ButtonView(
                 self,
                 ctx.author,
@@ -809,10 +828,11 @@ class OpenAIAPI(commands.Cog):
             )
 
             # Send response with view, then auxiliary embeds separately
-            await ctx.send_followup(
+            reply_msg = await ctx.send_followup(
                 embeds=embeds,
                 view=self.views[ctx.author],
             )
+            self.last_view_messages[ctx.author] = reply_msg
             if aux_embeds:
                 await ctx.send_followup(embeds=aux_embeds)
 
