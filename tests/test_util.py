@@ -2,19 +2,25 @@ import unittest
 import httpx
 from openai import APIError
 from util import (
-    ChatCompletionParameters,
-    ImageGenerationParameters,
+    # Constants
+    CONTEXT_MANAGEMENT,
+    INPUT_FILE_TYPE,
     INPUT_IMAGE_TYPE,
     INPUT_TEXT_TYPE,
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
-    ResponseParameters,
-    TextToSpeechParameters,
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
     TOOL_WEB_SEARCH,
+    # Classes
+    ChatCompletionParameters,
+    ImageGenerationParameters,
+    ResponseParameters,
+    TextToSpeechParameters,
     VideoGenerationParameters,
+    # Functions
+    build_attachment_content_block,
     chunk_text,
     extract_urls,
     format_openai_error,
@@ -254,6 +260,14 @@ class TestResponseParameters(unittest.TestCase):
         params_two = ResponseParameters()
         self.assertEqual(params_two.tools, [])
         self.assertIsNot(params_one.tools, params_two.tools)
+
+    def test_context_management_always_present(self):
+        """context_management with compaction should always be in to_dict output."""
+        params = ResponseParameters()
+        result = params.to_dict()
+        self.assertEqual(result["context_management"], CONTEXT_MANAGEMENT)
+        self.assertEqual(result["context_management"][0]["type"], "compaction")
+        self.assertEqual(result["context_management"][0]["compact_threshold"], 200_000)
 
 
 class TestImageGenerationParameters(unittest.TestCase):
@@ -507,6 +521,58 @@ class TestTruncateText(unittest.TestCase):
         result = truncate_text(long_response, 3500)
         self.assertEqual(len(result), 3503)  # 3500 + len("...")
         self.assertTrue(result.endswith("..."))
+
+
+class TestBuildAttachmentContentBlock(unittest.TestCase):
+    def test_image_png(self):
+        result = build_attachment_content_block("image/png", "https://cdn.example.com/photo.png")
+        self.assertEqual(result["type"], INPUT_IMAGE_TYPE)
+        self.assertEqual(result["image_url"], "https://cdn.example.com/photo.png")
+
+    def test_image_jpeg(self):
+        result = build_attachment_content_block("image/jpeg", "https://cdn.example.com/photo.jpg")
+        self.assertEqual(result["type"], INPUT_IMAGE_TYPE)
+
+    def test_image_gif(self):
+        result = build_attachment_content_block("image/gif", "https://cdn.example.com/anim.gif")
+        self.assertEqual(result["type"], INPUT_IMAGE_TYPE)
+
+    def test_image_webp(self):
+        result = build_attachment_content_block("image/webp", "https://cdn.example.com/photo.webp")
+        self.assertEqual(result["type"], INPUT_IMAGE_TYPE)
+
+    def test_pdf_file(self):
+        result = build_attachment_content_block("application/pdf", "https://cdn.example.com/report.pdf")
+        self.assertEqual(result["type"], INPUT_FILE_TYPE)
+        self.assertEqual(result["file_url"], "https://cdn.example.com/report.pdf")
+
+    def test_docx_file(self):
+        result = build_attachment_content_block(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "https://cdn.example.com/doc.docx",
+        )
+        self.assertEqual(result["type"], INPUT_FILE_TYPE)
+        self.assertEqual(result["file_url"], "https://cdn.example.com/doc.docx")
+
+    def test_csv_file(self):
+        result = build_attachment_content_block("text/csv", "https://cdn.example.com/data.csv")
+        self.assertEqual(result["type"], INPUT_FILE_TYPE)
+
+    def test_text_plain(self):
+        result = build_attachment_content_block("text/plain", "https://cdn.example.com/notes.txt")
+        self.assertEqual(result["type"], INPUT_FILE_TYPE)
+
+    def test_none_content_type(self):
+        """Unknown/missing content type should default to input_file."""
+        result = build_attachment_content_block(None, "https://cdn.example.com/mystery")
+        self.assertEqual(result["type"], INPUT_FILE_TYPE)
+
+    def test_content_type_with_charset(self):
+        """Content types with parameters like charset should still match."""
+        result = build_attachment_content_block(
+            "image/png; charset=utf-8", "https://cdn.example.com/photo.png"
+        )
+        self.assertEqual(result["type"], INPUT_IMAGE_TYPE)
 
 
 class TestExtractUrls(unittest.TestCase):

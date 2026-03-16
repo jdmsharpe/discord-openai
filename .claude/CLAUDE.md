@@ -71,7 +71,7 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 - `response_id_history` enables regeneration by reverting to previous response IDs
 - Pause/resume functionality via button controls
 - Tool enable/disable toggling via Select Menu on conversation views
-- `file_search` requires `OPENAI_VECTOR_STORE_IDS` in environment config
+- `file_search` requires `OPENAI_VECTOR_STORE_IDS` in environment config; uses `max_num_results: 5` to limit retrieval; file citations are surfaced in a Sources embed
 - `shell` is guarded to GPT-5 series models in this bot configuration
 - Automatic conversation state cleanup on stop
 
@@ -99,10 +99,44 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 **Key functions:**
 
 - `append_response_embeds()` in `openai_api.py` - Chunks model responses and enforces 6000 char total limit
+- `append_sources_embed()` in `openai_api.py` - Renders web citations (numbered links) and file citations (filename list) in a Sources embed
+- `extract_tool_info()` in `openai_api.py` - Extracts tool usage, `url_citation` annotations (web), and `file_citation` annotations (file search) from Responses API output
+- `build_attachment_content_block()` in `util.py` - Routes Discord attachments to `image_url` (images) or `input_file` (PDFs, docs, spreadsheets, code files) content blocks
 - `truncate_text()` in `util.py` - Truncates text with suffix (e.g., `truncate_text(prompt, 2000)` → "text...")
 - `chunk_text()` in `util.py` - Splits text into 3500 char segments (configurable via `CHUNK_TEXT_SIZE`)
 
-## Recent Changes (November 2025)
+### Attachment Handling
+
+The `/openai chat` `attachment` parameter supports images and file inputs:
+
+- **Images** (PNG, JPEG, GIF, WebP): sent as `image_url` content blocks
+- **Files** (PDF, DOCX, XLSX, CSV, TXT, code files, etc.): sent as `input_file` content blocks using the `file_url` field
+
+Routing is handled by `build_attachment_content_block()` in `util.py`, which checks the Discord attachment's `content_type`. This works both for the initial slash command and follow-up messages in a conversation.
+
+## Recent Changes (March 2026)
+
+### File Search Citations & `max_num_results`
+
+- `extract_tool_info()` now parses `file_citation` annotations (filename, file_id) alongside existing `url_citation` support
+- `append_sources_embed()` renders file citations under a "**Files referenced:**" heading in the Sources embed
+- Sources embed now triggers for any citation type (web or file), not just web_search
+- `TOOL_FILE_SEARCH` includes `max_num_results: 5` to reduce token usage
+
+### Server-Side Compaction
+
+- `context_management=[{"type": "compaction", "compact_threshold": 200000}]` is sent with every Responses API call
+- Automatically compresses context when conversations exceed the token threshold, preventing context-window overflow
+- Applied in both the initial `/openai chat` command (via `to_dict()`) and follow-up conversation messages
+- `CONTEXT_MANAGEMENT` constant defined in `util.py`
+
+### File Input Support (`input_file`)
+
+- Attachments are now routed by content type: images → `image_url`, everything else → `input_file`
+- Supports PDFs, Word docs, spreadsheets, code files, and more via the Responses API `input_file` content block
+- Works in both the initial `/openai chat` command and follow-up conversation messages
+
+## Previous Changes (November 2025)
 
 ### Video Generation (`/openai video`)
 

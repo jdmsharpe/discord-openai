@@ -8,7 +8,7 @@ REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
 GPT_IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
 TOOL_WEB_SEARCH = {"type": "web_search"}
 TOOL_CODE_INTERPRETER = {"type": "code_interpreter", "container": {"type": "auto"}}
-TOOL_FILE_SEARCH = {"type": "file_search"}
+TOOL_FILE_SEARCH = {"type": "file_search", "max_num_results": 5}
 TOOL_SHELL = {"type": "shell", "environment": {"type": "container_auto"}}
 AVAILABLE_TOOLS = {
     "web_search": TOOL_WEB_SEARCH,
@@ -17,10 +17,30 @@ AVAILABLE_TOOLS = {
     "shell": TOOL_SHELL,
 }
 
+# Server-side compaction: automatically compress context when it exceeds this
+# token threshold, preventing context-window overflow in long conversations.
+CONTEXT_MANAGEMENT = [{"type": "compaction", "compact_threshold": 200_000}]
+
 # Input content types for Responses API
 # For multimodal input, use content blocks within a message item
 INPUT_TEXT_TYPE = "text"
 INPUT_IMAGE_TYPE = "image_url"
+INPUT_FILE_TYPE = "input_file"
+
+# Image MIME type prefixes — everything else routes to input_file
+IMAGE_CONTENT_TYPES = frozenset({"image/png", "image/jpeg", "image/gif", "image/webp"})
+
+
+def build_attachment_content_block(content_type: Optional[str], url: str) -> dict:
+    """Return the appropriate Responses API content block for an attachment.
+
+    Images are sent as ``image_url`` blocks; all other supported file types
+    (PDFs, documents, spreadsheets, code, etc.) are sent as ``input_file``
+    blocks using the ``file_url`` field.
+    """
+    if content_type and content_type.split(";")[0].strip() in IMAGE_CONTENT_TYPES:
+        return {"type": INPUT_IMAGE_TYPE, "image_url": url}
+    return {"type": INPUT_FILE_TYPE, "file_url": url}
 
 # Reasoning effort levels for o-series models
 REASONING_EFFORT_LOW = "low"
@@ -187,6 +207,7 @@ class ResponseParameters:
             payload["reasoning"] = self.reasoning
         if self.tools:
             payload["tools"] = self.tools
+        payload["context_management"] = CONTEXT_MANAGEMENT
 
         return payload
 

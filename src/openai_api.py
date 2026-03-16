@@ -17,19 +17,20 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, cast
 from util import (
     AVAILABLE_TOOLS,
-    chunk_text,
-    format_openai_error,
+    CONTEXT_MANAGEMENT,
     GPT_IMAGE_MODELS,
-    ImageGenerationParameters,
-    INPUT_IMAGE_TYPE,
     INPUT_TEXT_TYPE,
     REASONING_MODELS,
-    ResponseParameters,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
+    ImageGenerationParameters,
+    ResponseParameters,
     TextToSpeechParameters,
-    truncate_text,
     VideoGenerationParameters,
+    build_attachment_content_block,
+    chunk_text,
+    format_openai_error,
+    truncate_text,
 )
 from config.auth import GUILD_IDS, OPENAI_API_KEY, OPENAI_VECTOR_STORE_IDS
 
@@ -37,6 +38,7 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY, OPENAI_VECTOR_STORE_IDS
 class ToolInfo(TypedDict):
     tool_types: List[str]
     citations: List[Dict[str, str]]
+    file_citations: List[Dict[str, str]]
 
 
 class PermissionAwareChannel(Protocol):
@@ -73,7 +75,7 @@ def append_response_embeds(embeds, response_text):
 
 
 def extract_tool_info(response: Any) -> ToolInfo:
-    """Extract tool usage and web citations from a Responses API object."""
+    """Extract tool usage, web citations, and file citations from a Responses API object."""
 
     def get_value(item: Any, key: str, default: Any = None) -> Any:
         if isinstance(item, dict):
@@ -81,8 +83,10 @@ def extract_tool_info(response: Any) -> ToolInfo:
         return getattr(item, key, default)
 
     citations: List[Dict[str, str]] = []
-    seen_urls = set()
-    tools_used = set()
+    file_citations: List[Dict[str, str]] = []
+    seen_urls: set[str] = set()
+    seen_file_ids: set[str] = set()
+    tools_used: set[str] = set()
 
     output_items = get_value(response, "output", []) or []
     for output_item in output_items:
@@ -105,31 +109,61 @@ def extract_tool_info(response: Any) -> ToolInfo:
             annotations = get_value(content_block, "annotations", []) or []
             for annotation in annotations:
                 annotation_type = get_value(annotation, "type")
-                if annotation_type != "url_citation":
-                    continue
 
-                url = get_value(annotation, "url")
-                title = get_value(annotation, "title") or url
-                if not url or url in seen_urls:
-                    continue
+                if annotation_type == "url_citation":
+                    url = get_value(annotation, "url")
+                    title = get_value(annotation, "title") or url
+                    if not url or url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    citations.append({"title": title, "url": url})
+                    tools_used.add("web_search")
 
-                seen_urls.add(url)
-                citations.append({"title": title, "url": url})
-                tools_used.add("web_search")
+                elif annotation_type == "file_citation":
+                    file_id = get_value(annotation, "file_id") or ""
+                    filename = get_value(annotation, "filename") or file_id
+                    if not file_id or file_id in seen_file_ids:
+                        continue
+                    seen_file_ids.add(file_id)
+                    file_citations.append(
+                        {"filename": filename, "file_id": file_id}
+                    )
 
-    return {"tool_types": sorted(tools_used), "citations": citations}
+    return {
+        "tool_types": sorted(tools_used),
+        "citations": citations,
+        "file_citations": file_citations,
+    }
 
 
-def append_sources_embed(embeds: List[Embed], citations: List[Dict[str, str]]) -> None:
-    """Append a sources embed if there is remaining embed space."""
-    if not citations:
+def append_sources_embed(
+    embeds: List[Embed],
+    citations: List[Dict[str, str]],
+    file_citations: Optional[List[Dict[str, str]]] = None,
+) -> None:
+    """Append a sources embed listing web links and/or file citations."""
+    if not citations and not file_citations:
         return
 
-    lines = [
-        f"{index}. [{citation['title']}]({citation['url']})"
-        for index, citation in enumerate(citations, start=1)
-    ]
-    description = "\n".join(lines)
+    parts: List[str] = []
+
+    # Web citations as numbered links
+    if citations:
+        web_lines = [
+            f"{index}. [{citation['title']}]({citation['url']})"
+            for index, citation in enumerate(citations[:20], start=1)
+        ]
+        parts.append("\n".join(web_lines))
+
+    # File citations as numbered filenames
+    if file_citations:
+        file_lines = [
+            f"{index}. {citation['filename']}"
+            for index, citation in enumerate(file_citations[:20], start=1)
+        ]
+        parts.append("**Files referenced:**\n" + "\n".join(file_lines))
+
+    description = "\n\n".join(parts)
 
     current_total = sum(
         len(embed.description or "") + len(embed.title or "") for embed in embeds
@@ -235,10 +269,9 @@ class OpenAIAPI(commands.Cog):
                 input_content = [{"type": INPUT_TEXT_TYPE, "text": message.content}]
                 for attachment in message.attachments:
                     input_content.append(
-                        {
-                            "type": INPUT_IMAGE_TYPE,
-                            "image_url": attachment.url,
-                        }
+                        build_attachment_content_block(
+                            attachment.content_type, attachment.url
+                        )
                     )
             else:
                 input_content = message.content  # Simple string for text-only
@@ -269,6 +302,7 @@ class OpenAIAPI(commands.Cog):
                 api_params["reasoning"] = conversation.reasoning
             if conversation.tools:
                 api_params["tools"] = conversation.tools
+            api_params["context_management"] = CONTEXT_MANAGEMENT
 
             # API call using Responses API
             self.logger.debug("Making API call to OpenAI Responses API.")
@@ -286,8 +320,10 @@ class OpenAIAPI(commands.Cog):
 
             # Assemble the response
             append_response_embeds(embeds, response_text)
-            if "web_search" in tool_info["tool_types"]:
-                append_sources_embed(embeds, tool_info["citations"])
+            if tool_info["citations"] or tool_info["file_citations"]:
+                append_sources_embed(
+                    embeds, tool_info["citations"], tool_info["file_citations"]
+                )
 
             if embeds:
                 await message.reply(
@@ -471,7 +507,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "attachment",
-        description="Attachment to append to the prompt. Only images are supported at this time. (default: not set)",
+        description="Attach an image, PDF, document, spreadsheet, or code file. (default: not set)",
         required=False,
         type=Attachment,
     )
@@ -559,7 +595,7 @@ class OpenAIAPI(commands.Cog):
               [model endpoint compatibility](https://platform.openai.com/docs/models/model-endpoint-compatibility)
               table for details on which models work with the Chat API.
 
-          attachment: An image attachment to append to the prompt. Only images are supported.
+          attachment: Attach an image, PDF, document, spreadsheet, or code file.
 
           (Advanced) frequency_penalty: Controls how much the model should repeat itself.
 
@@ -603,7 +639,7 @@ class OpenAIAPI(commands.Cog):
         if attachment is not None:
             input_content = [
                 {"type": INPUT_TEXT_TYPE, "text": prompt},
-                {"type": INPUT_IMAGE_TYPE, "image_url": attachment.url},
+                build_attachment_content_block(attachment.content_type, attachment.url),
             ]
         else:
             input_content = prompt  # Simple string for text-only input
@@ -712,8 +748,10 @@ class OpenAIAPI(commands.Cog):
                     )
                 )
             append_response_embeds(embeds, response_text)
-            if "web_search" in tool_info["tool_types"]:
-                append_sources_embed(embeds, tool_info["citations"])
+            if tool_info["citations"] or tool_info["file_citations"]:
+                append_sources_embed(
+                    embeds, tool_info["citations"], tool_info["file_citations"]
+                )
             self.views[ctx.author] = ButtonView(
                 self,
                 ctx.author,

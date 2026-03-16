@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 import unittest
 from typing import Any, cast
-from openai_api import OpenAIAPI, append_response_embeds, extract_tool_info
+from openai_api import OpenAIAPI, append_response_embeds, append_sources_embed, extract_tool_info
 from discord import Bot, Colour, Embed, Intents
 
 
@@ -30,6 +30,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(error)
         self.assertEqual(tools[0]["type"], "file_search")
         self.assertEqual(tools[0]["vector_store_ids"], ["vs_123"])
+        self.assertEqual(tools[0]["max_num_results"], 5)
 
     async def test_resolve_selected_tools_shell_model_guard(self):
         cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
@@ -122,6 +123,7 @@ class TestExtractToolInfo(unittest.TestCase):
 
         self.assertEqual(result["tool_types"], [])
         self.assertEqual(result["citations"], [])
+        self.assertEqual(result["file_citations"], [])
 
     def test_extract_tool_info_web_search(self):
         response = MagicMock()
@@ -168,6 +170,74 @@ class TestExtractToolInfo(unittest.TestCase):
 
         self.assertIn("file_search", result["tool_types"])
         self.assertEqual(result["citations"], [])
+        self.assertEqual(result["file_citations"], [])
+
+    def test_extract_tool_info_file_search_with_citations(self):
+        response = MagicMock()
+        response.output = [
+            {"type": "file_search_call"},
+            {
+                "type": "message",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "annotations": [
+                            {
+                                "type": "file_citation",
+                                "file_id": "file-abc123",
+                                "filename": "report.pdf",
+                                "index": 42,
+                            },
+                            {
+                                "type": "file_citation",
+                                "file_id": "file-def456",
+                                "filename": "notes.txt",
+                                "index": 100,
+                            },
+                        ],
+                    }
+                ],
+            },
+        ]
+
+        result = extract_tool_info(response)
+
+        self.assertIn("file_search", result["tool_types"])
+        self.assertEqual(len(result["file_citations"]), 2)
+        self.assertEqual(result["file_citations"][0]["filename"], "report.pdf")
+        self.assertEqual(result["file_citations"][0]["file_id"], "file-abc123")
+        self.assertEqual(result["file_citations"][1]["filename"], "notes.txt")
+
+    def test_extract_tool_info_file_citations_deduplicated(self):
+        response = MagicMock()
+        response.output = [
+            {
+                "type": "message",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "annotations": [
+                            {
+                                "type": "file_citation",
+                                "file_id": "file-abc123",
+                                "filename": "report.pdf",
+                                "index": 10,
+                            },
+                            {
+                                "type": "file_citation",
+                                "file_id": "file-abc123",
+                                "filename": "report.pdf",
+                                "index": 50,
+                            },
+                        ],
+                    }
+                ],
+            },
+        ]
+
+        result = extract_tool_info(response)
+
+        self.assertEqual(len(result["file_citations"]), 1)
 
     def test_extract_tool_info_shell(self):
         response = MagicMock()
@@ -177,6 +247,50 @@ class TestExtractToolInfo(unittest.TestCase):
 
         self.assertIn("shell", result["tool_types"])
         self.assertEqual(result["citations"], [])
+
+
+class TestAppendSourcesEmbed(unittest.TestCase):
+    def test_web_citations_only(self):
+        embeds = []
+        citations = [{"title": "Example", "url": "https://example.com"}]
+        append_sources_embed(embeds, citations)
+        self.assertEqual(len(embeds), 1)
+        self.assertEqual(embeds[0].title, "Sources")
+        self.assertIn("Example", embeds[0].description)
+        self.assertIn("https://example.com", embeds[0].description)
+
+    def test_file_citations_only(self):
+        embeds = []
+        file_citations = [
+            {"filename": "report.pdf", "file_id": "file-abc"},
+            {"filename": "notes.txt", "file_id": "file-def"},
+        ]
+        append_sources_embed(embeds, [], file_citations)
+        self.assertEqual(len(embeds), 1)
+        self.assertIn("Files referenced", embeds[0].description)
+        self.assertIn("report.pdf", embeds[0].description)
+        self.assertIn("notes.txt", embeds[0].description)
+
+    def test_web_and_file_citations_combined(self):
+        embeds = []
+        citations = [{"title": "Web Source", "url": "https://example.com"}]
+        file_citations = [{"filename": "data.csv", "file_id": "file-123"}]
+        append_sources_embed(embeds, citations, file_citations)
+        self.assertEqual(len(embeds), 1)
+        self.assertIn("Web Source", embeds[0].description)
+        self.assertIn("data.csv", embeds[0].description)
+
+    def test_no_citations(self):
+        embeds = []
+        append_sources_embed(embeds, [], [])
+        self.assertEqual(len(embeds), 0)
+
+    def test_no_embed_when_no_space(self):
+        embeds = [Embed(title="Big", description="x" * 5950)]
+        file_citations = [{"filename": "report.pdf", "file_id": "file-abc"}]
+        append_sources_embed(embeds, [], file_citations)
+        # Should not add since no remaining space
+        self.assertEqual(len(embeds), 1)
 
 
 if __name__ == "__main__":
