@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 import unittest
 from typing import Any, cast
-from openai_api import OpenAIAPI, append_response_embeds, append_sources_embed, extract_tool_info
+from openai_api import OpenAIAPI, append_pricing_embed, append_response_embeds, append_sources_embed, extract_tool_info
 from discord import Bot, Colour, Embed, Intents
 
 
@@ -291,6 +291,37 @@ class TestAppendSourcesEmbed(unittest.TestCase):
         append_sources_embed(embeds, [], file_citations)
         # Should not add since no remaining space
         self.assertEqual(len(embeds), 1)
+
+
+class TestAppendPricingEmbed(unittest.TestCase):
+    def test_appends_embed(self):
+        embeds = []
+        append_pricing_embed(embeds, "gpt-4o", 1000, 500, 0.05)
+        self.assertEqual(len(embeds), 1)
+        self.assertEqual(embeds[0].color, Colour.orange())
+
+    def test_description_contains_model(self):
+        embeds = []
+        append_pricing_embed(embeds, "gpt-4.1", 2000, 1000, 0.10)
+        self.assertIn("gpt-4.1", embeds[0].description)
+
+    def test_description_contains_tokens(self):
+        embeds = []
+        append_pricing_embed(embeds, "gpt-4o", 1_234, 567, 0.42)
+        desc = embeds[0].description
+        self.assertIn("1,234 in", desc)
+        self.assertIn("567 out", desc)
+
+    def test_description_contains_daily_cost(self):
+        embeds = []
+        append_pricing_embed(embeds, "gpt-4o", 100, 50, 1.23)
+        self.assertIn("daily $1.23", embeds[0].description)
+
+    def test_appends_to_existing_embeds(self):
+        embeds = [Embed(title="Response", description="Hello")]
+        append_pricing_embed(embeds, "gpt-4o", 100, 50, 0.01)
+        self.assertEqual(len(embeds), 2)
+        self.assertEqual(embeds[1].color, Colour.orange())
 
 
 if __name__ == "__main__":

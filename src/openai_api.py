@@ -14,6 +14,7 @@ from discord import (
 from discord.ext import commands
 from discord.commands import option, OptionChoice, SlashCommandGroup
 from pathlib import Path
+from datetime import date
 from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, cast
 from util import (
     AVAILABLE_TOOLS,
@@ -29,6 +30,7 @@ from util import (
     TextToSpeechParameters,
     VideoGenerationParameters,
     build_attachment_content_block,
+    calculate_cost,
     chunk_text,
     format_openai_error,
     truncate_text,
@@ -190,6 +192,21 @@ def append_sources_embed(
     )
 
 
+def append_pricing_embed(
+    embeds: List[Embed],
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    daily_cost: float,
+) -> None:
+    """Append a compact pricing embed showing model, cost, and token usage."""
+    cost = calculate_cost(model, input_tokens, output_tokens)
+    description = (
+        f"{model} · ${cost:.4f} · {input_tokens:,} in / {output_tokens:,} out · daily ${daily_cost:.2f}"
+    )
+    embeds.append(Embed(description=description, color=Colour.orange()))
+
+
 class OpenAIAPI(commands.Cog):
     openai = SlashCommandGroup("openai", "OpenAI commands", guild_ids=GUILD_IDS)
 
@@ -212,6 +229,17 @@ class OpenAIAPI(commands.Cog):
         self.conversation_histories = {}
         # Dictionary to store UI views for each conversation
         self.views = {}
+        # Daily cost accumulator keyed by (user_id, date_iso)
+        self.daily_costs = {}
+
+    def _track_daily_cost(
+        self, user_id: int, model: str, input_tokens: int, output_tokens: int
+    ) -> float:
+        """Add this request's cost to the user's daily total and return the new daily total."""
+        cost = calculate_cost(model, input_tokens, output_tokens)
+        key = (user_id, date.today().isoformat())
+        self.daily_costs[key] = self.daily_costs.get(key, 0.0) + cost
+        return self.daily_costs[key]
 
     def resolve_selected_tools(
         self, selected_tool_names: List[str], model: str
@@ -326,6 +354,16 @@ class OpenAIAPI(commands.Cog):
                 append_sources_embed(
                     embeds, tool_info["citations"], tool_info["file_citations"]
                 )
+
+            usage = getattr(response, "usage", None)
+            input_tokens = getattr(usage, "input_tokens", 0) or 0
+            output_tokens = getattr(usage, "output_tokens", 0) or 0
+            daily_cost = self._track_daily_cost(
+                message.author.id, conversation.model, input_tokens, output_tokens
+            )
+            append_pricing_embed(
+                embeds, conversation.model, input_tokens, output_tokens, daily_cost
+            )
 
             if embeds:
                 await message.reply(
@@ -754,6 +792,17 @@ class OpenAIAPI(commands.Cog):
                 append_sources_embed(
                     embeds, tool_info["citations"], tool_info["file_citations"]
                 )
+
+            usage = getattr(response, "usage", None)
+            input_tokens = getattr(usage, "input_tokens", 0) or 0
+            output_tokens = getattr(usage, "output_tokens", 0) or 0
+            daily_cost = self._track_daily_cost(
+                ctx.author.id, model, input_tokens, output_tokens
+            )
+            append_pricing_embed(
+                embeds, model, input_tokens, output_tokens, daily_cost
+            )
+
             self.views[ctx.author] = ButtonView(
                 self,
                 ctx.author,

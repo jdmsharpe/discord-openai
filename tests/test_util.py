@@ -4,6 +4,7 @@ from openai import APIError
 from util import (
     CONTEXT_MANAGEMENT,
     INPUT_FILE_TYPE,
+    MODEL_PRICING,
     PROMPT_CACHE_RETENTION,
     INPUT_IMAGE_TYPE,
     INPUT_TEXT_TYPE,
@@ -19,6 +20,7 @@ from util import (
     TextToSpeechParameters,
     VideoGenerationParameters,
     build_attachment_content_block,
+    calculate_cost,
     chunk_text,
     extract_urls,
     format_openai_error,
@@ -578,6 +580,48 @@ class TestBuildAttachmentContentBlock(unittest.TestCase):
             "image/png; charset=utf-8", "https://cdn.example.com/photo.png"
         )
         self.assertEqual(result["type"], INPUT_IMAGE_TYPE)
+
+
+class TestModelPricing(unittest.TestCase):
+    CHAT_MODELS = [
+        "gpt-5.4-pro", "gpt-5.4", "gpt-5.3-chat-latest",
+        "gpt-5.2-pro", "gpt-5.2", "gpt-5.1",
+        "gpt-5-pro", "gpt-5", "gpt-5-mini", "gpt-5-nano",
+        "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
+        "o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1",
+        "gpt-4o", "gpt-4o-mini",
+        "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo",
+    ]
+
+    def test_all_chat_models_have_pricing(self):
+        for model in self.CHAT_MODELS:
+            self.assertIn(model, MODEL_PRICING, f"Missing pricing for {model}")
+
+    def test_pricing_values_positive(self):
+        for model, (inp, out) in MODEL_PRICING.items():
+            self.assertGreater(inp, 0, f"{model} input price must be positive")
+            self.assertGreater(out, 0, f"{model} output price must be positive")
+
+    def test_output_price_gte_input_price(self):
+        for model, (inp, out) in MODEL_PRICING.items():
+            self.assertGreaterEqual(out, inp, f"{model} output should be >= input price")
+
+    def test_calculate_cost_known_model(self):
+        cost = calculate_cost("gpt-4o", 1_000_000, 1_000_000)
+        self.assertAlmostEqual(cost, 12.50)  # 2.50 + 10.00
+
+    def test_calculate_cost_zero_tokens(self):
+        cost = calculate_cost("gpt-4o", 0, 0)
+        self.assertEqual(cost, 0.0)
+
+    def test_calculate_cost_unknown_model_uses_default(self):
+        cost = calculate_cost("unknown-model", 1_000_000, 1_000_000)
+        self.assertAlmostEqual(cost, 12.50)  # default (2.50, 10.00)
+
+    def test_calculate_cost_small_tokens(self):
+        cost = calculate_cost("gpt-4.1-nano", 100, 50)
+        expected = (100 / 1_000_000) * 0.10 + (50 / 1_000_000) * 0.40
+        self.assertAlmostEqual(cost, expected)
 
 
 class TestExtractUrls(unittest.TestCase):

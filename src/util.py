@@ -1,9 +1,43 @@
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from openai import APIError
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
+
+# Per-million-token pricing: (input_cost, output_cost)
+MODEL_PRICING: Dict[str, Tuple[float, float]] = {
+    "gpt-5.4-pro": (3.00, 12.00),
+    "gpt-5.4": (2.00, 8.00),
+    "gpt-5.3-chat-latest": (2.00, 8.00),
+    "gpt-5.2-pro": (3.00, 12.00),
+    "gpt-5.2": (2.00, 8.00),
+    "gpt-5.1": (2.00, 8.00),
+    "gpt-5-pro": (5.00, 20.00),
+    "gpt-5": (2.00, 8.00),
+    "gpt-5-mini": (0.40, 1.60),
+    "gpt-5-nano": (0.10, 0.40),
+    "gpt-4.1": (2.00, 8.00),
+    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-4.1-nano": (0.10, 0.40),
+    "o4-mini": (1.10, 4.40),
+    "o3-pro": (20.00, 80.00),
+    "o3": (10.00, 40.00),
+    "o3-mini": (1.10, 4.40),
+    "o1-pro": (150.00, 600.00),
+    "o1": (15.00, 60.00),
+    "gpt-4o": (2.50, 10.00),
+    "gpt-4o-mini": (0.15, 0.60),
+    "gpt-4": (30.00, 60.00),
+    "gpt-4-turbo": (10.00, 30.00),
+    "gpt-3.5-turbo": (0.50, 1.50),
+}
+
+
+def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+    """Calculate the cost in dollars for a given model and token usage."""
+    input_price, output_price = MODEL_PRICING.get(model, (2.50, 10.00))
+    return (input_tokens / 1_000_000) * input_price + (output_tokens / 1_000_000) * output_price
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
 GPT_IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
 TOOL_WEB_SEARCH = {"type": "web_search"}

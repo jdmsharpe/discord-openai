@@ -100,8 +100,10 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 
 - `append_response_embeds()` in `openai_api.py` - Chunks model responses and enforces 6000 char total limit
 - `append_sources_embed()` in `openai_api.py` - Renders web citations (numbered links) and file citations (filename list) in a Sources embed
+- `append_pricing_embed()` in `openai_api.py` - Appends an orange embed showing model name, request cost, token counts, and daily cumulative cost
 - `extract_tool_info()` in `openai_api.py` - Extracts tool usage, `url_citation` annotations (web), and `file_citation` annotations (file search) from Responses API output
 - `build_attachment_content_block()` in `util.py` - Routes Discord attachments to `image_url` (images) or `input_file` (PDFs, docs, spreadsheets, code files) content blocks
+- `calculate_cost()` in `util.py` - Calculates dollar cost from model name and token counts using `MODEL_PRICING`
 - `truncate_text()` in `util.py` - Truncates text with suffix (e.g., `truncate_text(prompt, 2000)` → "text...")
 - `chunk_text()` in `util.py` - Splits text into 3500 char segments (configurable via `CHUNK_TEXT_SIZE`)
 
@@ -115,6 +117,15 @@ The `/openai chat` `attachment` parameter supports images and file inputs:
 Routing is handled by `build_attachment_content_block()` in `util.py`, which checks the Discord attachment's `content_type`. This works both for the initial slash command and follow-up messages in a conversation.
 
 ## Recent Changes (March 2026)
+
+### Pricing Embed
+
+- Every `/openai chat` response (initial and follow-ups) now includes an orange pricing embed
+- Format: `model · $0.0042 · 1,234 in / 567 out · daily $0.15`
+- `MODEL_PRICING` in `util.py` maps each chat model to `(input_cost_per_million, output_cost_per_million)` tuple
+- `calculate_cost()` in `util.py` computes dollar cost; unknown models fall back to `(2.50, 10.00)`
+- `_track_daily_cost()` on the cog accumulates per-user per-day costs in `self.daily_costs`
+- Token usage is extracted from `response.usage.input_tokens` / `output_tokens`
 
 ### File Search Citations & `max_num_results`
 
