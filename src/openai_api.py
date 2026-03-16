@@ -202,7 +202,7 @@ def append_pricing_embed(
     """Append a compact pricing embed showing model, cost, and token usage."""
     cost = calculate_cost(model, input_tokens, output_tokens)
     description = (
-        f"{model} · ${cost:.4f} · {input_tokens:,} in / {output_tokens:,} out · daily ${daily_cost:.2f}"
+        f"{model} · ${cost:.4f} · {input_tokens:,} tokens in / {output_tokens:,} tokens out · daily ${daily_cost:.2f}"
     )
     embeds.append(Embed(description=description, color=Colour.blue()))
 
@@ -346,11 +346,14 @@ class OpenAIAPI(commands.Cog):
             conversation.response_id_history.append(response.id)
             self.logger.debug(f"Updated previous_response_id to: {response.id}")
 
-            # Assemble the response
+            # Assemble the response embeds (view attaches to these)
             append_response_embeds(embeds, response_text)
+
+            # Auxiliary embeds (sources, cost) sent separately so view stays with response
+            aux_embeds: list[Embed] = []
             if tool_info["citations"] or tool_info["file_citations"]:
                 append_sources_embed(
-                    embeds, tool_info["citations"], tool_info["file_citations"]
+                    aux_embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
             usage = getattr(response, "usage", None)
@@ -361,29 +364,32 @@ class OpenAIAPI(commands.Cog):
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    embeds, conversation.model, input_tokens, output_tokens, daily_cost
+                    aux_embeds, conversation.model, input_tokens, output_tokens, daily_cost
                 )
+
+            # Recreate the ButtonView so the tool select reflects current state
+            self.views[message.author] = ButtonView(
+                self,
+                message.author,
+                conversation.conversation_id,
+                initial_tools=conversation.tools,
+            )
 
             if embeds:
                 await message.reply(
                     embeds=embeds,
-                    view=(
-                        self.views[message.author]
-                        if message.author in self.views
-                        else None
-                    ),
+                    view=self.views[message.author],
                 )
                 self.logger.debug("Replied with generated response.")
             else:
                 self.logger.warning("No embeds to send in the reply.")
                 await message.reply(
                     content="An error occurred: No content to send.",
-                    view=(
-                        self.views[message.author]
-                        if message.author in self.views
-                        else None
-                    ),
+                    view=self.views[message.author],
                 )
+
+            if aux_embeds:
+                await message.channel.send(embeds=aux_embeds)
 
         except Exception as e:
             description = format_openai_error(e)
@@ -776,9 +782,12 @@ class OpenAIAPI(commands.Cog):
                     )
                 )
             append_response_embeds(embeds, response_text)
+
+            # Auxiliary embeds (sources, cost) sent separately so view stays with response
+            aux_embeds: list[Embed] = []
             if tool_info["citations"] or tool_info["file_citations"]:
                 append_sources_embed(
-                    embeds, tool_info["citations"], tool_info["file_citations"]
+                    aux_embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
             usage = getattr(response, "usage", None)
@@ -789,7 +798,7 @@ class OpenAIAPI(commands.Cog):
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    embeds, model, input_tokens, output_tokens, daily_cost
+                    aux_embeds, model, input_tokens, output_tokens, daily_cost
                 )
 
             self.views[ctx.author] = ButtonView(
@@ -799,11 +808,13 @@ class OpenAIAPI(commands.Cog):
                 initial_tools=tools,
             )
 
-            # Send response
+            # Send response with view, then auxiliary embeds separately
             await ctx.send_followup(
                 embeds=embeds,
                 view=self.views[ctx.author],
             )
+            if aux_embeds:
+                await ctx.send_followup(embeds=aux_embeds)
 
             # Store the conversation as a new entry in the dictionary
             self.conversation_histories[ctx.interaction.id] = params
