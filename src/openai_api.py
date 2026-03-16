@@ -726,11 +726,8 @@ class OpenAIAPI(commands.Cog):
             description += f"**Prompt:** {truncate_text(prompt, 2000)}\n"
             description += f"**Model:** {params.model}\n"
             description += f"**Persona:** {params.instructions}\n"
-            description += (
-                f"**Tools:** {', '.join(tool['type'] for tool in params.tools)}\n"
-                if params.tools
-                else "**Tools:** none\n"
-            )
+            if params.tools:
+                description += f"**Tools:** {', '.join(tool['type'] for tool in params.tools)}\n"
             description += (
                 f"**Frequency Penalty:** {params.frequency_penalty}\n"
                 if params.frequency_penalty
