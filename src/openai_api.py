@@ -801,7 +801,7 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="Natural", value="natural"),
         ],
     )
-    async def generate_image(
+    async def image(
         self,
         ctx: ApplicationContext,
         prompt: str,
@@ -1077,7 +1077,7 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=float,
     )
-    async def text_to_speech(
+    async def tts(
         self,
         ctx: ApplicationContext,
         input: str,
@@ -1183,7 +1183,7 @@ class OpenAIAPI(commands.Cog):
             ),
         ],
     )
-    async def speech_to_text(
+    async def stt(
         self,
         ctx: ApplicationContext,
         attachment: Attachment,
@@ -1305,7 +1305,7 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="12 seconds", value="12"),
         ],
     )
-    async def generate_video(
+    async def video(
         self,
         ctx: ApplicationContext,
         prompt: str,
