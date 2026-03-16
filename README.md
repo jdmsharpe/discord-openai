@@ -9,7 +9,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 
 ## Features
 
-- **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/openai chat`. The bot maintains conversation history as you write further messages in the same channel, and even accepts image attachments.
+- **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/openai chat`. The bot maintains conversation history as you write further messages in the same channel, and accepts image, PDF, document, spreadsheet, and code file attachments.
 - **Image Generation:** Create images from text prompts with `/openai image` using either GPT Image or DALL-E, with controls for quality, aspect ratio, and style.
 - **Text-to-Speech:** Convert text into lifelike audio using `/openai tts`, with customizable voice, audio format, and speed.
 - **Speech-to-Text:** Transform audio attachments into text with `/openai stt` and pick Whisper or GPT-4o transcription models, plus transcription or translation into English.
@@ -36,9 +36,9 @@ All commands are grouped under the `/openai` slash command group.
   - GPT-4o (standard/mini)
   - GPT-4 / GPT-4 Turbo
   - GPT-3.5 Turbo
-- **Attachments:** Add an image to the initial message and it will be sent to compatible multimodal models.
+- **Attachments:** Attach an image, PDF, document, spreadsheet, or code file. Images are sent as visual input; all other files are sent via the Responses API `input_file` type.
 - **Advanced tuning:** Frequency penalty, presence penalty, temperature (or nucleus sampling via `top_p`), and `seed` are all optional. Reasoning models ignore custom temperature/`top_p` and fall back to their defaults automatically.
-- **Built-in tools:** Optional tool calling supports `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), and `shell` (GPT-5 series models only).
+- **Built-in tools:** Optional tool calling supports `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`; surfaces file citations in a Sources embed), and `shell` (GPT-5 series models only).
 
 ### `/openai image`
 
