@@ -130,6 +130,13 @@ Routing is handled by `build_attachment_content_block()` in `util.py`, which che
 - Applied in both the initial `/openai chat` command (via `to_dict()`) and follow-up conversation messages
 - `CONTEXT_MANAGEMENT` constant defined in `util.py`
 
+### Extended Prompt Cache Retention
+
+- `prompt_cache_retention="24h"` is sent with every Responses API call
+- Extends cached prompt prefix retention from the default 5-10 minutes to 24 hours
+- Improves cache hit rates across conversations that share the same persona/instructions/tools
+- `PROMPT_CACHE_RETENTION` constant defined in `util.py`
+
 ### File Input Support (`input_file`)
 
 - Attachments are now routed by content type: images → `image_url`, everything else → `input_file`

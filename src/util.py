@@ -21,6 +21,10 @@ AVAILABLE_TOOLS = {
 # token threshold, preventing context-window overflow in long conversations.
 CONTEXT_MANAGEMENT = [{"type": "compaction", "compact_threshold": 200_000}]
 
+# Extended prompt caching: retain cached prefixes up to 24 hours instead of
+# the default 5-10 minute in-memory window, improving cache hits across conversations.
+PROMPT_CACHE_RETENTION = "24h"
+
 # Input content types for Responses API
 # For multimodal input, use content blocks within a message item
 INPUT_TEXT_TYPE = "text"
@@ -208,6 +212,7 @@ class ResponseParameters:
         if self.tools:
             payload["tools"] = self.tools
         payload["context_management"] = CONTEXT_MANAGEMENT
+        payload["prompt_cache_retention"] = PROMPT_CACHE_RETENTION
 
         return payload
 

@@ -19,6 +19,7 @@ from util import (
     AVAILABLE_TOOLS,
     CONTEXT_MANAGEMENT,
     GPT_IMAGE_MODELS,
+    PROMPT_CACHE_RETENTION,
     INPUT_TEXT_TYPE,
     REASONING_MODELS,
     TOOL_FILE_SEARCH,
@@ -303,6 +304,7 @@ class OpenAIAPI(commands.Cog):
             if conversation.tools:
                 api_params["tools"] = conversation.tools
             api_params["context_management"] = CONTEXT_MANAGEMENT
+            api_params["prompt_cache_retention"] = PROMPT_CACHE_RETENTION
 
             # API call using Responses API
             self.logger.debug("Making API call to OpenAI Responses API.")

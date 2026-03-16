@@ -5,6 +5,7 @@ from util import (
     # Constants
     CONTEXT_MANAGEMENT,
     INPUT_FILE_TYPE,
+    PROMPT_CACHE_RETENTION,
     INPUT_IMAGE_TYPE,
     INPUT_TEXT_TYPE,
     REASONING_EFFORT_HIGH,
@@ -268,6 +269,13 @@ class TestResponseParameters(unittest.TestCase):
         self.assertEqual(result["context_management"], CONTEXT_MANAGEMENT)
         self.assertEqual(result["context_management"][0]["type"], "compaction")
         self.assertEqual(result["context_management"][0]["compact_threshold"], 200_000)
+
+    def test_prompt_cache_retention_always_present(self):
+        """prompt_cache_retention should always be in to_dict output."""
+        params = ResponseParameters()
+        result = params.to_dict()
+        self.assertEqual(result["prompt_cache_retention"], PROMPT_CACHE_RETENTION)
+        self.assertEqual(result["prompt_cache_retention"], "24h")
 
 
 class TestImageGenerationParameters(unittest.TestCase):
