@@ -35,7 +35,7 @@ from util import (
     format_openai_error,
     truncate_text,
 )
-from config.auth import GUILD_IDS, OPENAI_API_KEY, OPENAI_VECTOR_STORE_IDS
+from config.auth import GUILD_IDS, OPENAI_API_KEY, OPENAI_VECTOR_STORE_IDS, SHOW_COST_EMBEDS
 
 
 class ToolInfo(TypedDict):
@@ -204,7 +204,7 @@ def append_pricing_embed(
     description = (
         f"{model} · ${cost:.4f} · {input_tokens:,} in / {output_tokens:,} out · daily ${daily_cost:.2f}"
     )
-    embeds.append(Embed(description=description, color=Colour.orange()))
+    embeds.append(Embed(description=description, color=Colour.blue()))
 
 
 class OpenAIAPI(commands.Cog):
@@ -361,9 +361,10 @@ class OpenAIAPI(commands.Cog):
             daily_cost = self._track_daily_cost(
                 message.author.id, conversation.model, input_tokens, output_tokens
             )
-            append_pricing_embed(
-                embeds, conversation.model, input_tokens, output_tokens, daily_cost
-            )
+            if SHOW_COST_EMBEDS:
+                append_pricing_embed(
+                    embeds, conversation.model, input_tokens, output_tokens, daily_cost
+                )
 
             if embeds:
                 await message.reply(
@@ -799,9 +800,10 @@ class OpenAIAPI(commands.Cog):
             daily_cost = self._track_daily_cost(
                 ctx.author.id, model, input_tokens, output_tokens
             )
-            append_pricing_embed(
-                embeds, model, input_tokens, output_tokens, daily_cost
-            )
+            if SHOW_COST_EMBEDS:
+                append_pricing_embed(
+                    embeds, model, input_tokens, output_tokens, daily_cost
+                )
 
             self.views[ctx.author] = ButtonView(
                 self,

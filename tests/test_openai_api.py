@@ -298,7 +298,7 @@ class TestAppendPricingEmbed(unittest.TestCase):
         embeds = []
         append_pricing_embed(embeds, "gpt-4o", 1000, 500, 0.05)
         self.assertEqual(len(embeds), 1)
-        self.assertEqual(embeds[0].color, Colour.orange())
+        self.assertEqual(embeds[0].color, Colour.blue())
 
     def test_description_contains_model(self):
         embeds = []
@@ -321,7 +321,7 @@ class TestAppendPricingEmbed(unittest.TestCase):
         embeds = [Embed(title="Response", description="Hello")]
         append_pricing_embed(embeds, "gpt-4o", 100, 50, 0.01)
         self.assertEqual(len(embeds), 2)
-        self.assertEqual(embeds[1].color, Colour.orange())
+        self.assertEqual(embeds[1].color, Colour.blue())
 
 
 if __name__ == "__main__":

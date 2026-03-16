@@ -126,7 +126,7 @@ All commands are grouped under the `/openai` slash command group.
 #### Build and run the image locally
 
 - Build the image with `docker build -t python-bot .` in the root directory
-- Run the bot with `docker run -e BOT_TOKEN=<YOUR BOT TOKEN> -e GUILD_IDS=<YOUR GUILD IDS IN LIST FORMAT> -e OPENAI_API_KEY=<YOUR OPENAI API KEY> -e OPENAI_VECTOR_STORE_IDS=<COMMA_SEPARATED_VECTOR_STORE_IDS> python-bot` in the root directory
+- Run the bot with `docker run -e BOT_TOKEN=<YOUR BOT TOKEN> -e GUILD_IDS=<YOUR GUILD IDS IN LIST FORMAT> -e OPENAI_API_KEY=<YOUR OPENAI API KEY> -e OPENAI_VECTOR_STORE_IDS=<COMMA_SEPARATED_VECTOR_STORE_IDS> -e SHOW_COST_EMBEDS=true python-bot` in the root directory
 
 ### Running from source
 
@@ -137,4 +137,5 @@ All commands are grouped under the `/openai` slash command group.
   - `GUILD_IDS`: Comma-separated list of Discord server IDs to deploy the bot on
   - `OPENAI_API_KEY`: Your OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
   - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai chat` file search tool (Optional)
+  - `SHOW_COST_EMBEDS`: Show cost/token usage embeds on chat responses — `true` (default) or `false` (Optional)
 - Run the bot with `python src/bot.py`
