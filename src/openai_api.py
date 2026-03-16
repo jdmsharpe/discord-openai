@@ -50,27 +50,13 @@ class PermissionAwareChannel(Protocol):
 
 
 def append_response_embeds(embeds, response_text):
-    # Discord limits: 4096 chars per embed description, 6000 chars total for all embeds
-    # Account for existing embeds' character count
-    current_total = sum(
-        len(embed.description or "") + len(embed.title or "") for embed in embeds
-    )
-    remaining_chars = (
-        6000 - current_total - 100
-    )  # Leave buffer for field names/formatting
+    if len(response_text) > 20000:
+        response_text = truncate_text(response_text, 20000)
 
-    # Truncate response if it would exceed the total limit
-    if len(response_text) > remaining_chars:
-        response_text = (
-            response_text[: remaining_chars - 50]
-            + "\n\n... (Response truncated due to Discord's 6000 character limit)"
-        )
-
-    # Ensure each chunk is no larger than 4096 characters (max Discord embed description length)
     for index, chunk in enumerate(chunk_text(response_text), start=1):
         embeds.append(
             Embed(
-                title="Response" + f" (Part {index})" if index > 1 else "Response",
+                title="Response" + (f" (Part {index})" if index > 1 else ""),
                 description=chunk,
                 color=Colour.blue(),
             )
@@ -187,7 +173,7 @@ def append_sources_embed(
         Embed(
             title="Sources",
             description=description,
-            color=Colour.blurple(),
+            color=Colour.blue(),
         )
     )
 

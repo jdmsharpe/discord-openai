@@ -98,7 +98,7 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 
 **Key functions:**
 
-- `append_response_embeds()` in `openai_api.py` - Chunks model responses and enforces 6000 char total limit
+- `append_response_embeds()` in `openai_api.py` - Chunks model responses into 3500 char segments with 20000 char hard truncation
 - `append_sources_embed()` in `openai_api.py` - Renders web citations (numbered links) and file citations (filename list) in a Sources embed
 - `append_pricing_embed()` in `openai_api.py` - Appends a blue embed showing model name, request cost, token counts, and daily cumulative cost (controlled by `SHOW_COST_EMBEDS` env var)
 - `extract_tool_info()` in `openai_api.py` - Extracts tool usage, `url_citation` annotations (web), and `file_citation` annotations (file search) from Responses API output

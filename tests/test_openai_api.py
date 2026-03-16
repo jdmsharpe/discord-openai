@@ -68,31 +68,21 @@ class TestAppendResponseEmbeds(unittest.TestCase):
         self.assertEqual(embeds[0].title, "Response")
         self.assertEqual(embeds[1].title, "Response (Part 2)")
 
-    def test_respects_total_limit(self):
-        """Response should be truncated to respect 6000 char total limit."""
-        # Create existing embed that uses some of the 6000 char budget
-        existing_embed = Embed(title="Prompt", description="x" * 3000)
-        embeds = [existing_embed]
-        # Try to add a response that would exceed 6000 total
-        long_response = "y" * 5000
+    def test_truncates_at_20000_chars(self):
+        """Responses over 20000 chars should be truncated."""
+        embeds = []
+        long_response = "y" * 25000
         append_response_embeds(embeds, long_response)
-        # Calculate total chars across all embeds
-        total_chars = sum(
-            len(embed.description or "") + len(embed.title or "")
-            for embed in embeds
-        )
-        # Should be under 6000 (with some buffer)
-        self.assertLess(total_chars, 6100)
+        total_chars = sum(len(embed.description or "") for embed in embeds)
+        self.assertLessEqual(total_chars, 20003)  # 20000 + "..."
 
-    def test_truncation_message(self):
-        """Truncated responses should include truncation notice."""
-        existing_embed = Embed(title="Prompt", description="x" * 4000)
-        embeds = [existing_embed]
-        long_response = "y" * 5000
-        append_response_embeds(embeds, long_response)
-        # Check if any embed contains the truncation message
-        all_descriptions = " ".join(embed.description or "" for embed in embeds)
-        self.assertIn("truncated", all_descriptions.lower())
+    def test_no_truncation_under_limit(self):
+        """Responses under 20000 chars should not be truncated."""
+        embeds = []
+        response = "y" * 10000
+        append_response_embeds(embeds, response)
+        total_chars = sum(len(embed.description or "") for embed in embeds)
+        self.assertEqual(total_chars, 10000)
 
     def test_empty_response(self):
         """Empty response should not create an embed."""
@@ -104,14 +94,10 @@ class TestAppendResponseEmbeds(unittest.TestCase):
     def test_multiple_chunks_numbered(self):
         """Multiple chunks should be numbered correctly."""
         embeds = []
-        # Create response that needs 3 chunks (3500 * 3 = 10500 chars)
-        # But limited by 6000 total, so will be truncated first
         long_response = "z" * 7000
         append_response_embeds(embeds, long_response)
-        # First embed should be "Response", subsequent should be "Response (Part N)"
         self.assertEqual(embeds[0].title, "Response")
-        if len(embeds) > 1:
-            self.assertIn("Part", embeds[1].title)
+        self.assertEqual(embeds[1].title, "Response (Part 2)")
 
 
 class TestExtractToolInfo(unittest.TestCase):
