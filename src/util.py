@@ -260,34 +260,14 @@ class ImageGenerationParameters:
         prompt: str = "",
         model: str = "gpt-image-1.5",
         n: int = 1,
-        quality: Optional[str] = "medium",
-        size: Optional[str] = "1024x1024",
-        style: Optional[str] = None,
-        response_format: Optional[str] = None,
+        quality: Optional[str] = "auto",
+        size: Optional[str] = "auto",
     ):
         self.prompt = prompt
         self.model = model
         self.n = n
-
-        # Set appropriate quality based on model if using default
-        if quality == "medium":
-            if model == "dall-e-3":
-                self.quality = "hd"  # DALL-E 3 uses "hd" as default for better quality
-            elif model == "dall-e-2":
-                self.quality = "standard"  # DALL-E 2 only supports "standard"
-            else:
-                self.quality = quality  # Keep "medium" for GPT Image models
-        else:
-            self.quality = quality
-
+        self.quality = quality
         self.size = size
-        self.style = style
-
-        # Only set response_format for models that support it (DALL-E models)
-        if model in ["dall-e-2", "dall-e-3"] and response_format is not None:
-            self.response_format = response_format
-        else:
-            self.response_format = None
 
     def to_dict(self):
         payload = {
@@ -299,11 +279,6 @@ class ImageGenerationParameters:
             payload["quality"] = self.quality
         if self.size is not None:
             payload["size"] = self.size
-        if self.style is not None:
-            payload["style"] = self.style
-        # Only include response_format if it's set (for DALL-E models)
-        if self.response_format is not None:
-            payload["response_format"] = self.response_format
         return payload
 
 

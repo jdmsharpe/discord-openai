@@ -39,6 +39,11 @@ discord-chatgpt/
   - Supports GPT Image 1.5, GPT Image 1, GPT Image 1 Mini, DALL-E 3, DALL-E 2
   - Handles model-specific quality defaults
 
+- **ResearchParameters**: Parameters for deep research
+  - Supports `o3-deep-research` and `o4-mini-deep-research` models
+  - Optional `file_search` and `code_interpreter` toggles
+  - Always includes `web_search` tool; uses `background=True` mode
+
 - **VideoGenerationParameters**: Parameters for Sora video generation
   - Supports `sora-2` and `sora-2-pro` models
   - Size options and duration (4/8/12 seconds)
@@ -60,10 +65,14 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 | image    | user prompt      | 2000 chars         | Leave room for metadata          |
 | tts      | input text       | 1500 chars         | Leave room for instructions      |
 | tts      | instructions     | 500 chars          | Secondary field                  |
+| research | user prompt      | 2000 chars         | Leave room for metadata          |
+| research | model response   | 3500 char chunks   | Via `append_response_embeds()`   |
 | video    | user prompt      | 2000 chars         | Leave room for metadata          |
 | stt      | transcription    | 3500 chars         | Primary output field             |
 
 `/openai chat` parameters (12 total): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `temperature`, `top_p`, `web_search`, `code_interpreter`, `file_search`, `shell`.
+
+`/openai research` parameters (4 total): `prompt`, `model`, `file_search`, `code_interpreter`.
 
 ### Conversation Management
 
@@ -117,6 +126,17 @@ The `/openai chat` `attachment` parameter supports images and file inputs:
 Routing is handled by `build_attachment_content_block()` in `util.py`, which checks the Discord attachment's `content_type`. This works both for the initial slash command and follow-up messages in a conversation.
 
 ## Recent Changes (March 2026)
+
+### Deep Research (`/openai research`)
+
+- New `/openai research` command using `o3-deep-research` (default) and `o4-mini-deep-research` models
+- Uses Responses API with `background=True` for long-running research tasks
+- Polls every 15 seconds with 20-minute timeout
+- Always includes `web_search` tool; optionally adds `file_search` (requires `OPENAI_VECTOR_STORE_IDS`) and `code_interpreter`
+- Single-shot command (no conversation mode) — sends a gold "researching" embed, then edits it to green on completion
+- Reuses `extract_tool_info()` and `append_sources_embed()` for inline citations
+- Includes pricing embed with cost tracking
+- `ResearchParameters` class in `util.py` with `to_dict(tools)` method
 
 ### Pricing Embed
 
@@ -222,6 +242,11 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 - GPT-4o, GPT-4o Mini
 - GPT-4, GPT-4 Turbo
 - GPT-3.5 Turbo
+
+### Deep Research Models (via `/openai research`)
+
+- `o3-deep-research` (default) — full deep research model
+- `o4-mini-deep-research` — faster, lower-cost deep research
 
 ### Image Generation Models
 

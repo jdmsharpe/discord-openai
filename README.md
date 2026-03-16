@@ -13,6 +13,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 - **Image Generation:** Create images from text prompts with `/openai image` using either GPT Image or DALL-E, with controls for quality, aspect ratio, and style.
 - **Text-to-Speech:** Convert text into lifelike audio using `/openai tts`, with customizable voice, audio format, and speed.
 - **Speech-to-Text:** Transform audio attachments into text with `/openai stt` and pick Whisper or GPT-4o transcription models, plus transcription or translation into English.
+- **Deep Research:** Run autonomous research tasks with `/openai research` using deep research models that search, read, and synthesize detailed reports with inline citations.
 - **Video Generation:** Create videos from text prompts with `/openai video` using OpenAI's Sora models, with controls for resolution and duration.
 - **Interactive UI:** Incorporates button-based controls and real-time feedback.
 
@@ -63,6 +64,17 @@ All commands are grouped under the `/openai` slash command group.
 - **Actions:** Switch between verbatim `transcription` (default) or English `translation` (uses `whisper-1` regardless of model selection, as translation is only supported by Whisper).
 - **Diarization:** The `gpt-4o-transcribe-diarize` model produces speaker-labeled transcripts with speaker names and segment boundaries.
 - **Output:** Results are displayed in an embed, and long responses are automatically truncated to fit Discord limits.
+
+### `/openai research`
+
+- **Usage:** `/openai research prompt:<text>`
+- **What it does:** Runs a deep research task that autonomously searches the web, reads pages, and synthesizes a detailed report with inline citations. Research can take several minutes.
+- **Defaults:** Uses `o3-deep-research` model with web search enabled.
+- **Model choices:**
+  - `o3-deep-research` — Full deep research model
+  - `o4-mini-deep-research` — Faster, lower-cost deep research
+- **Tools:** Web search is always enabled. Optionally enable `file_search` (requires `OPENAI_VECTOR_STORE_IDS`) to search your vector stores, or `code_interpreter` to allow the model to write and run code for analysis.
+- **Output:** A detailed report with numbered source citations, displayed across chunked embeds. Includes cost/token tracking.
 
 ### `/openai video`
 

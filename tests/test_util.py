@@ -3,6 +3,7 @@ import httpx
 from openai import APIError
 from util import (
     CONTEXT_MANAGEMENT,
+    DEEP_RESEARCH_MODELS,
     INPUT_FILE_TYPE,
     MODEL_PRICING,
     PROMPT_CACHE_RETENTION,
@@ -16,6 +17,7 @@ from util import (
     TOOL_WEB_SEARCH,
     ChatCompletionParameters,
     ImageGenerationParameters,
+    ResearchParameters,
     ResponseParameters,
     TextToSpeechParameters,
     VideoGenerationParameters,
@@ -451,6 +453,45 @@ class TestVideoGenerationParameters(unittest.TestCase):
         self.assertEqual(result["seconds"], "4")
 
 
+class TestResearchParameters(unittest.TestCase):
+    def test_defaults(self):
+        params = ResearchParameters(prompt="Test research")
+        self.assertEqual(params.prompt, "Test research")
+        self.assertEqual(params.model, "o3-deep-research")
+        self.assertFalse(params.file_search)
+        self.assertFalse(params.code_interpreter)
+
+    def test_to_dict_basic(self):
+        params = ResearchParameters(prompt="What is quantum computing?")
+        tools = [TOOL_WEB_SEARCH]
+        result = params.to_dict(tools)
+        self.assertEqual(result["model"], "o3-deep-research")
+        self.assertEqual(result["input"], "What is quantum computing?")
+        self.assertEqual(result["tools"], [TOOL_WEB_SEARCH])
+        self.assertTrue(result["background"])
+
+    def test_to_dict_with_multiple_tools(self):
+        params = ResearchParameters(
+            prompt="Analyze market data",
+            model="o4-mini-deep-research",
+            file_search=True,
+            code_interpreter=True,
+        )
+        tools = [TOOL_WEB_SEARCH, TOOL_FILE_SEARCH, TOOL_CODE_INTERPRETER]
+        result = params.to_dict(tools)
+        self.assertEqual(result["model"], "o4-mini-deep-research")
+        self.assertEqual(len(result["tools"]), 3)
+        self.assertTrue(result["background"])
+
+    def test_deep_research_models_constant(self):
+        self.assertIn("o3-deep-research", DEEP_RESEARCH_MODELS)
+        self.assertIn("o4-mini-deep-research", DEEP_RESEARCH_MODELS)
+
+    def test_deep_research_models_have_pricing(self):
+        for model in DEEP_RESEARCH_MODELS:
+            self.assertIn(model, MODEL_PRICING, f"Missing pricing for {model}")
+
+
 class TestChunkText(unittest.TestCase):
     def test_chunk_text(self):
         text = "This is a test."
@@ -584,6 +625,7 @@ class TestModelPricing(unittest.TestCase):
         "gpt-5.2-pro", "gpt-5.2", "gpt-5.1",
         "gpt-5-pro", "gpt-5", "gpt-5-mini", "gpt-5-nano",
         "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
+        "o3-deep-research", "o4-mini-deep-research",
         "o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1",
         "gpt-4o", "gpt-4o-mini",
         "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo",

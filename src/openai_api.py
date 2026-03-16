@@ -856,8 +856,8 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="GPT Image 1.5", value="gpt-image-1.5"),
             OptionChoice(name="GPT Image 1", value="gpt-image-1"),
             OptionChoice(name="GPT Image 1 Mini", value="gpt-image-1-mini"),
-            OptionChoice(name="DALL-E 3", value="dall-e-3"),
-            OptionChoice(name="DALL-E 2", value="dall-e-2"),
+            OptionChoice(name="DALL-E 3 (Deprecated May 2026)", value="dall-e-3"),
+            OptionChoice(name="DALL-E 2 (Deprecated May 2026)", value="dall-e-2"),
         ],
     )
     @option(
@@ -868,7 +868,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "quality",
-        description="Image quality. Only supported for GPT Image and DALL-E 3. (default: medium, HD for DALL-E 3)",
+        description="Image quality. Only supported for GPT Image and DALL-E 3. (default: auto, HD for DALL-E 3)",
         required=False,
         type=str,
         choices=[
@@ -882,15 +882,18 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "size",
-        description="Size of the image. (default: 1024x1024)",
+        description="Size of the image. (default: auto)",
         required=False,
         type=str,
         choices=[
-            OptionChoice(name="256x256", value="256x256"),
-            OptionChoice(name="512x512", value="512x512"),
+            OptionChoice(name="Auto (GPT Image only)", value="auto"),
             OptionChoice(name="1024x1024", value="1024x1024"),
-            OptionChoice(name="1024x1792 (portrait)", value="1024x1792"),
-            OptionChoice(name="1792x1024 (landscape)", value="1792x1024"),
+            OptionChoice(name="1024x1536 (portrait, GPT Image only)", value="1024x1536"),
+            OptionChoice(name="1536x1024 (landscape, GPT Image only)", value="1536x1024"),
+            OptionChoice(name="1024x1792 (portrait, DALL-E only)", value="1024x1792"),
+            OptionChoice(name="1792x1024 (landscape, DALL-E only)", value="1792x1024"),
+            OptionChoice(name="256x256 (DALL-E 2 only)", value="256x256"),
+            OptionChoice(name="512x512 (DALL-E 2 only)", value="512x512"),
         ],
     )
     @option(
@@ -909,8 +912,8 @@ class OpenAIAPI(commands.Cog):
         prompt: str,
         model: str = "gpt-image-1.5",
         n: int = 1,
-        quality: Optional[str] = "medium",
-        size: Optional[str] = "1024x1024",
+        quality: Optional[str] = "auto",
+        size: Optional[str] = "auto",
         style: Optional[str] = "natural",
     ):
         """
@@ -1403,6 +1406,8 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="Portrait (720x1280)", value="720x1280"),
             OptionChoice(name="Wide Landscape (1792x1024)", value="1792x1024"),
             OptionChoice(name="Tall Portrait (1024x1792)", value="1024x1792"),
+            OptionChoice(name="1080p Landscape (1920x1080, Pro only)", value="1920x1080"),
+            OptionChoice(name="1080p Portrait (1080x1920, Pro only)", value="1080x1920"),
         ],
     )
     @option(
@@ -1414,6 +1419,8 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="4 seconds", value="4"),
             OptionChoice(name="8 seconds", value="8"),
             OptionChoice(name="12 seconds", value="12"),
+            OptionChoice(name="16 seconds", value="16"),
+            OptionChoice(name="20 seconds", value="20"),
         ],
     )
     async def video(
@@ -1433,9 +1440,20 @@ class OpenAIAPI(commands.Cog):
             model: The Sora model to use. 'sora-2' is faster for iteration,
                 'sora-2-pro' produces higher quality output.
             size: The resolution of the generated video.
-            seconds: The duration of the video in seconds ('4', '8', or '12').
+            seconds: The duration of the video in seconds.
         """
         await ctx.defer()
+
+        # 1080p sizes require sora-2-pro
+        if size in ("1920x1080", "1080x1920") and model != "sora-2-pro":
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error",
+                    description="1080p resolutions (1920x1080, 1080x1920) are only supported with Sora 2 Pro.",
+                    color=Colour.red(),
+                )
+            )
+            return
 
         video_params = VideoGenerationParameters(
             prompt=prompt,
@@ -1523,3 +1541,229 @@ class OpenAIAPI(commands.Cog):
         finally:
             if video_file_path and video_file_path.exists():
                 video_file_path.unlink(missing_ok=True)
+
+    # ------------------------------------------------------------------
+    # /openai research — Deep Research via background Responses API
+    # ------------------------------------------------------------------
+
+    @openai.command(
+        name="research",
+        description="Run a deep research task that searches, reads, and synthesizes a detailed report.",
+    )
+    @option(
+        "prompt",
+        description="Research question or topic to investigate.",
+        required=True,
+        type=str,
+    )
+    @option(
+        "model",
+        description="Choose the deep research model. (default: o3 Deep Research)",
+        required=False,
+        type=str,
+        choices=[
+            OptionChoice(name="o3 Deep Research", value="o3-deep-research"),
+            OptionChoice(name="o4 Mini Deep Research", value="o4-mini-deep-research"),
+        ],
+    )
+    @option(
+        "file_search",
+        description="Also search your uploaded document stores (File Search / RAG). (default: false)",
+        required=False,
+        type=bool,
+    )
+    @option(
+        "code_interpreter",
+        description="Allow the model to write and run code for analysis. (default: false)",
+        required=False,
+        type=bool,
+    )
+    async def research(
+        self,
+        ctx: ApplicationContext,
+        prompt: str,
+        model: str = "o3-deep-research",
+        file_search: bool = False,
+        code_interpreter: bool = False,
+    ):
+        """
+        Runs a deep research task using OpenAI's deep research models.
+
+        The model autonomously searches the web, reads pages, and optionally
+        queries your vector stores or runs code, then synthesizes a detailed
+        report with inline citations.
+
+        Args:
+            prompt: Research question or topic to investigate.
+            model: The deep research model to use.
+            file_search: Whether to also search configured vector stores.
+            code_interpreter: Whether to allow code execution for analysis.
+        """
+        await ctx.defer()
+
+        research_params = ResearchParameters(
+            prompt=prompt,
+            model=model,
+            file_search=file_search,
+            code_interpreter=code_interpreter,
+        )
+
+        try:
+            # Build tools list — web_search is always required
+            tools: List[Dict[str, Any]] = [TOOL_WEB_SEARCH.copy()]
+
+            if file_search:
+                if not OPENAI_VECTOR_STORE_IDS:
+                    await ctx.send_followup(
+                        embed=Embed(
+                            title="Error",
+                            description="File search requires OPENAI_VECTOR_STORE_IDS to be set in your .env.",
+                            color=Colour.red(),
+                        )
+                    )
+                    return
+                tool: Dict[str, Any] = TOOL_FILE_SEARCH.copy()
+                tool["vector_store_ids"] = OPENAI_VECTOR_STORE_IDS.copy()
+                tools.append(tool)
+
+            if code_interpreter:
+                tools.append(TOOL_CODE_INTERPRETER.copy())
+
+            # Send initial "researching" embed so the user knows it's working
+            description = f"**Prompt:** {truncate_text(prompt, 2000)}\n"
+            description += f"**Model:** {model}\n"
+            tool_names = ["web_search"]
+            if file_search:
+                tool_names.append("file_search")
+            if code_interpreter:
+                tool_names.append("code_interpreter")
+            description += f"**Tools:** {', '.join(tool_names)}\n"
+            description += "\nResearching... this may take several minutes."
+
+            status_msg = await ctx.send_followup(
+                embed=Embed(
+                    title="Deep Research",
+                    description=description,
+                    color=Colour.gold(),
+                )
+            )
+
+            self.logger.info(f"Starting deep research with model {model}")
+
+            # Create background research request
+            response = await self.openai_client.responses.create(
+                **research_params.to_dict(tools)
+            )
+
+            self.logger.info(
+                f"Deep research started: {response.id}, status: {response.status}"
+            )
+
+            # Poll for completion
+            max_wait_time = 1200  # 20 minutes
+            start_time = time.time()
+            poll_interval = 15
+
+            while response.status in ("queued", "in_progress"):
+                if time.time() - start_time > max_wait_time:
+                    raise Exception("Deep research timed out after 20 minutes.")
+
+                await asyncio.sleep(poll_interval)
+                response = await self.openai_client.responses.retrieve(response.id)
+                self.logger.debug(
+                    f"Research poll: status={response.status}, "
+                    f"elapsed={int(time.time() - start_time)}s"
+                )
+
+            if response.status == "failed":
+                error = getattr(response, "error", None)
+                error_msg = getattr(error, "message", None) if error else None
+                raise Exception(
+                    error_msg or "Deep research failed. Please try a different prompt."
+                )
+
+            if response.status == "cancelled":
+                raise Exception("Deep research was cancelled.")
+
+            if response.status != "completed":
+                raise Exception(f"Unexpected research status: {response.status}")
+
+            self.logger.info(
+                f"Deep research completed: {response.id}, "
+                f"elapsed={int(time.time() - start_time)}s"
+            )
+
+            # Extract the report text
+            response_text = (
+                response.output_text if response.output_text else None
+            )
+
+            if not response_text:
+                await status_msg.edit(
+                    embed=Embed(
+                        title="Deep Research",
+                        description="The research model did not produce any output. Please try again with a different prompt.",
+                        color=Colour.orange(),
+                    )
+                )
+                return
+
+            # Extract citations
+            tool_info = extract_tool_info(response)
+
+            # Build final embeds
+            final_description = f"**Prompt:** {truncate_text(prompt, 2000)}\n"
+            final_description += f"**Model:** {model}\n"
+            final_description += f"**Tools:** {', '.join(tool_names)}\n"
+            elapsed = int(time.time() - start_time)
+            final_description += f"**Time:** {elapsed // 60}m {elapsed % 60}s\n"
+
+            embeds: List[Embed] = [
+                Embed(
+                    title="Deep Research",
+                    description=final_description,
+                    color=Colour.green(),
+                )
+            ]
+            append_response_embeds(embeds, response_text)
+
+            # Edit the original status message with the header embed
+            await status_msg.edit(embed=embeds[0])
+
+            # Send remaining response chunks as new messages
+            if len(embeds) > 1:
+                await ctx.send_followup(embeds=embeds[1:])
+
+            # Auxiliary embeds: sources and pricing
+            aux_embeds: list[Embed] = []
+            if tool_info["citations"] or tool_info["file_citations"]:
+                append_sources_embed(
+                    aux_embeds, tool_info["citations"], tool_info["file_citations"]
+                )
+
+            usage = getattr(response, "usage", None)
+            input_tokens = getattr(usage, "input_tokens", 0) or 0
+            output_tokens = getattr(usage, "output_tokens", 0) or 0
+            daily_cost = self._track_daily_cost(
+                ctx.author.id, model, input_tokens, output_tokens
+            )
+            if SHOW_COST_EMBEDS:
+                append_pricing_embed(
+                    aux_embeds, model, input_tokens, output_tokens, daily_cost
+                )
+
+            if aux_embeds:
+                await ctx.send_followup(embeds=aux_embeds)
+
+        except Exception as e:
+            error_message = format_openai_error(e)
+            self.logger.error(
+                f"Deep research failed: {error_message}", exc_info=True
+            )
+            await ctx.send_followup(
+                embed=Embed(
+                    title="Error",
+                    description=error_message,
+                    color=Colour.red(),
+                )
+            )
