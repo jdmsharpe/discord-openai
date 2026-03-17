@@ -1482,7 +1482,7 @@ class OpenAIAPI(commands.Cog):
                 embed=Embed(
                     title="Deep Research",
                     description=description,
-                    color=Colour.blue(),
+                    color=Colour.green(),
                 )
             )
 
