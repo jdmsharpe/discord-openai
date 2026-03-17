@@ -37,10 +37,38 @@ MODEL_PRICING: Dict[str, Tuple[float, float]] = {
 }
 
 
-def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    """Calculate the cost in dollars for a given model and token usage."""
+def calculate_cost(
+    model: str, input_tokens: int, output_tokens: int, cached_tokens: int = 0
+) -> float:
+    """Calculate the cost in dollars for a given model and token usage.
+
+    Cached input tokens are billed at 50% of the regular input price.
+    Reasoning tokens are already included in output_tokens at the standard output price.
+    """
     input_price, output_price = MODEL_PRICING.get(model, (2.50, 10.00))
-    return (input_tokens / 1_000_000) * input_price + (output_tokens / 1_000_000) * output_price
+    non_cached = input_tokens - cached_tokens
+    return (
+        (non_cached / 1_000_000) * input_price
+        + (cached_tokens / 1_000_000) * (input_price * 0.5)
+        + (output_tokens / 1_000_000) * output_price
+    )
+
+
+# Per-call tool pricing (dollars per call/container)
+TOOL_CALL_PRICING: Dict[str, float] = {
+    "web_search": 0.01,       # $10.00 / 1k calls
+    "file_search": 0.0025,    # $2.50 / 1k calls (Responses API)
+    "code_interpreter": 0.03, # $0.03 / container (1 GB default)
+    "shell": 0.03,            # $0.03 / container (same billing as code_interpreter)
+}
+
+
+def calculate_tool_cost(tool_call_counts: Dict[str, int]) -> float:
+    """Calculate the cost in dollars for tool calls made in a response."""
+    return sum(
+        count * TOOL_CALL_PRICING.get(tool, 0.0)
+        for tool, count in tool_call_counts.items()
+    )
 
 
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]

@@ -109,10 +109,11 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 
 - `append_response_embeds()` in `openai_api.py` - Chunks model responses into 3500 char segments with 20000 char hard truncation
 - `append_sources_embed()` in `openai_api.py` - Renders web citations (numbered links) and file citations (filename list) in a Sources embed
-- `append_pricing_embed()` in `openai_api.py` - Appends a blue embed showing model name, request cost, token counts, and daily cumulative cost (controlled by `SHOW_COST_EMBEDS` env var)
-- `extract_tool_info()` in `openai_api.py` - Extracts tool usage, `url_citation` annotations (web), and `file_citation` annotations (file search) from Responses API output
+- `append_pricing_embed()` in `openai_api.py` - Appends a blue embed showing request cost, token counts (with cached/thinking annotations), tool call costs, and daily cumulative cost (controlled by `SHOW_COST_EMBEDS` env var)
+- `extract_tool_info()` in `openai_api.py` - Extracts tool usage, call counts per tool, `url_citation` annotations (web), and `file_citation` annotations (file search) from Responses API output
 - `build_attachment_content_block()` in `util.py` - Routes Discord attachments to `image_url` (images) or `input_file` (PDFs, docs, spreadsheets, code files) content blocks
-- `calculate_cost()` in `util.py` - Calculates dollar cost from model name and token counts using `MODEL_PRICING`
+- `calculate_cost()` in `util.py` - Calculates dollar cost from model name and token counts using `MODEL_PRICING`; cached tokens billed at 50% input price
+- `calculate_tool_cost()` in `util.py` - Calculates dollar cost for tool calls using `TOOL_CALL_PRICING`
 - `truncate_text()` in `util.py` - Truncates text with suffix (e.g., `truncate_text(prompt, 2000)` → "text...")
 - `chunk_text()` in `util.py` - Splits text into 3500 char segments (configurable via `CHUNK_TEXT_SIZE`)
 
@@ -142,11 +143,14 @@ Routing is handled by `build_attachment_content_block()` in `util.py`, which che
 ### Pricing Embed
 
 - Every `/openai chat` response (initial and follow-ups) includes a blue pricing embed (toggleable via `SHOW_COST_EMBEDS` env var, defaults to `true`)
-- Format: `model · $0.0042 · 1,234 in / 567 out · daily $0.15`
+- Format: `$0.0042 · 1,234 in (456 cached) / 567 out (89 thinking) · tools: web search ×2 ($0.02) · daily $0.15`
 - `MODEL_PRICING` in `util.py` maps each chat model to `(input_cost_per_million, output_cost_per_million)` tuple
-- `calculate_cost()` in `util.py` computes dollar cost; unknown models fall back to `(2.50, 10.00)`
-- `_track_daily_cost()` on the cog accumulates per-user per-day costs in `self.daily_costs`
-- Token usage is extracted from `response.usage.input_tokens` / `output_tokens`
+- `calculate_cost()` in `util.py` computes dollar cost; unknown models fall back to `(2.50, 10.00)`; cached input tokens billed at 50% of input price
+- `TOOL_CALL_PRICING` in `util.py` maps tool names to per-call costs: web_search $0.01, file_search $0.0025, code_interpreter/shell $0.03/container
+- `calculate_tool_cost()` in `util.py` computes tool call costs from `tool_call_counts` dict
+- `_track_daily_cost()` on the cog accumulates per-user per-day costs (tokens + tools) in `self.daily_costs`
+- Token usage extracted from `response.usage.input_tokens` / `output_tokens`; cached tokens from `usage.input_tokens_details.cached_tokens`; reasoning tokens from `usage.output_tokens_details.reasoning_tokens`
+- Tool call counts extracted from `response.output` item types (`web_search_call`, `file_search_call`, `code_interpreter_call`, `shell_call`) via `extract_tool_info()`
 
 ### File Search Citations & `max_num_results`
 

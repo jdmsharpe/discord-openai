@@ -36,6 +36,7 @@ from util import (
     VideoGenerationParameters,
     build_attachment_content_block,
     calculate_cost,
+    calculate_tool_cost,
     chunk_text,
     format_openai_error,
     truncate_text,
@@ -45,6 +46,7 @@ from config.auth import GUILD_IDS, OPENAI_API_KEY, OPENAI_VECTOR_STORE_IDS, SHOW
 
 class ToolInfo(TypedDict):
     tool_types: List[str]
+    tool_call_counts: Dict[str, int]
     citations: List[Dict[str, str]]
     file_citations: List[Dict[str, str]]
 
@@ -81,22 +83,24 @@ def extract_tool_info(response: Any) -> ToolInfo:
     seen_urls: set[str] = set()
     seen_file_ids: set[str] = set()
     tools_used: set[str] = set()
+    tool_call_counts: Dict[str, int] = {}
+
+    CALL_TYPE_MAP = {
+        "web_search_call": "web_search",
+        "file_search_call": "file_search",
+        "code_interpreter_call": "code_interpreter",
+        "shell_call": "shell",
+    }
 
     output_items = get_value(response, "output", []) or []
     for output_item in output_items:
         output_type = get_value(output_item, "type")
         item_name = get_value(output_item, "name")
 
-        if output_type == "web_search_call" or item_name == "web_search":
-            tools_used.add("web_search")
-        if output_type == "code_interpreter_call" or item_name == "code_interpreter":
-            tools_used.add("code_interpreter")
-        if output_type == "file_search_call" or item_name == "file_search":
-            tools_used.add("file_search")
-        if output_type == "shell_call" or item_name == "shell":
-            tools_used.add("shell")
-        if output_type in AVAILABLE_TOOLS:
-            tools_used.add(output_type)
+        tool_key = CALL_TYPE_MAP.get(output_type) or (item_name if item_name in AVAILABLE_TOOLS else None)
+        if tool_key:
+            tools_used.add(tool_key)
+            tool_call_counts[tool_key] = tool_call_counts.get(tool_key, 0) + 1
 
         content_blocks = get_value(output_item, "content", []) or []
         for content_block in content_blocks:
@@ -125,6 +129,7 @@ def extract_tool_info(response: Any) -> ToolInfo:
 
     return {
         "tool_types": sorted(tools_used),
+        "tool_call_counts": tool_call_counts,
         "citations": citations,
         "file_citations": file_citations,
     }
@@ -189,13 +194,28 @@ def append_pricing_embed(
     input_tokens: int,
     output_tokens: int,
     daily_cost: float,
+    cached_tokens: int = 0,
+    reasoning_tokens: int = 0,
+    tool_call_counts: Optional[Dict[str, int]] = None,
 ) -> None:
     """Append a compact pricing embed showing model, cost, and token usage."""
-    cost = calculate_cost(model, input_tokens, output_tokens)
-    description = (
-        f"${cost:.4f} · {input_tokens:,} tokens in / {output_tokens:,} tokens out · daily ${daily_cost:.2f}"
-    )
-    embeds.append(Embed(description=description, color=Colour.blue()))
+    tool_cost = calculate_tool_cost(tool_call_counts) if tool_call_counts else 0.0
+    cost = calculate_cost(model, input_tokens, output_tokens, cached_tokens) + tool_cost
+    in_part = f"{input_tokens:,} in"
+    if cached_tokens:
+        in_part += f" ({cached_tokens:,} cached)"
+    out_part = f"{output_tokens:,} out"
+    if reasoning_tokens:
+        out_part += f" ({reasoning_tokens:,} thinking)"
+    parts = [f"${cost:.4f}", f"{in_part} / {out_part}"]
+    if tool_call_counts:
+        tool_str = " + ".join(
+            f"{tool.replace('_', ' ')} ×{count}"
+            for tool, count in sorted(tool_call_counts.items())
+        )
+        parts.append(f"tools: {tool_str} (${tool_cost:.4f})")
+    parts.append(f"daily ${daily_cost:.2f}")
+    embeds.append(Embed(description=" · ".join(parts), color=Colour.blue()))
 
 
 class OpenAIAPI(commands.Cog):
@@ -235,10 +255,18 @@ class OpenAIAPI(commands.Cog):
                 pass  # Message may have been deleted or is no longer editable
 
     def _track_daily_cost(
-        self, user_id: int, model: str, input_tokens: int, output_tokens: int
+        self,
+        user_id: int,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        cached_tokens: int = 0,
+        tool_call_counts: Optional[Dict[str, int]] = None,
     ) -> float:
         """Add this request's cost to the user's daily total and return the new daily total."""
-        cost = calculate_cost(model, input_tokens, output_tokens)
+        cost = calculate_cost(model, input_tokens, output_tokens, cached_tokens)
+        if tool_call_counts:
+            cost += calculate_tool_cost(tool_call_counts)
         key = (user_id, date.today().isoformat())
         self.daily_costs[key] = self.daily_costs.get(key, 0.0) + cost
         return self.daily_costs[key]
@@ -363,12 +391,19 @@ class OpenAIAPI(commands.Cog):
             usage = getattr(response, "usage", None)
             input_tokens = getattr(usage, "input_tokens", 0) or 0
             output_tokens = getattr(usage, "output_tokens", 0) or 0
+            input_details = getattr(usage, "input_tokens_details", None)
+            output_details = getattr(usage, "output_tokens_details", None)
+            cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
+            reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
+            tool_call_counts = tool_info["tool_call_counts"] or None
             daily_cost = self._track_daily_cost(
-                message.author.id, conversation.model, input_tokens, output_tokens
+                message.author.id, conversation.model, input_tokens, output_tokens,
+                cached_tokens, tool_call_counts
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    embeds, conversation.model, input_tokens, output_tokens, daily_cost
+                    embeds, conversation.model, input_tokens, output_tokens, daily_cost,
+                    cached_tokens, reasoning_tokens, tool_call_counts
                 )
 
             # Strip buttons from previous turn's message
@@ -794,12 +829,18 @@ class OpenAIAPI(commands.Cog):
             usage = getattr(response, "usage", None)
             input_tokens = getattr(usage, "input_tokens", 0) or 0
             output_tokens = getattr(usage, "output_tokens", 0) or 0
+            input_details = getattr(usage, "input_tokens_details", None)
+            output_details = getattr(usage, "output_tokens_details", None)
+            cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
+            reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
+            tool_call_counts = tool_info["tool_call_counts"] or None
             daily_cost = self._track_daily_cost(
-                ctx.author.id, model, input_tokens, output_tokens
+                ctx.author.id, model, input_tokens, output_tokens, cached_tokens, tool_call_counts
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    embeds, model, input_tokens, output_tokens, daily_cost
+                    embeds, model, input_tokens, output_tokens, daily_cost,
+                    cached_tokens, reasoning_tokens, tool_call_counts
                 )
 
             # Strip buttons from any prior conversation's last message
@@ -1573,12 +1614,18 @@ class OpenAIAPI(commands.Cog):
             usage = getattr(response, "usage", None)
             input_tokens = getattr(usage, "input_tokens", 0) or 0
             output_tokens = getattr(usage, "output_tokens", 0) or 0
+            input_details = getattr(usage, "input_tokens_details", None)
+            output_details = getattr(usage, "output_tokens_details", None)
+            cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
+            reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
+            tool_call_counts = tool_info["tool_call_counts"] or None
             daily_cost = self._track_daily_cost(
-                ctx.author.id, model, input_tokens, output_tokens
+                ctx.author.id, model, input_tokens, output_tokens, cached_tokens, tool_call_counts
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    extra_embeds, model, input_tokens, output_tokens, daily_cost
+                    extra_embeds, model, input_tokens, output_tokens, daily_cost,
+                    cached_tokens, reasoning_tokens, tool_call_counts
                 )
 
             # Edit the original status message with the header embed
