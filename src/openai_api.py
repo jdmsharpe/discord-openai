@@ -1549,25 +1549,25 @@ class OpenAIAPI(commands.Cog):
             # Extract citations
             tool_info = extract_tool_info(response)
 
-            # Build final embeds
+            # Build header embed
+            elapsed = int(time.time() - start_time)
             final_description = f"**Prompt:** {truncate_text(prompt, 2000)}\n"
             final_description += f"**Model:** {model}\n"
             final_description += f"**Tools:** {', '.join(tool_names)}\n"
-            elapsed = int(time.time() - start_time)
             final_description += f"**Time:** {elapsed // 60}m {elapsed % 60}s\n"
 
-            embeds: List[Embed] = [
-                Embed(
-                    title="Deep Research",
-                    description=final_description,
-                    color=Colour.blue(),
-                )
-            ]
-            append_response_embeds(embeds, response_text)
+            header_embed = Embed(
+                title="Deep Research",
+                description=final_description,
+                color=Colour.blue(),
+            )
+
+            # Build supplementary embeds (sources, pricing)
+            extra_embeds: List[Embed] = []
 
             if tool_info["citations"] or tool_info["file_citations"]:
                 append_sources_embed(
-                    embeds, tool_info["citations"], tool_info["file_citations"]
+                    extra_embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
             usage = getattr(response, "usage", None)
@@ -1578,15 +1578,21 @@ class OpenAIAPI(commands.Cog):
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
-                    embeds, model, input_tokens, output_tokens, daily_cost
+                    extra_embeds, model, input_tokens, output_tokens, daily_cost
                 )
 
             # Edit the original status message with the header embed
-            await status_msg.edit(embed=embeds[0])
+            await status_msg.edit(embed=header_embed)
 
-            # Send remaining embeds (response chunks, sources, pricing) as follow-up
-            if len(embeds) > 1:
-                await ctx.send_followup(embeds=embeds[1:])
+            # Send the report as a downloadable .md file
+            report_file = File(
+                io.BytesIO(response_text.encode("utf-8")),
+                filename="research_report.md",
+            )
+            await ctx.send_followup(
+                embeds=extra_embeds if extra_embeds else [],
+                file=report_file,
+            )
 
         except Exception as e:
             error_message = format_openai_error(e)

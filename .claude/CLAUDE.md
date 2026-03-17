@@ -66,7 +66,7 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 | tts      | input text       | 1500 chars         | Leave room for instructions      |
 | tts      | instructions     | 500 chars          | Secondary field                  |
 | research | user prompt      | 2000 chars         | Leave room for metadata          |
-| research | model response   | 3500 char chunks   | Via `append_response_embeds()`   |
+| research | model response   | sent as .md file   | Avoids embed size limits         |
 | video    | user prompt      | 2000 chars         | Leave room for metadata          |
 | stt      | transcription    | 3500 chars         | Primary output field             |
 
@@ -134,6 +134,7 @@ Routing is handled by `build_attachment_content_block()` in `util.py`, which che
 - Polls every 15 seconds with 20-minute timeout
 - Always includes `web_search` tool; optionally adds `file_search` (requires `OPENAI_VECTOR_STORE_IDS`) and `code_interpreter`
 - Single-shot command (no conversation mode) — sends a green "researching" embed, then edits it to blue on completion
+- Report is sent as a downloadable `research_report.md` file attachment to avoid Discord embed size limits
 - Reuses `extract_tool_info()` and `append_sources_embed()` for inline citations
 - Includes pricing embed with cost tracking
 - `ResearchParameters` class in `util.py` with `to_dict(tools)` method
