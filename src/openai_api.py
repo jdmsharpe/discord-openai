@@ -1,5 +1,7 @@
 import aiohttp
 import asyncio
+import base64
+import tempfile
 from button_view import ButtonView
 import hashlib
 import logging
@@ -254,8 +256,8 @@ class OpenAIAPI(commands.Cog):
         if prev is not None:
             try:
                 await prev.edit(view=None)
-            except Exception:
-                pass  # Message may have been deleted or is no longer editable
+            except Exception as e:
+                self.logger.debug(f"Could not edit previous message: {e}")
 
     def _track_daily_cost(
         self,
@@ -367,6 +369,7 @@ class OpenAIAPI(commands.Cog):
             api_params["context_management"] = CONTEXT_MANAGEMENT
             api_params["prompt_cache_retention"] = PROMPT_CACHE_RETENTION
             if conversation.instructions:
+                api_params["instructions"] = conversation.instructions
                 api_params["prompt_cache_key"] = hashlib.sha256(
                     conversation.instructions.encode()
                 ).hexdigest()[:16]
@@ -992,8 +995,6 @@ class OpenAIAPI(commands.Cog):
             image_files = []
             for idx, data_item in enumerate(response.data):
                 if hasattr(data_item, "b64_json") and data_item.b64_json:
-                    import base64
-
                     image_bytes = base64.b64decode(data_item.b64_json)
                     data = io.BytesIO(image_bytes)
                     file_obj = File(data, f"image{idx}.png")
@@ -1132,7 +1133,7 @@ class OpenAIAPI(commands.Cog):
         try:
             response = await self.openai_client.audio.speech.create(**params.to_dict())
             speech_file_path = (
-                Path(__file__).parent / f"{voice}_speech.{response_format}"
+                Path(tempfile.gettempdir()) / f"{voice}_speech.{response_format}"
             )
             response.write_to_file(speech_file_path)
 
@@ -1242,7 +1243,7 @@ class OpenAIAPI(commands.Cog):
                         raise Exception("Failed to download the attachment")
                     speech_file_content = await dl_resp.read()
 
-            speech_file_path = Path(f"/tmp/{attachment.filename}")
+            speech_file_path = Path(tempfile.gettempdir()) / attachment.filename
             speech_file_path.write_bytes(speech_file_content)
 
             with open(speech_file_path, "rb") as speech_file:
@@ -1429,7 +1430,7 @@ class OpenAIAPI(commands.Cog):
             content = await self.openai_client.videos.download_content(video.id)
             video_bytes = await content.aread()
 
-            video_file_path = Path(__file__).parent / f"video_{video.id}.mp4"
+            video_file_path = Path(tempfile.gettempdir()) / f"video_{video.id}.mp4"
             video_file_path.write_bytes(video_bytes)
 
             # Build response embed
