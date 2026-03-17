@@ -1482,7 +1482,7 @@ class OpenAIAPI(commands.Cog):
                 embed=Embed(
                     title="Deep Research",
                     description=description,
-                    color=Colour.gold(),
+                    color=Colour.blue(),
                 )
             )
 
@@ -1560,7 +1560,7 @@ class OpenAIAPI(commands.Cog):
                 Embed(
                     title="Deep Research",
                     description=final_description,
-                    color=Colour.green(),
+                    color=Colour.blue(),
                 )
             ]
             append_response_embeds(embeds, response_text)
