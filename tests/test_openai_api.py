@@ -68,21 +68,21 @@ class TestAppendResponseEmbeds(unittest.TestCase):
         self.assertEqual(embeds[0].title, "Response")
         self.assertEqual(embeds[1].title, "Response (Part 2)")
 
-    def test_truncates_at_20000_chars(self):
-        """Responses over 20000 chars should be truncated."""
+    def test_truncates_at_discord_limit(self):
+        """Responses over Discord's ~5500 char budget should be truncated."""
         embeds = []
         long_response = "y" * 25000
         append_response_embeds(embeds, long_response)
         total_chars = sum(len(embed.description or "") for embed in embeds)
-        self.assertLessEqual(total_chars, 20003)  # 20000 + "..."
+        self.assertLessEqual(total_chars, 5503)  # 5500 available + "..."
 
     def test_no_truncation_under_limit(self):
-        """Responses under 20000 chars should not be truncated."""
+        """Responses under Discord's ~5500 char budget should not be truncated."""
         embeds = []
-        response = "y" * 10000
+        response = "y" * 5000
         append_response_embeds(embeds, response)
         total_chars = sum(len(embed.description or "") for embed in embeds)
-        self.assertEqual(total_chars, 10000)
+        self.assertEqual(total_chars, 5000)
 
     def test_empty_response(self):
         """Empty response should not create an embed."""
