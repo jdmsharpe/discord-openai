@@ -62,8 +62,12 @@ class PermissionAwareChannel(Protocol):
 
 
 def append_response_embeds(embeds, response_text):
-    if len(response_text) > 20000:
-        response_text = truncate_text(response_text, 20000)
+    # Respect Discord's 6000-char per-message total across all embeds.
+    # Reserve 500 chars for citations/pricing embeds that may be appended after.
+    used = sum(len(e.description or "") for e in embeds)
+    available = max(500, 6000 - used - 500)
+    if len(response_text) > available:
+        response_text = truncate_text(response_text, available)
 
     for index, chunk in enumerate(chunk_text(response_text), start=1):
         embeds.append(
@@ -330,7 +334,9 @@ class OpenAIAPI(commands.Cog):
             # Build input for Responses API
             # For text-only, use a simple string. For multimodal, use content array.
             if message.attachments:
-                input_content = [{"type": INPUT_TEXT_TYPE, "text": message.content}]
+                input_content = []
+                if message.content:
+                    input_content.append({"type": INPUT_TEXT_TYPE, "text": message.content})
                 for attachment in message.attachments:
                     input_content.append(
                         build_attachment_content_block(
