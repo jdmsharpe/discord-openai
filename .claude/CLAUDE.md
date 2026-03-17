@@ -133,7 +133,7 @@ Routing is handled by `build_attachment_content_block()` in `util.py`, which che
 - Uses Responses API with `background=True` for long-running research tasks
 - Polls every 15 seconds with 20-minute timeout
 - Always includes `web_search` tool; optionally adds `file_search` (requires `OPENAI_VECTOR_STORE_IDS`) and `code_interpreter`
-- Single-shot command (no conversation mode) — sends a gold "researching" embed, then edits it to green on completion
+- Single-shot command (no conversation mode) — sends a blue "researching" embed, then edits it to blue on completion
 - Reuses `extract_tool_info()` and `append_sources_embed()` for inline citations
 - Includes pricing embed with cost tracking
 - `ResearchParameters` class in `util.py` with `to_dict(tools)` method
