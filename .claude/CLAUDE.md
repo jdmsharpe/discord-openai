@@ -31,7 +31,10 @@ discord-chatgpt/
 
 - **ResponseParameters**: Parameters for the Responses API (used by `/openai chat`)
   - Supports `previous_response_id` for conversation chaining
-  - Handles reasoning models (o-series) with `reasoning` parameter
+  - Handles reasoning models (o-series) with `reasoning` parameter; supports `none/low/medium/high/xhigh` effort levels
+  - `GPT5_NO_TEMP_MODELS` (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`) never allow `temperature`/`top_p`
+  - For GPT-5.4/5.2, `temperature`/`top_p` are stripped when `reasoning.effort` is not `none`
+  - Supports `verbosity` (`low`/`medium`/`high`) via `text: {verbosity: ...}` in the API payload
   - Supports `tools` for built-in tool calling (`web_search`, `code_interpreter`, `file_search`, `shell`)
   - Discord-specific fields for conversation management
 
@@ -70,7 +73,7 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 | video    | user prompt      | 2000 chars         | Leave room for metadata          |
 | stt      | transcription    | 3500 chars         | Primary output field             |
 
-`/openai chat` parameters (12 total): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `temperature`, `top_p`, `web_search`, `code_interpreter`, `file_search`, `shell`.
+`/openai chat` parameters (14 total): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `temperature`, `top_p`, `web_search`, `code_interpreter`, `file_search`, `shell`, `reasoning_effort`, `verbosity`.
 
 `/openai research` parameters (4 total): `prompt`, `model`, `file_search`, `code_interpreter`.
 
@@ -127,6 +130,18 @@ The `/openai chat` `attachment` parameter supports images and file inputs:
 Routing is handled by `build_attachment_content_block()` in `util.py`, which checks the Discord attachment's `content_type`. This works both for the initial slash command and follow-up messages in a conversation.
 
 ## Recent Changes (March 2026)
+
+### GPT-5.4 Parameter Compatibility (`/openai chat`)
+
+- Added `reasoning_effort` slash command option: `none` (fastest), `low`, `medium`, `high`, `xhigh` (GPT-5.4 only)
+  - For o-series models, defaults to `medium` when not set; for GPT-5.x, only sends `reasoning` when explicitly set
+- Added `verbosity` slash command option: `low` (concise), `medium` (default), `high` (detailed)
+  - Sent as `text: {verbosity: ...}` in the Responses API payload; carried through follow-up messages
+- Fixed `temperature`/`top_p` restrictions per OpenAI API rules:
+  - `GPT5_NO_TEMP_MODELS` (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`): always stripped — these models never support them
+  - GPT-5.4/5.2 with `reasoning.effort` ≠ `none`: stripped to avoid API errors
+- Added `REASONING_EFFORT_NONE = "none"` and `REASONING_EFFORT_XHIGH = "xhigh"` constants to `util.py`
+- Added `GPT5_NO_TEMP_MODELS` frozenset to `util.py`
 
 ### Deep Research (`/openai research`)
 

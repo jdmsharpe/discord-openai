@@ -113,10 +113,15 @@ def build_attachment_content_block(content_type: Optional[str], url: str) -> dic
         return {"type": INPUT_IMAGE_TYPE, "image_url": url}
     return {"type": INPUT_FILE_TYPE, "file_url": url}
 
-# Reasoning effort levels for o-series models
+# Reasoning effort levels
+REASONING_EFFORT_NONE = "none"
 REASONING_EFFORT_LOW = "low"
 REASONING_EFFORT_MEDIUM = "medium"
 REASONING_EFFORT_HIGH = "high"
+REASONING_EFFORT_XHIGH = "xhigh"
+
+# GPT-5 base models that never support temperature/top_p
+GPT5_NO_TEMP_MODELS = frozenset({"gpt-5", "gpt-5-mini", "gpt-5-nano"})
 RICH_TTS_MODELS = ["gpt-4o-tts", "gpt-4o-mini-tts"]
 
 RICH_TTS_VOICES = {"ballad", "verse", "marin", "cedar"}
@@ -206,6 +211,7 @@ class ResponseParameters:
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         reasoning: Optional[dict] = None,
+        verbosity: Optional[str] = None,
         tools: Optional[List[dict]] = None,
         # Discord-specific fields (not sent to API)
         conversation_starter: Optional[Any] = None,
@@ -221,16 +227,29 @@ class ResponseParameters:
         self.input = input if input is not None else ""
         self.previous_response_id = previous_response_id
 
-        # Handle reasoning models differently
+        # Handle model-specific reasoning and temperature/top_p restrictions.
         if model in REASONING_MODELS:
-            # Reasoning models use reasoning parameter instead of temperature/top_p
+            # o-series: reasoning required, temperature/top_p not supported.
             self.temperature = None
             self.top_p = None
             self.reasoning = reasoning if reasoning else {"effort": REASONING_EFFORT_MEDIUM}
+        elif model in GPT5_NO_TEMP_MODELS:
+            # gpt-5, gpt-5-mini, gpt-5-nano never support temperature/top_p.
+            self.temperature = None
+            self.top_p = None
+            self.reasoning = reasoning
         else:
-            self.temperature = temperature
-            self.top_p = top_p
-            self.reasoning = None
+            # GPT-5.4/5.2/5.1/5-pro, GPT-4.x, etc.
+            # temperature/top_p are not supported when reasoning effort is not "none".
+            effort = reasoning.get("effort") if reasoning else None
+            if effort and effort != REASONING_EFFORT_NONE:
+                self.temperature = None
+                self.top_p = None
+            else:
+                self.temperature = temperature
+                self.top_p = top_p
+            self.reasoning = reasoning
+        self.verbosity = verbosity
         self.tools = [tool.copy() for tool in tools] if tools is not None else []
 
         self.frequency_penalty = frequency_penalty
@@ -269,6 +288,8 @@ class ResponseParameters:
             payload["top_p"] = self.top_p
         if self.reasoning is not None:
             payload["reasoning"] = self.reasoning
+        if self.verbosity:
+            payload["text"] = {"verbosity": self.verbosity}
         if self.tools:
             payload["tools"] = self.tools
         payload["context_management"] = CONTEXT_MANAGEMENT

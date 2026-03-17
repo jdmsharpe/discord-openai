@@ -22,8 +22,11 @@ from util import (
     AVAILABLE_TOOLS,
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
+    GPT5_NO_TEMP_MODELS,
     PROMPT_CACHE_RETENTION,
     INPUT_TEXT_TYPE,
+    REASONING_EFFORT_MEDIUM,
+    REASONING_EFFORT_NONE,
     REASONING_MODELS,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
@@ -357,6 +360,8 @@ class OpenAIAPI(commands.Cog):
                 api_params["top_p"] = conversation.top_p
             if conversation.reasoning is not None:
                 api_params["reasoning"] = conversation.reasoning
+            if conversation.verbosity:
+                api_params["text"] = {"verbosity": conversation.verbosity}
             if conversation.tools:
                 api_params["tools"] = conversation.tools
             api_params["context_management"] = CONTEXT_MANAGEMENT
@@ -645,6 +650,30 @@ class OpenAIAPI(commands.Cog):
         required=False,
         type=bool,
     )
+    @option(
+        "reasoning_effort",
+        description="(Advanced) Reasoning depth. none=fastest, xhigh=deepest (GPT-5.4 only). (default: not set)",
+        required=False,
+        type=str,
+        choices=[
+            OptionChoice(name="None (fastest, no reasoning)", value="none"),
+            OptionChoice(name="Low", value="low"),
+            OptionChoice(name="Medium", value="medium"),
+            OptionChoice(name="High", value="high"),
+            OptionChoice(name="Extra High (GPT-5.4 only)", value="xhigh"),
+        ],
+    )
+    @option(
+        "verbosity",
+        description="(Advanced) Controls response length. low=concise, high=detailed. (default: medium)",
+        required=False,
+        type=str,
+        choices=[
+            OptionChoice(name="Low (concise)", value="low"),
+            OptionChoice(name="Medium (default)", value="medium"),
+            OptionChoice(name="High (detailed)", value="high"),
+        ],
+    )
     async def chat(
         self,
         ctx: ApplicationContext,
@@ -660,6 +689,8 @@ class OpenAIAPI(commands.Cog):
         code_interpreter: bool = False,
         file_search: bool = False,
         shell: bool = False,
+        reasoning_effort: Optional[str] = None,
+        verbosity: Optional[str] = None,
     ):
         """
         Creates a model response for the given chat conversation.
@@ -741,6 +772,15 @@ class OpenAIAPI(commands.Cog):
             )
             return
 
+        # Build reasoning dict: o-series always use reasoning (default medium);
+        # GPT-5.x only send it when the user explicitly sets an effort level.
+        if model in REASONING_MODELS:
+            reasoning_dict = {"effort": reasoning_effort or REASONING_EFFORT_MEDIUM}
+        elif reasoning_effort:
+            reasoning_dict = {"effort": reasoning_effort}
+        else:
+            reasoning_dict = None
+
         # Create ResponseParameters for the new Responses API
         params = ResponseParameters(
             model=model,
@@ -748,9 +788,10 @@ class OpenAIAPI(commands.Cog):
             input=input_content,
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
-            temperature=temperature if model not in REASONING_MODELS else None,
-            top_p=top_p if model not in REASONING_MODELS else None,
-            reasoning={"effort": "medium"} if model in REASONING_MODELS else None,
+            temperature=temperature,
+            top_p=top_p,
+            reasoning=reasoning_dict,
+            verbosity=verbosity,
             tools=tools,
             conversation_starter=ctx.author,
             conversation_id=ctx.interaction.id,
@@ -785,6 +826,8 @@ class OpenAIAPI(commands.Cog):
             )
             if params.reasoning:
                 description += f"**Reasoning Effort:** {params.reasoning.get('effort', 'medium')}\n"
+            if params.verbosity:
+                description += f"**Verbosity:** {params.verbosity}\n"
 
             self.logger.info(
                 f"chat: Conversation parameters initialized for interaction ID {ctx.interaction.id}."

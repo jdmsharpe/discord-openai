@@ -139,7 +139,7 @@ class TestResponseParameters(unittest.TestCase):
     def test_non_reasoning_model_behavior(self):
         """Test that non-reasoning models use temperature and top_p."""
         params = ResponseParameters(
-            model="gpt-5",  # Not a reasoning model
+            model="gpt-4o",  # Not a reasoning model and not in GPT5_NO_TEMP_MODELS
             input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
             temperature=0.7,
             top_p=0.9,
@@ -148,6 +148,66 @@ class TestResponseParameters(unittest.TestCase):
         self.assertEqual(result["temperature"], 0.7)
         self.assertEqual(result["top_p"], 0.9)
         self.assertNotIn("reasoning", result)
+
+    def test_gpt5_no_temp_models_strip_temperature(self):
+        """Test that gpt-5, gpt-5-mini, gpt-5-nano never allow temperature/top_p."""
+        for model in ("gpt-5", "gpt-5-mini", "gpt-5-nano"):
+            with self.subTest(model=model):
+                params = ResponseParameters(
+                    model=model,
+                    input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+                    temperature=0.7,
+                    top_p=0.9,
+                )
+                result = params.to_dict()
+                self.assertNotIn("temperature", result)
+                self.assertNotIn("top_p", result)
+
+    def test_reasoning_effort_strips_temperature(self):
+        """Test that temperature/top_p are stripped when reasoning effort is not none."""
+        params = ResponseParameters(
+            model="gpt-5.4",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            temperature=0.7,
+            top_p=0.9,
+            reasoning={"effort": "high"},
+        )
+        result = params.to_dict()
+        self.assertNotIn("temperature", result)
+        self.assertNotIn("top_p", result)
+        self.assertEqual(result["reasoning"]["effort"], "high")
+
+    def test_reasoning_effort_none_keeps_temperature(self):
+        """Test that temperature/top_p are kept when reasoning effort is 'none'."""
+        params = ResponseParameters(
+            model="gpt-5.4",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            temperature=0.7,
+            top_p=0.9,
+            reasoning={"effort": "none"},
+        )
+        result = params.to_dict()
+        self.assertEqual(result["temperature"], 0.7)
+        self.assertEqual(result["top_p"], 0.9)
+
+    def test_verbosity_included_in_payload(self):
+        """Test that verbosity is included in the text block when set."""
+        params = ResponseParameters(
+            model="gpt-5.4",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            verbosity="low",
+        )
+        result = params.to_dict()
+        self.assertEqual(result["text"], {"verbosity": "low"})
+
+    def test_verbosity_omitted_when_not_set(self):
+        """Test that text block is omitted when verbosity is not set."""
+        params = ResponseParameters(
+            model="gpt-5.4",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+        )
+        result = params.to_dict()
+        self.assertNotIn("text", result)
 
     def test_previous_response_id(self):
         """Test that previous_response_id is included when set."""

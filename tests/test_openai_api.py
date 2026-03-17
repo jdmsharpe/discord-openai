@@ -290,8 +290,8 @@ class TestAppendPricingEmbed(unittest.TestCase):
         embeds = []
         append_pricing_embed(embeds, "gpt-4o", 1_234, 567, 0.42)
         desc = embeds[0].description
-        self.assertIn("1,234 tokens in", desc)
-        self.assertIn("567 tokens out", desc)
+        self.assertIn("1,234 in", desc)
+        self.assertIn("567 out", desc)
 
     def test_description_contains_daily_cost(self):
         embeds = []
