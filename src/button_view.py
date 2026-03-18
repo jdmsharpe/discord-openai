@@ -236,7 +236,7 @@ class ButtonView(View):
         # End the conversation
         if self.conversation_id in self.cog.conversation_histories:
             del self.cog.conversation_histories[self.conversation_id]
-            button.disabled = True  # Disable the button
+            await self.cog._cleanup_conversation(self.conversation_starter)
             await interaction.response.send_message(
                 "Conversation ended.", ephemeral=True, delete_after=3
             )

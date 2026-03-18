@@ -282,6 +282,11 @@ class OpenAIAPI(commands.Cog):
             except Exception as e:
                 self.logger.debug(f"Could not edit previous message: {e}")
 
+    async def _cleanup_conversation(self, user) -> None:
+        """Remove button view from the last message and clean up view state."""
+        await self._strip_previous_view(user)
+        self.views.pop(user, None)
+
     def _track_daily_cost(
         self,
         user_id: int,
@@ -499,6 +504,7 @@ class OpenAIAPI(commands.Cog):
                 f"Error in handle_new_message_in_conversation: {description}",
                 exc_info=True,
             )
+            await self._cleanup_conversation(message.author)
             await message.reply(
                 embed=Embed(title="Error", description=description, color=Colour.red())
             )
@@ -963,6 +969,7 @@ class OpenAIAPI(commands.Cog):
 
         except Exception as e:
             error_message = format_openai_error(e)
+            await self._cleanup_conversation(ctx.author)
             await ctx.send_followup(
                 embed=Embed(
                     title="Error",

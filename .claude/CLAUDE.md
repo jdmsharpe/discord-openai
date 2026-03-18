@@ -85,7 +85,7 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 - Tool enable/disable toggling via Select Menu on conversation views
 - `file_search` requires `OPENAI_VECTOR_STORE_IDS` in environment config; uses `max_num_results: 5` to limit retrieval; file citations are surfaced in a Sources embed
 - `shell` is guarded to GPT-5 series models in this bot configuration
-- Automatic conversation state cleanup on stop
+- Automatic conversation state cleanup on stop, errors, and conversation end — `_cleanup_conversation(user)` strips the button view from the last message and removes view state
 
 ### Discord Embed Limits
 
