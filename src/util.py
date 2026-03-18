@@ -230,6 +230,7 @@ def build_attachment_content_block(content_type: Optional[str], url: str) -> dic
 
 # Reasoning effort levels
 REASONING_EFFORT_NONE = "none"
+REASONING_EFFORT_LOW = "low"
 REASONING_EFFORT_MEDIUM = "medium"
 REASONING_EFFORT_HIGH = "high"
 REASONING_EFFORT_XHIGH = "xhigh"
