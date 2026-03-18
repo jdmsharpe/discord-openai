@@ -1,5 +1,4 @@
 import hashlib
-import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from openai import APIError
@@ -231,7 +230,6 @@ def build_attachment_content_block(content_type: Optional[str], url: str) -> dic
 
 # Reasoning effort levels
 REASONING_EFFORT_NONE = "none"
-REASONING_EFFORT_LOW = "low"
 REASONING_EFFORT_MEDIUM = "medium"
 REASONING_EFFORT_HIGH = "high"
 REASONING_EFFORT_XHIGH = "xhigh"
@@ -563,14 +561,6 @@ def truncate_text(text, max_length, suffix="..."):
     if len(text) <= max_length:
         return text
     return text[:max_length] + suffix
-
-
-def extract_urls(text):
-    url_pattern = (
-        r"http[s]?://(?:[a-zA-Z0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
-    )
-    urls = re.findall(url_pattern, text)
-    return urls
 
 
 def _parse_error_payload(payload: Any) -> Dict[str, str]:

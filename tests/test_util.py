@@ -34,7 +34,6 @@ from util import (
     calculate_video_cost,
     chunk_text,
     estimate_audio_duration_seconds,
-    extract_urls,
     format_openai_error,
     truncate_text,
 )
@@ -804,17 +803,6 @@ class TestVideoPricing(unittest.TestCase):
     def test_calculate_unknown_model(self):
         cost = calculate_video_cost("unknown-video", 10)
         self.assertAlmostEqual(cost, 1.00)  # default $0.10/sec
-
-
-class TestExtractUrls(unittest.TestCase):
-    def test_extract_urls(self):
-        text = (
-            "Check out https://www.example.com and http://example.org/?page=1&param=1"
-        )
-        result = extract_urls(text)
-        self.assertEqual(
-            result, ["https://www.example.com", "http://example.org/?page=1&param=1"]
-        )
 
 
 class TestFormatOpenAIError(unittest.TestCase):

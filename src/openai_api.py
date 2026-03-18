@@ -1315,10 +1315,7 @@ class OpenAIAPI(commands.Cog):
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
 
-        # Initialize variables
         speech_file_path = None
-        embeds = []
-        response = ""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(attachment.url) as dl_resp:
