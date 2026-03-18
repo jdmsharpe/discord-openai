@@ -634,6 +634,8 @@ class OpenAIAPI(commands.Cog):
         choices=[
             OptionChoice(name="GPT-5.4 Pro", value="gpt-5.4-pro"),
             OptionChoice(name="GPT-5.4", value="gpt-5.4"),
+            OptionChoice(name="GPT-5.4 Mini", value="gpt-5.4-mini"),
+            OptionChoice(name="GPT-5.4 Nano", value="gpt-5.4-nano"),
             OptionChoice(name="GPT-5.3", value="gpt-5.3-chat-latest"),
             OptionChoice(name="GPT-5.2 Pro", value="gpt-5.2-pro"),
             OptionChoice(name="GPT-5.2", value="gpt-5.2"),
