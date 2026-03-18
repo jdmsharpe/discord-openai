@@ -71,6 +71,122 @@ def calculate_tool_cost(tool_call_counts: Dict[str, int]) -> float:
     )
 
 
+# ---------------------------------------------------------------------------
+# Image generation pricing: (model, quality, size) -> cost per image
+# ---------------------------------------------------------------------------
+IMAGE_PRICING: Dict[Tuple[str, str, str], float] = {
+    # GPT Image 1.5
+    ("gpt-image-1.5", "low", "1024x1024"): 0.009,
+    ("gpt-image-1.5", "low", "1024x1536"): 0.013,
+    ("gpt-image-1.5", "low", "1536x1024"): 0.013,
+    ("gpt-image-1.5", "medium", "1024x1024"): 0.034,
+    ("gpt-image-1.5", "medium", "1024x1536"): 0.05,
+    ("gpt-image-1.5", "medium", "1536x1024"): 0.05,
+    ("gpt-image-1.5", "high", "1024x1024"): 0.133,
+    ("gpt-image-1.5", "high", "1024x1536"): 0.20,
+    ("gpt-image-1.5", "high", "1536x1024"): 0.20,
+    # GPT Image 1
+    ("gpt-image-1", "low", "1024x1024"): 0.011,
+    ("gpt-image-1", "low", "1024x1536"): 0.016,
+    ("gpt-image-1", "low", "1536x1024"): 0.016,
+    ("gpt-image-1", "medium", "1024x1024"): 0.042,
+    ("gpt-image-1", "medium", "1024x1536"): 0.063,
+    ("gpt-image-1", "medium", "1536x1024"): 0.063,
+    ("gpt-image-1", "high", "1024x1024"): 0.167,
+    ("gpt-image-1", "high", "1024x1536"): 0.25,
+    ("gpt-image-1", "high", "1536x1024"): 0.25,
+    # GPT Image 1 Mini
+    ("gpt-image-1-mini", "low", "1024x1024"): 0.005,
+    ("gpt-image-1-mini", "low", "1024x1536"): 0.006,
+    ("gpt-image-1-mini", "low", "1536x1024"): 0.006,
+    ("gpt-image-1-mini", "medium", "1024x1024"): 0.011,
+    ("gpt-image-1-mini", "medium", "1024x1536"): 0.015,
+    ("gpt-image-1-mini", "medium", "1536x1024"): 0.015,
+    ("gpt-image-1-mini", "high", "1024x1024"): 0.036,
+    ("gpt-image-1-mini", "high", "1024x1536"): 0.052,
+    ("gpt-image-1-mini", "high", "1536x1024"): 0.052,
+}
+
+# Default image costs when quality or size is "auto" (medium 1024x1024 estimate)
+IMAGE_PRICING_DEFAULTS: Dict[str, float] = {
+    "gpt-image-1.5": 0.034,
+    "gpt-image-1": 0.042,
+    "gpt-image-1-mini": 0.011,
+}
+
+
+def calculate_image_cost(model: str, quality: str, size: str, n: int = 1) -> float:
+    """Calculate cost for image generation based on model, quality, and size."""
+    if quality == "auto" or size == "auto":
+        per_image = IMAGE_PRICING_DEFAULTS.get(model, 0.034)
+    else:
+        per_image = IMAGE_PRICING.get(
+            (model, quality, size),
+            IMAGE_PRICING_DEFAULTS.get(model, 0.034),
+        )
+    return per_image * n
+
+
+# ---------------------------------------------------------------------------
+# TTS pricing: per character
+# ---------------------------------------------------------------------------
+TTS_PRICING_PER_CHAR: Dict[str, float] = {
+    "tts-1": 0.000015,          # $15.00 / 1M characters
+    "tts-1-hd": 0.000030,       # $30.00 / 1M characters
+    "gpt-4o-mini-tts": 0.000020,  # ~$0.015/min, ~750 chars/min
+    "gpt-4o-tts": 0.000020,
+}
+
+
+def calculate_tts_cost(model: str, num_characters: int) -> float:
+    """Calculate estimated cost for TTS based on input character count."""
+    per_char = TTS_PRICING_PER_CHAR.get(model, 0.000015)
+    return per_char * num_characters
+
+
+# ---------------------------------------------------------------------------
+# STT pricing: per minute of audio
+# ---------------------------------------------------------------------------
+STT_PRICING_PER_MINUTE: Dict[str, float] = {
+    "gpt-4o-transcribe": 0.006,
+    "gpt-4o-transcribe-diarize": 0.006,
+    "gpt-4o-mini-transcribe": 0.003,
+    "whisper-1": 0.006,
+}
+
+# Rough bytes-per-second used to estimate audio duration from file size
+_AUDIO_BPS_WAV = 88_000       # mono 16-bit 44.1 kHz
+_AUDIO_BPS_COMPRESSED = 16_000  # ~128 kbps
+
+
+def estimate_audio_duration_seconds(file_size_bytes: int, filename: str) -> float:
+    """Estimate audio duration in seconds from file size and format."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    bps = _AUDIO_BPS_WAV if ext == "wav" else _AUDIO_BPS_COMPRESSED
+    return file_size_bytes / bps
+
+
+def calculate_stt_cost(model: str, duration_seconds: float) -> float:
+    """Calculate cost for STT based on estimated audio duration."""
+    per_minute = STT_PRICING_PER_MINUTE.get(model, 0.006)
+    return per_minute * (duration_seconds / 60.0)
+
+
+# ---------------------------------------------------------------------------
+# Video generation pricing: per second of video
+# ---------------------------------------------------------------------------
+VIDEO_PRICING_PER_SECOND: Dict[str, float] = {
+    "sora-2": 0.10,
+    "sora-2-pro": 0.20,
+}
+
+
+def calculate_video_cost(model: str, seconds: int) -> float:
+    """Calculate cost for video generation."""
+    per_second = VIDEO_PRICING_PER_SECOND.get(model, 0.10)
+    return per_second * seconds
+
+
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
 DEEP_RESEARCH_MODELS = ["o3-deep-research", "o4-mini-deep-research"]
 TOOL_WEB_SEARCH = {"type": "web_search"}

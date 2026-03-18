@@ -113,10 +113,16 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 - `append_response_embeds()` in `openai_api.py` - Chunks model responses into 3500 char segments with 20000 char hard truncation
 - `append_sources_embed()` in `openai_api.py` - Renders web citations (numbered links) and file citations (filename list) in a Sources embed
 - `append_pricing_embed()` in `openai_api.py` - Appends a blue embed showing request cost, token counts (with cached/thinking annotations), tool call costs, and daily cumulative cost (controlled by `SHOW_COST_EMBEDS` env var)
+- `append_flat_pricing_embed()` in `openai_api.py` - Appends a compact blue pricing embed for non-token commands (image, TTS, STT, video) showing cost, details, and daily total
 - `extract_tool_info()` in `openai_api.py` - Extracts tool usage, call counts per tool, `url_citation` annotations (web), and `file_citation` annotations (file search) from Responses API output
 - `build_attachment_content_block()` in `util.py` - Routes Discord attachments to `image_url` (images) or `input_file` (PDFs, docs, spreadsheets, code files) content blocks
 - `calculate_cost()` in `util.py` - Calculates dollar cost from model name and token counts using `MODEL_PRICING`; cached tokens billed at 50% input price
 - `calculate_tool_cost()` in `util.py` - Calculates dollar cost for tool calls using `TOOL_CALL_PRICING`
+- `calculate_image_cost()` in `util.py` - Calculates image generation cost from `IMAGE_PRICING` table keyed by (model, quality, size); falls back to `IMAGE_PRICING_DEFAULTS` for "auto" values
+- `calculate_tts_cost()` in `util.py` - Estimates TTS cost from character count using `TTS_PRICING_PER_CHAR`
+- `calculate_stt_cost()` in `util.py` - Estimates STT cost from audio duration using `STT_PRICING_PER_MINUTE`
+- `estimate_audio_duration_seconds()` in `util.py` - Estimates audio duration from file size and format (WAV vs compressed)
+- `calculate_video_cost()` in `util.py` - Calculates video generation cost from `VIDEO_PRICING_PER_SECOND`
 - `truncate_text()` in `util.py` - Truncates text with suffix (e.g., `truncate_text(prompt, 2000)` → "text...")
 - `chunk_text()` in `util.py` - Splits text into 3500 char segments (configurable via `CHUNK_TEXT_SIZE`)
 
@@ -155,17 +161,31 @@ Routing is handled by `build_attachment_content_block()` in `util.py`, which che
 - Includes pricing embed with cost tracking
 - `ResearchParameters` class in `util.py` with `to_dict(tools)` method
 
-### Pricing Embed
+### Pricing Embeds & Cost Logging
 
-- Every `/openai chat` response (initial and follow-ups) includes a blue pricing embed (toggleable via `SHOW_COST_EMBEDS` env var, defaults to `true`)
-- Format: `$0.0042 · 1,234 in (456 cached) / 567 out (89 thinking) · tools: web search ×2 ($0.02) · daily $0.15`
+All commands include a blue pricing embed (toggleable via `SHOW_COST_EMBEDS` env var, defaults to `true`):
+
+- **Chat/Research** (token-based): `append_pricing_embed()` — format: `$0.0042 · 1,234 in (456 cached) / 567 out (89 thinking) · tools: web search ×2 ($0.02) · daily $0.15`
+- **Image/TTS/STT/Video** (flat-rate): `append_flat_pricing_embed()` — format: `$0.0340 · high · 1024x1024 · 1 image(s) · daily $0.18`
+
+**Token-based pricing (chat, research):**
 - `MODEL_PRICING` in `util.py` maps each chat model to `(input_cost_per_million, output_cost_per_million)` tuple
-- `calculate_cost()` in `util.py` computes dollar cost; unknown models fall back to `(2.50, 10.00)`; cached input tokens billed at 50% of input price
-- `TOOL_CALL_PRICING` in `util.py` maps tool names to per-call costs: web_search $0.01, file_search $0.0025, code_interpreter/shell $0.03/container
-- `calculate_tool_cost()` in `util.py` computes tool call costs from `tool_call_counts` dict
-- `_track_daily_cost()` on the cog accumulates per-user per-day costs (tokens + tools) in `self.daily_costs`
-- Token usage extracted from `response.usage.input_tokens` / `output_tokens`; cached tokens from `usage.input_tokens_details.cached_tokens`; reasoning tokens from `usage.output_tokens_details.reasoning_tokens`
-- Tool call counts extracted from `response.output` item types (`web_search_call`, `file_search_call`, `code_interpreter_call`, `shell_call`) via `extract_tool_info()`
+- `calculate_cost()` computes dollar cost; unknown models fall back to `(2.50, 10.00)`; cached input tokens billed at 50% of input price
+- `TOOL_CALL_PRICING` maps tool names to per-call costs: web_search $0.01, file_search $0.0025, code_interpreter/shell $0.03/container
+- Token usage extracted from `response.usage.input_tokens` / `output_tokens`; cached from `usage.input_tokens_details.cached_tokens`; reasoning from `usage.output_tokens_details.reasoning_tokens`
+
+**Image pricing:** `IMAGE_PRICING` table keyed by `(model, quality, size)` for all 27 combos (3 models × 3 qualities × 3 sizes); `IMAGE_PRICING_DEFAULTS` used when quality or size is "auto"
+
+**TTS pricing:** `TTS_PRICING_PER_CHAR` — per-character rates: tts-1 $15/1M, tts-1-hd $30/1M, gpt-4o-mini-tts ~$20/1M (estimated)
+
+**STT pricing:** `STT_PRICING_PER_MINUTE` — per-minute rates: whisper-1/gpt-4o-transcribe $0.006, gpt-4o-mini-transcribe $0.003. Duration estimated from file size via `estimate_audio_duration_seconds()` (WAV ~88 KB/s, compressed ~16 KB/s)
+
+**Video pricing:** `VIDEO_PRICING_PER_SECOND` — sora-2 $0.10/s, sora-2-pro $0.20/s
+
+**Persistent cost logging:**
+- `_track_daily_cost()` — logs structured `COST |` lines for chat/research: `COST | command=chat | user=12345 | model=gpt-5.4 | input_tokens=... | output_tokens=... | cached_tokens=... | cost=$0.0042 | daily=$0.15`
+- `_track_daily_cost_direct()` — logs structured `COST |` lines for image/TTS/STT/video: `COST | command=image | user=12345 | model=gpt-image-1.5 | cost=$0.0340 | daily=$0.18 | quality=auto | size=auto | n=1`
+- Both methods accumulate per-user per-day costs in `self.daily_costs` (in-memory) and emit `logger.info()` for persistent log output
 
 ### File Search Citations & `max_num_results`
 

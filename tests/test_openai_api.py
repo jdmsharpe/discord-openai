@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 import unittest
 from typing import Any, cast
-from openai_api import OpenAIAPI, append_pricing_embed, append_response_embeds, append_sources_embed, extract_tool_info
+from openai_api import OpenAIAPI, append_flat_pricing_embed, append_pricing_embed, append_response_embeds, append_sources_embed, extract_tool_info
 from discord import Bot, Colour, Embed, Intents
 
 
@@ -302,6 +302,42 @@ class TestAppendPricingEmbed(unittest.TestCase):
         embeds = [Embed(title="Response", description="Hello")]
         append_pricing_embed(embeds, "gpt-4o", 100, 50, 0.01)
         self.assertEqual(len(embeds), 2)
+        self.assertEqual(embeds[1].color, Colour.blue())
+
+
+class TestAppendFlatPricingEmbed(unittest.TestCase):
+    def test_appends_embed(self):
+        embeds = []
+        append_flat_pricing_embed(embeds, 0.034, 0.15)
+        self.assertEqual(len(embeds), 1)
+        self.assertEqual(embeds[0].color, Colour.blue())
+
+    def test_description_contains_cost_and_daily(self):
+        embeds = []
+        append_flat_pricing_embed(embeds, 0.034, 1.23)
+        desc = embeds[0].description
+        self.assertIn("$0.0340", desc)
+        self.assertIn("daily $1.23", desc)
+
+    def test_description_contains_details(self):
+        embeds = []
+        append_flat_pricing_embed(embeds, 0.133, 0.50, "high · 1024x1024 · 1 image(s)")
+        desc = embeds[0].description
+        self.assertIn("high", desc)
+        self.assertIn("1024x1024", desc)
+
+    def test_no_details(self):
+        embeds = []
+        append_flat_pricing_embed(embeds, 0.01, 0.01)
+        desc = embeds[0].description
+        # Should just be cost · daily (no extra details)
+        self.assertEqual(desc, "$0.0100 · daily $0.01")
+
+    def test_appends_to_existing_embeds(self):
+        embeds = [Embed(title="Image", description="A cat")]
+        append_flat_pricing_embed(embeds, 0.034, 0.05, "auto · auto")
+        self.assertEqual(len(embeds), 2)
+        self.assertEqual(embeds[0].title, "Image")
         self.assertEqual(embeds[1].color, Colour.blue())
 
 

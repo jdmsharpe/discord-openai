@@ -4,6 +4,8 @@ from openai import APIError
 from util import (
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
+    IMAGE_PRICING,
+    IMAGE_PRICING_DEFAULTS,
     INPUT_FILE_TYPE,
     MODEL_PRICING,
     PROMPT_CACHE_RETENTION,
@@ -11,10 +13,13 @@ from util import (
     INPUT_TEXT_TYPE,
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
+    STT_PRICING_PER_MINUTE,
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
     TOOL_WEB_SEARCH,
+    TTS_PRICING_PER_CHAR,
+    VIDEO_PRICING_PER_SECOND,
     ChatCompletionParameters,
     ImageGenerationParameters,
     ResearchParameters,
@@ -23,7 +28,12 @@ from util import (
     VideoGenerationParameters,
     build_attachment_content_block,
     calculate_cost,
+    calculate_image_cost,
+    calculate_stt_cost,
+    calculate_tts_cost,
+    calculate_video_cost,
     chunk_text,
+    estimate_audio_duration_seconds,
     extract_urls,
     format_openai_error,
     truncate_text,
@@ -681,6 +691,119 @@ class TestModelPricing(unittest.TestCase):
         cost = calculate_cost("gpt-4.1-nano", 100, 50)
         expected = (100 / 1_000_000) * 0.10 + (50 / 1_000_000) * 0.40
         self.assertAlmostEqual(cost, expected)
+
+
+class TestImagePricing(unittest.TestCase):
+    IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
+    QUALITIES = ["low", "medium", "high"]
+    SIZES = ["1024x1024", "1024x1536", "1536x1024"]
+
+    def test_all_combos_have_pricing(self):
+        for model in self.IMAGE_MODELS:
+            for quality in self.QUALITIES:
+                for size in self.SIZES:
+                    self.assertIn(
+                        (model, quality, size), IMAGE_PRICING,
+                        f"Missing pricing for ({model}, {quality}, {size})",
+                    )
+
+    def test_all_models_have_default(self):
+        for model in self.IMAGE_MODELS:
+            self.assertIn(model, IMAGE_PRICING_DEFAULTS)
+
+    def test_pricing_values_positive(self):
+        for key, price in IMAGE_PRICING.items():
+            self.assertGreater(price, 0, f"{key} price must be positive")
+
+    def test_calculate_known_combo(self):
+        cost = calculate_image_cost("gpt-image-1.5", "high", "1024x1024")
+        self.assertAlmostEqual(cost, 0.133)
+
+    def test_calculate_auto_uses_default(self):
+        cost = calculate_image_cost("gpt-image-1.5", "auto", "auto")
+        self.assertAlmostEqual(cost, IMAGE_PRICING_DEFAULTS["gpt-image-1.5"])
+
+    def test_calculate_multiple_images(self):
+        cost = calculate_image_cost("gpt-image-1-mini", "low", "1024x1024", n=3)
+        self.assertAlmostEqual(cost, 0.005 * 3)
+
+    def test_calculate_unknown_model_uses_fallback(self):
+        cost = calculate_image_cost("unknown-model", "high", "1024x1024")
+        self.assertAlmostEqual(cost, 0.034)  # global default
+
+
+class TestTtsPricing(unittest.TestCase):
+    def test_all_models_have_pricing(self):
+        for model in ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"]:
+            self.assertIn(model, TTS_PRICING_PER_CHAR)
+
+    def test_calculate_known_model(self):
+        cost = calculate_tts_cost("tts-1", 1_000_000)
+        self.assertAlmostEqual(cost, 15.00)
+
+    def test_calculate_tts_hd(self):
+        cost = calculate_tts_cost("tts-1-hd", 1_000_000)
+        self.assertAlmostEqual(cost, 30.00)
+
+    def test_calculate_unknown_model(self):
+        cost = calculate_tts_cost("unknown-tts", 1_000_000)
+        self.assertAlmostEqual(cost, 15.00)  # default fallback
+
+    def test_zero_characters(self):
+        cost = calculate_tts_cost("tts-1", 0)
+        self.assertEqual(cost, 0.0)
+
+
+class TestSttPricing(unittest.TestCase):
+    def test_all_models_have_pricing(self):
+        for model in ["gpt-4o-transcribe", "gpt-4o-transcribe-diarize",
+                       "gpt-4o-mini-transcribe", "whisper-1"]:
+            self.assertIn(model, STT_PRICING_PER_MINUTE)
+
+    def test_calculate_one_minute(self):
+        cost = calculate_stt_cost("whisper-1", 60.0)
+        self.assertAlmostEqual(cost, 0.006)
+
+    def test_calculate_mini_transcribe(self):
+        cost = calculate_stt_cost("gpt-4o-mini-transcribe", 120.0)
+        self.assertAlmostEqual(cost, 0.006)  # $0.003/min * 2 min
+
+    def test_zero_duration(self):
+        cost = calculate_stt_cost("whisper-1", 0.0)
+        self.assertEqual(cost, 0.0)
+
+    def test_estimate_duration_mp3(self):
+        # 128kbps = 16000 bytes/sec, so 160000 bytes = 10 seconds
+        duration = estimate_audio_duration_seconds(160_000, "audio.mp3")
+        self.assertAlmostEqual(duration, 10.0)
+
+    def test_estimate_duration_wav(self):
+        # WAV ~88000 bytes/sec, so 880000 bytes = 10 seconds
+        duration = estimate_audio_duration_seconds(880_000, "audio.wav")
+        self.assertAlmostEqual(duration, 10.0)
+
+    def test_estimate_duration_unknown_ext(self):
+        # Falls back to compressed rate
+        duration = estimate_audio_duration_seconds(160_000, "audio.ogg")
+        self.assertAlmostEqual(duration, 10.0)
+
+
+class TestVideoPricing(unittest.TestCase):
+    def test_all_models_have_pricing(self):
+        for model in ["sora-2", "sora-2-pro"]:
+            self.assertIn(model, VIDEO_PRICING_PER_SECOND)
+
+    def test_calculate_sora_2(self):
+        cost = calculate_video_cost("sora-2", 8)
+        self.assertAlmostEqual(cost, 0.80)
+
+    def test_calculate_sora_2_pro(self):
+        cost = calculate_video_cost("sora-2-pro", 20)
+        self.assertAlmostEqual(cost, 4.00)
+
+    def test_calculate_unknown_model(self):
+        cost = calculate_video_cost("unknown-video", 10)
+        self.assertAlmostEqual(cost, 1.00)  # default $0.10/sec
 
 
 class TestExtractUrls(unittest.TestCase):

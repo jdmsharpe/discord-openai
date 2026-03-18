@@ -41,8 +41,13 @@ from util import (
     VideoGenerationParameters,
     build_attachment_content_block,
     calculate_cost,
+    calculate_image_cost,
+    calculate_stt_cost,
     calculate_tool_cost,
+    calculate_tts_cost,
+    calculate_video_cost,
     chunk_text,
+    estimate_audio_duration_seconds,
     format_openai_error,
     truncate_text,
 )
@@ -227,6 +232,20 @@ def append_pricing_embed(
     embeds.append(Embed(description=" · ".join(parts), color=Colour.blue()))
 
 
+def append_flat_pricing_embed(
+    embeds: List[Embed],
+    cost: float,
+    daily_cost: float,
+    details: str = "",
+) -> None:
+    """Append a compact pricing embed for non-token-based commands (image/TTS/STT/video)."""
+    parts = [f"${cost:.4f}"]
+    if details:
+        parts.append(details)
+    parts.append(f"daily ${daily_cost:.2f}")
+    embeds.append(Embed(description=" · ".join(parts), color=Colour.blue()))
+
+
 class OpenAIAPI(commands.Cog):
     openai = SlashCommandGroup("openai", "OpenAI commands", guild_ids=GUILD_IDS)
 
@@ -271,13 +290,41 @@ class OpenAIAPI(commands.Cog):
         output_tokens: int,
         cached_tokens: int = 0,
         tool_call_counts: Optional[Dict[str, int]] = None,
+        command: str = "chat",
     ) -> float:
         """Add this request's cost to the user's daily total and return the new daily total."""
         cost = calculate_cost(model, input_tokens, output_tokens, cached_tokens)
+        tool_cost = 0.0
         if tool_call_counts:
-            cost += calculate_tool_cost(tool_call_counts)
+            tool_cost = calculate_tool_cost(tool_call_counts)
+            cost += tool_cost
         key = (user_id, date.today().isoformat())
         self.daily_costs[key] = self.daily_costs.get(key, 0.0) + cost
+        self.logger.info(
+            f"COST | command={command} | user={user_id} | model={model}"
+            f" | input_tokens={input_tokens} | output_tokens={output_tokens}"
+            f" | cached_tokens={cached_tokens}"
+            + (f" | tools={tool_call_counts} | tool_cost=${tool_cost:.4f}" if tool_call_counts else "")
+            + f" | cost=${cost:.4f} | daily=${self.daily_costs[key]:.4f}"
+        )
+        return self.daily_costs[key]
+
+    def _track_daily_cost_direct(
+        self,
+        user_id: int,
+        command: str,
+        model: str,
+        cost: float,
+        details: str = "",
+    ) -> float:
+        """Track a pre-computed cost (image/TTS/STT/video) and return the new daily total."""
+        key = (user_id, date.today().isoformat())
+        self.daily_costs[key] = self.daily_costs.get(key, 0.0) + cost
+        self.logger.info(
+            f"COST | command={command} | user={user_id} | model={model}"
+            f" | cost=${cost:.4f} | daily=${self.daily_costs[key]:.4f}"
+            + (f" | {details}" if details else "")
+        )
         return self.daily_costs[key]
 
     def resolve_selected_tools(
@@ -1025,7 +1072,22 @@ class OpenAIAPI(commands.Cog):
             # Embed the first image inside the embed container
             if image_files:
                 embed.set_image(url=f"attachment://{image_files[0].filename}")
-            await ctx.send_followup(embed=embed, files=image_files)
+
+            embeds = [embed]
+            image_cost = calculate_image_cost(
+                model, quality or "auto", size or "auto", len(image_files)
+            )
+            daily_cost = self._track_daily_cost_direct(
+                ctx.author.id, "image", model, image_cost,
+                f"quality={quality} | size={size} | n={len(image_files)}"
+            )
+            if SHOW_COST_EMBEDS:
+                append_flat_pricing_embed(
+                    embeds, image_cost, daily_cost,
+                    f"{quality} · {size} · {len(image_files)} image(s)"
+                )
+
+            await ctx.send_followup(embeds=embeds, files=image_files)
             self.logger.info(
                 f"Successfully generated and sent {len(image_files)} image(s)"
             )
@@ -1162,7 +1224,20 @@ class OpenAIAPI(commands.Cog):
                 description=description,
                 color=Colour.blue(),
             )
-            await ctx.send_followup(embed=embed, file=File(speech_file_path))
+
+            embeds = [embed]
+            tts_cost = calculate_tts_cost(model, len(input))
+            daily_cost = self._track_daily_cost_direct(
+                ctx.author.id, "tts", model, tts_cost,
+                f"characters={len(input)} | voice={params.voice}"
+            )
+            if SHOW_COST_EMBEDS:
+                append_flat_pricing_embed(
+                    embeds, tts_cost, daily_cost,
+                    f"{len(input):,} chars · {params.voice}"
+                )
+
+            await ctx.send_followup(embeds=embeds, file=File(speech_file_path))
         except Exception as e:
             await ctx.send_followup(
                 embed=Embed(
@@ -1292,7 +1367,25 @@ class OpenAIAPI(commands.Cog):
             embed = Embed(
                 title="Speech-to-Text", description=description, color=Colour.blue()
             )
-            await ctx.send_followup(embed=embed, file=File(speech_file_path))
+
+            embeds = [embed]
+            actual_model = "whisper-1" if action != "transcription" else model
+            est_duration = estimate_audio_duration_seconds(
+                attachment.size, attachment.filename
+            )
+            stt_cost = calculate_stt_cost(actual_model, est_duration)
+            daily_cost = self._track_daily_cost_direct(
+                ctx.author.id, "stt", actual_model, stt_cost,
+                f"file={attachment.filename} | size={attachment.size}"
+                f" | est_duration={est_duration:.1f}s"
+            )
+            if SHOW_COST_EMBEDS:
+                append_flat_pricing_embed(
+                    embeds, stt_cost, daily_cost,
+                    f"~{est_duration:.0f}s audio · {actual_model}"
+                )
+
+            await ctx.send_followup(embeds=embeds, file=File(speech_file_path))
         except Exception as e:
             await ctx.send_followup(
                 embed=Embed(
@@ -1452,7 +1545,20 @@ class OpenAIAPI(commands.Cog):
                 color=Colour.blue(),
             )
 
-            await ctx.send_followup(embed=embed, file=File(video_file_path))
+            embeds = [embed]
+            vid_seconds = int(video_params.seconds)
+            vid_cost = calculate_video_cost(model, vid_seconds)
+            daily_cost = self._track_daily_cost_direct(
+                ctx.author.id, "video", model, vid_cost,
+                f"seconds={vid_seconds} | size={video_params.size}"
+            )
+            if SHOW_COST_EMBEDS:
+                append_flat_pricing_embed(
+                    embeds, vid_cost, daily_cost,
+                    f"{vid_seconds}s · {video_params.size}"
+                )
+
+            await ctx.send_followup(embeds=embeds, file=File(video_file_path))
             self.logger.info("Successfully sent generated video")
 
         except Exception as e:
@@ -1670,7 +1776,8 @@ class OpenAIAPI(commands.Cog):
             reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
             tool_call_counts = tool_info["tool_call_counts"] or None
             daily_cost = self._track_daily_cost(
-                ctx.author.id, model, input_tokens, output_tokens, cached_tokens, tool_call_counts
+                ctx.author.id, model, input_tokens, output_tokens, cached_tokens,
+                tool_call_counts, command="research"
             )
             if SHOW_COST_EMBEDS:
                 append_pricing_embed(
