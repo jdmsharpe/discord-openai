@@ -1074,17 +1074,19 @@ class OpenAIAPI(commands.Cog):
                 embed.set_image(url=f"attachment://{image_files[0].filename}")
 
             embeds = [embed]
+            effective_quality = quality or "auto"
+            effective_size = size or "auto"
             image_cost = calculate_image_cost(
-                model, quality or "auto", size or "auto", len(image_files)
+                model, effective_quality, effective_size, len(image_files)
             )
             daily_cost = self._track_daily_cost_direct(
                 ctx.author.id, "image", model, image_cost,
-                f"quality={quality} | size={size} | n={len(image_files)}"
+                f"quality={effective_quality} | size={effective_size} | n={len(image_files)}"
             )
             if SHOW_COST_EMBEDS:
                 append_flat_pricing_embed(
                     embeds, image_cost, daily_cost,
-                    f"{quality} · {size} · {len(image_files)} image(s)"
+                    f"{effective_quality} · {effective_size} · {len(image_files)} image(s)"
                 )
 
             await ctx.send_followup(embeds=embeds, files=image_files)
