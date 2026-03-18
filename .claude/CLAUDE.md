@@ -281,7 +281,6 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
 - o4-mini, o3-pro, o3, o3-mini, o1-pro, o1 (reasoning models)
 - GPT-4o, GPT-4o Mini
 - GPT-4, GPT-4 Turbo
-- GPT-3.5 Turbo
 
 ### Deep Research Models (via `/openai research`)
 
