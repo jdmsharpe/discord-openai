@@ -218,9 +218,10 @@ def append_pricing_embed(
     in_part = f"{input_tokens:,} in"
     if cached_tokens:
         in_part += f" ({cached_tokens:,} cached)"
-    out_part = f"{output_tokens:,} out"
+    visible_tokens = output_tokens - reasoning_tokens
+    out_part = f"{visible_tokens:,} out"
     if reasoning_tokens:
-        out_part += f" ({reasoning_tokens:,} thinking)"
+        out_part += f" / {reasoning_tokens:,} thinking"
     parts = [f"${cost:.4f}", f"{in_part} / {out_part}"]
     if tool_call_counts:
         tool_str = " + ".join(

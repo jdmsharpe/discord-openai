@@ -112,7 +112,7 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 
 - `append_response_embeds()` in `openai_api.py` - Chunks model responses into 3500 char segments with 20000 char hard truncation
 - `append_sources_embed()` in `openai_api.py` - Renders web citations (numbered links) and file citations (filename list) in a Sources embed
-- `append_pricing_embed()` in `openai_api.py` - Appends a blue embed showing request cost, token counts (with cached/thinking annotations), tool call costs, and daily cumulative cost (controlled by `SHOW_COST_EMBEDS` env var)
+- `append_pricing_embed()` in `openai_api.py` - Appends a blue embed showing request cost, token counts (with cached annotation, reasoning tokens listed separately), tool call costs, and daily cumulative cost (controlled by `SHOW_COST_EMBEDS` env var)
 - `append_flat_pricing_embed()` in `openai_api.py` - Appends a compact blue pricing embed for non-token commands (image, TTS, STT, video) showing cost, details, and daily total
 - `extract_tool_info()` in `openai_api.py` - Extracts tool usage, call counts per tool, `url_citation` annotations (web), and `file_citation` annotations (file search) from Responses API output
 - `build_attachment_content_block()` in `util.py` - Routes Discord attachments to `image_url` (images) or `input_file` (PDFs, docs, spreadsheets, code files) content blocks
@@ -165,7 +165,7 @@ Routing is handled by `build_attachment_content_block()` in `util.py`, which che
 
 All commands include a blue pricing embed (toggleable via `SHOW_COST_EMBEDS` env var, defaults to `true`):
 
-- **Chat/Research** (token-based): `append_pricing_embed()` — format: `$0.0042 · 1,234 in (456 cached) / 567 out (89 thinking) · tools: web search ×2 ($0.02) · daily $0.15`
+- **Chat/Research** (token-based): `append_pricing_embed()` — format: `$0.0042 · 1,234 in (456 cached) / 478 out / 89 thinking · tools: web search ×2 ($0.02) · daily $0.15`
 - **Image/TTS/STT/Video** (flat-rate): `append_flat_pricing_embed()` — format: `$0.0340 · high · 1024x1024 · 1 image(s) · daily $0.18`
 
 **Token-based pricing (chat, research):**
