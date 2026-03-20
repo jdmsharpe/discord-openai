@@ -695,7 +695,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "attachment",
-        description="Attach an image, PDF, document, spreadsheet, or code file.",
+        description="Attach an image, PDF, document, spreadsheet, or code file. (default: not set)",
         required=False,
         type=Attachment,
     )
