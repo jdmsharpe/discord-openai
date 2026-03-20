@@ -192,7 +192,11 @@ REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
 DEEP_RESEARCH_MODELS = ["o3-deep-research", "o4-mini-deep-research"]
 TOOL_WEB_SEARCH = {"type": "web_search"}
 TOOL_CODE_INTERPRETER = {"type": "code_interpreter", "container": {"type": "auto"}}
-TOOL_FILE_SEARCH = {"type": "file_search", "max_num_results": 5}
+TOOL_FILE_SEARCH = {
+    "type": "file_search",
+    "max_num_results": 5,
+    "ranking_options": {"ranker": "auto", "score_threshold": 0.3},
+}
 TOOL_SHELL = {"type": "shell", "environment": {"type": "container_auto"}}
 AVAILABLE_TOOLS = {
     "web_search": TOOL_WEB_SEARCH,

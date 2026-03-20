@@ -83,7 +83,7 @@ All commands are grouped under the `/openai` slash command group using Pycord's 
 - `response_id_history` enables regeneration by reverting to previous response IDs
 - Pause/resume functionality via button controls
 - Tool enable/disable toggling via Select Menu on conversation views
-- `file_search` requires `OPENAI_VECTOR_STORE_IDS` in environment config; uses `max_num_results: 5` to limit retrieval; file citations are surfaced in a Sources embed
+- `file_search` requires `OPENAI_VECTOR_STORE_IDS` in environment config; uses `max_num_results: 5` and `ranking_options` (`ranker: auto`, `score_threshold: 0.3`) to limit and rank retrieval; file citations are surfaced in a Sources embed
 - `shell` is guarded to GPT-5 series models in this bot configuration
 - Automatic conversation state cleanup on stop, errors, and conversation end — `_cleanup_conversation(user)` strips the button view from the last message and removes view state
 
@@ -203,7 +203,7 @@ All commands include a blue pricing embed (toggleable via `SHOW_COST_EMBEDS` env
 - `extract_tool_info()` now parses `file_citation` annotations (filename, file_id) alongside existing `url_citation` support
 - `append_sources_embed()` renders file citations under a "**Files referenced:**" heading in the Sources embed
 - Sources embed now triggers for any citation type (web or file), not just web_search
-- `TOOL_FILE_SEARCH` includes `max_num_results: 5` to reduce token usage
+- `TOOL_FILE_SEARCH` includes `max_num_results: 5` and `ranking_options` (`ranker: auto`, `score_threshold: 0.3`) to filter low-relevance chunks and reduce token usage
 
 ### Server-Side Compaction
 
