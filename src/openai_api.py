@@ -724,30 +724,6 @@ class OpenAIAPI(commands.Cog):
         type=float,
     )
     @option(
-        "web_search",
-        description="Enable web search to find current information. (default: false)",
-        required=False,
-        type=bool,
-    )
-    @option(
-        "code_interpreter",
-        description="Enable code interpreter to run Python code. (default: false)",
-        required=False,
-        type=bool,
-    )
-    @option(
-        "file_search",
-        description="Enable file search over configured vector stores. (default: false)",
-        required=False,
-        type=bool,
-    )
-    @option(
-        "shell",
-        description="Enable hosted shell command execution (GPT-5 models). (default: false)",
-        required=False,
-        type=bool,
-    )
-    @option(
         "reasoning_effort",
         description="(Advanced) Reasoning depth. none=fastest, xhigh=deepest (GPT-5.4 only). (default: not set)",
         required=False,
@@ -771,6 +747,30 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="High (detailed)", value="high"),
         ],
     )
+    @option(
+        "web_search",
+        description="Enable web search to find current information. (default: false)",
+        required=False,
+        type=bool,
+    )
+    @option(
+        "code_interpreter",
+        description="Enable code interpreter to run Python code. (default: false)",
+        required=False,
+        type=bool,
+    )
+    @option(
+        "file_search",
+        description="Enable file search over configured vector stores. (default: false)",
+        required=False,
+        type=bool,
+    )
+    @option(
+        "shell",
+        description="Enable hosted shell command execution (GPT-5 models). (default: false)",
+        required=False,
+        type=bool,
+    )
     async def chat(
         self,
         ctx: ApplicationContext,
@@ -782,12 +782,12 @@ class OpenAIAPI(commands.Cog):
         presence_penalty: Optional[float] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        reasoning_effort: Optional[str] = None,
+        verbosity: Optional[str] = None,
         web_search: bool = False,
         code_interpreter: bool = False,
         file_search: bool = False,
         shell: bool = False,
-        reasoning_effort: Optional[str] = None,
-        verbosity: Optional[str] = None,
     ):
         """
         Creates a model response for the given chat conversation.
