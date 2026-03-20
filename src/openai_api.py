@@ -872,9 +872,9 @@ class OpenAIAPI(commands.Cog):
         # Build reasoning dict: o-series always use reasoning (default medium);
         # GPT-5.x only send it when the user explicitly sets an effort level.
         if model in REASONING_MODELS:
-            reasoning_dict = {"effort": reasoning_effort or REASONING_EFFORT_MEDIUM}
+            reasoning_dict = {"effort": reasoning_effort or REASONING_EFFORT_MEDIUM, "summary": "auto"}
         elif reasoning_effort:
-            reasoning_dict = {"effort": reasoning_effort}
+            reasoning_dict = {"effort": reasoning_effort, "summary": "auto"}
         else:
             reasoning_dict = None
 

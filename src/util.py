@@ -349,7 +349,7 @@ class ResponseParameters:
             # o-series: reasoning required, temperature/top_p not supported.
             self.temperature = None
             self.top_p = None
-            self.reasoning = reasoning if reasoning else {"effort": REASONING_EFFORT_MEDIUM}
+            self.reasoning = reasoning if reasoning else {"effort": REASONING_EFFORT_MEDIUM, "summary": "auto"}
         elif model in GPT5_NO_TEMP_MODELS:
             # gpt-5, gpt-5-mini, gpt-5-nano never support temperature/top_p.
             self.temperature = None

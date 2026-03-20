@@ -145,11 +145,13 @@ Routing is handled by `build_attachment_content_block()` in `util.py`, which che
 - Added `append_thinking_embeds()` — displays reasoning summary as a spoilered (`||text||`) light_grey embed titled "Thinking", truncated at 3500 chars with "... [thinking truncated]" suffix
 - Applied to all three response paths: initial chat, follow-up conversation, and deep research
 - Matches the convention used by the Gemini and Claude cogs (identical embed style, color, and truncation)
+- Requires `"summary": "auto"` in the `reasoning` parameter — OpenAI does not return reasoning summaries unless explicitly opted in
 
 ### GPT-5.4 Parameter Compatibility (`/openai chat`)
 
 - Added `reasoning_effort` slash command option: `none` (fastest), `low`, `medium`, `high`, `xhigh` (GPT-5.4 only)
   - For o-series models, defaults to `medium` when not set; for GPT-5.x, only sends `reasoning` when explicitly set
+  - All reasoning dicts include `"summary": "auto"` to enable reasoning summary output
 - Added `verbosity` slash command option: `low` (concise), `medium` (default), `high` (detailed)
   - Sent as `text: {verbosity: ...}` in the Responses API payload; carried through follow-up messages
 - Fixed `temperature`/`top_p` restrictions per OpenAI API rules:
