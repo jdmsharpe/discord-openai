@@ -38,6 +38,7 @@ All commands are grouped under the `/openai` slash command group.
   - GPT-4 / GPT-4 Turbo
   - GPT-3.5 Turbo
 - **Attachments:** Attach an image, PDF, document, spreadsheet, or code file. Images are sent as visual input; all other files are sent via the Responses API `input_file` type.
+- **Reasoning summary:** When using reasoning models (o-series, GPT-5.x with reasoning effort), the model's thinking process is displayed in a spoilered "Thinking" embed before the response.
 - **Advanced tuning:** Frequency penalty, presence penalty, temperature (or nucleus sampling via `top_p`), and `seed` are all optional. Reasoning models ignore custom temperature/`top_p` and fall back to their defaults automatically.
 - **Built-in tools:** Optional tool calling supports `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`; surfaces file citations in a Sources embed), and `shell` (GPT-5 series models only).
 

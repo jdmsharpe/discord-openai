@@ -66,6 +66,38 @@ class PermissionAwareChannel(Protocol):
         ...
 
 
+def extract_summary_text(response: Any) -> str:
+    """Extract reasoning summary text from a Responses API object."""
+    parts: List[str] = []
+    output_items = getattr(response, "output", None) or []
+    for item in output_items:
+        if getattr(item, "type", None) != "reasoning":
+            continue
+        for block in getattr(item, "summary", None) or []:
+            if getattr(block, "type", None) == "summary_text":
+                text = getattr(block, "text", None)
+                if text:
+                    parts.append(text)
+    return "\n\n".join(parts)
+
+
+def append_thinking_embeds(embeds: List[Embed], thinking_text: str) -> None:
+    """Append thinking summary as a spoilered Discord embed."""
+    if not thinking_text:
+        return
+
+    if len(thinking_text) > 3500:
+        thinking_text = thinking_text[:3450] + "\n\n... [thinking truncated]"
+
+    embeds.append(
+        Embed(
+            title="Thinking",
+            description=f"||{thinking_text}||",
+            color=Colour.light_grey(),
+        )
+    )
+
+
 def append_response_embeds(embeds, response_text):
     # Respect Discord's 6000-char per-message total across all embeds.
     # Reserve 500 chars for citations/pricing embeds that may be appended after.
@@ -448,6 +480,7 @@ class OpenAIAPI(commands.Cog):
             self.logger.debug(f"Updated previous_response_id to: {response.id}")
 
             # Assemble the response embeds (view attaches to these)
+            append_thinking_embeds(embeds, extract_summary_text(response))
             append_response_embeds(embeds, response_text)
 
             if tool_info["citations"] or tool_info["file_citations"]:
@@ -926,6 +959,7 @@ class OpenAIAPI(commands.Cog):
                         color=Colour.green(),
                     )
                 )
+            append_thinking_embeds(embeds, extract_summary_text(response))
             append_response_embeds(embeds, response_text)
 
             if tool_info["citations"] or tool_info["file_citations"]:
@@ -1767,8 +1801,9 @@ class OpenAIAPI(commands.Cog):
                 color=Colour.blue(),
             )
 
-            # Build supplementary embeds (sources, pricing)
+            # Build supplementary embeds (thinking, sources, pricing)
             extra_embeds: List[Embed] = []
+            append_thinking_embeds(extra_embeds, extract_summary_text(response))
 
             if tool_info["citations"] or tool_info["file_citations"]:
                 append_sources_embed(

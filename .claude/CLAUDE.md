@@ -110,6 +110,8 @@ Discord enforces strict limits on embed content. The bot handles these automatic
 
 **Key functions:**
 
+- `extract_summary_text()` in `openai_api.py` - Extracts reasoning summary text from Responses API output items of `type: "reasoning"` with `summary_text` blocks
+- `append_thinking_embeds()` in `openai_api.py` - Appends a light_grey spoilered embed titled "Thinking" showing reasoning summary text, truncated at 3500 chars
 - `append_response_embeds()` in `openai_api.py` - Chunks model responses into 3500 char segments with 20000 char hard truncation
 - `append_sources_embed()` in `openai_api.py` - Renders web citations (numbered links) and file citations (filename list) in a Sources embed
 - `append_pricing_embed()` in `openai_api.py` - Appends a blue embed showing request cost, token counts (with cached annotation, reasoning tokens listed separately), tool call costs, and daily cumulative cost (controlled by `SHOW_COST_EMBEDS` env var)
@@ -136,6 +138,13 @@ The `/openai chat` `attachment` parameter supports images and file inputs:
 Routing is handled by `build_attachment_content_block()` in `util.py`, which checks the Discord attachment's `content_type`. This works both for the initial slash command and follow-up messages in a conversation.
 
 ## Recent Changes (March 2026)
+
+### Reasoning Summary Display (`/openai chat`, `/openai research`)
+
+- Added `extract_summary_text()` — extracts reasoning summary text from Responses API output items of `type: "reasoning"` with `summary_text` blocks
+- Added `append_thinking_embeds()` — displays reasoning summary as a spoilered (`||text||`) light_grey embed titled "Thinking", truncated at 3500 chars with "... [thinking truncated]" suffix
+- Applied to all three response paths: initial chat, follow-up conversation, and deep research
+- Matches the convention used by the Gemini and Claude cogs (identical embed style, color, and truncation)
 
 ### GPT-5.4 Parameter Compatibility (`/openai chat`)
 
