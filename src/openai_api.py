@@ -1423,13 +1423,14 @@ class OpenAIAPI(commands.Cog):
 
             with open(speech_file_path, "rb") as speech_file:
                 if action == "transcription":
-                    # Diarization models require chunking_strategy
+                    # Diarization models require chunking_strategy and diarized_json format
+                    # (not yet in SDK type stubs, so cast to suppress overload mismatch)
                     if model == "gpt-4o-transcribe-diarize":
                         response = await self.openai_client.audio.transcriptions.create(
                             model=model,
                             file=speech_file,
-                            chunking_strategy="auto",
-                            response_format="diarized_json",
+                            chunking_strategy=cast(Any, "auto"),
+                            response_format=cast(Any, "diarized_json"),
                         )
                     else:
                         response = await self.openai_client.audio.transcriptions.create(
@@ -1441,9 +1442,10 @@ class OpenAIAPI(commands.Cog):
                     )
 
             # Format diarized output with speaker labels, or plain text for other models
-            if model == "gpt-4o-transcribe-diarize" and hasattr(response, "segments"):
+            segments = getattr(response, "segments", None)
+            if model == "gpt-4o-transcribe-diarize" and segments:
                 lines = []
-                for seg in response.segments:
+                for seg in segments:
                     speaker = getattr(seg, "speaker", "Unknown")
                     text = getattr(seg, "text", "").strip()
                     if text:
