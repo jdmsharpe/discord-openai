@@ -25,6 +25,7 @@ from util import (
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
     GPT5_NO_TEMP_MODELS,
+    IMAGE_CONTENT_TYPES,
     PROMPT_CACHE_RETENTION,
     INPUT_TEXT_TYPE,
     REASONING_EFFORT_MEDIUM,
@@ -725,15 +726,16 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "reasoning_effort",
-        description="(Advanced) Reasoning depth. none=fastest, xhigh=deepest (GPT-5.4 only). (default: not set)",
+        description="(Advanced) Reasoning depth. none=fastest, xhigh=deepest. (default: not set)",
         required=False,
         type=str,
         choices=[
             OptionChoice(name="None (fastest, no reasoning)", value="none"),
+            OptionChoice(name="Minimal", value="minimal"),
             OptionChoice(name="Low", value="low"),
             OptionChoice(name="Medium", value="medium"),
             OptionChoice(name="High", value="high"),
-            OptionChoice(name="Extra High (GPT-5.4 only)", value="xhigh"),
+            OptionChoice(name="Extra High", value="xhigh"),
         ],
     )
     @option(
@@ -1016,7 +1018,7 @@ class OpenAIAPI(commands.Cog):
 
     @openai.command(
         name="image",
-        description="Generates image from a prompt.",
+        description="Generates or edits an image from a prompt.",
     )
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
@@ -1054,6 +1056,12 @@ class OpenAIAPI(commands.Cog):
             OptionChoice(name="1536x1024 (landscape)", value="1536x1024"),
         ],
     )
+    @option(
+        "attachment",
+        description="Image to edit (PNG, JPEG, GIF, WebP). Omit to generate a new image.",
+        required=False,
+        type=Attachment,
+    )
     async def image(
         self,
         ctx: ApplicationContext,
@@ -1061,18 +1069,36 @@ class OpenAIAPI(commands.Cog):
         model: str = "gpt-image-1.5",
         quality: Optional[str] = "auto",
         size: Optional[str] = "auto",
+        attachment: Optional[Attachment] = None,
     ):
         """
-        Creates an image given a prompt.
+        Generates or edits an image given a prompt.
 
         Args:
           prompt: A text description of the desired image(s).
           model: The GPT Image model to use. Defaults to `gpt-image-1.5`.
           quality: The quality of the image (low, medium, high, auto).
           size: The size of the generated image (auto, 1024x1024, 1024x1536, 1536x1024).
+          attachment: An image to edit. When provided, the prompt describes the edits.
         """
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
+
+        is_editing = attachment is not None
+        mode = "Image Editing" if is_editing else "Image Generation"
+
+        # Validate attachment is an image type when editing
+        if is_editing:
+            mime = (attachment.content_type or "").split(";")[0].strip()
+            if mime not in IMAGE_CONTENT_TYPES:
+                await ctx.send_followup(
+                    embed=Embed(
+                        title="Error",
+                        description=f"Attachment must be an image (PNG, JPEG, GIF, WebP), got `{mime or 'unknown'}`.",
+                        color=Colour.red(),
+                    )
+                )
+                return
 
         image_params = ImageGenerationParameters(
             prompt=prompt,
@@ -1080,16 +1106,38 @@ class OpenAIAPI(commands.Cog):
             quality=quality,
             size=size,
         )
-        self.logger.info(f"Generating image with model {model}")
+        self.logger.info(f"{mode} with model {model}")
 
+        image_file_path = None
         try:
-            response = await self.openai_client.images.generate(
-                **image_params.to_dict()
-            )
+            if is_editing:
+                # Download the attachment and pass as file to images.edit
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(attachment.url) as dl_resp:
+                        if dl_resp.status != 200:
+                            raise Exception("Failed to download the attachment.")
+                        image_content = await dl_resp.read()
+
+                image_file_path = Path(tempfile.gettempdir()) / attachment.filename
+                image_file_path.write_bytes(image_content)
+
+                with open(image_file_path, "rb") as image_file:
+                    response = await self.openai_client.images.edit(
+                        image=image_file,
+                        prompt=prompt,
+                        model=model,
+                        n=1,
+                        quality=cast(Any, quality),
+                        size=cast(Any, size),
+                    )
+            else:
+                response = await self.openai_client.images.generate(
+                    **image_params.to_dict()
+                )
 
             # Extract base64 image data from response
             image_files = []
-            for idx, data_item in enumerate(response.data):
+            for idx, data_item in enumerate(response.data or []):
                 if hasattr(data_item, "b64_json") and data_item.b64_json:
                     image_bytes = base64.b64decode(data_item.b64_json)
                     data = io.BytesIO(image_bytes)
@@ -1103,12 +1151,13 @@ class OpenAIAPI(commands.Cog):
             description = (
                 f"**Prompt:** {truncate_text(image_params.prompt, 2000)}\n"
                 f"**Model:** {image_params.model}\n"
+                f"**Mode:** {mode}\n"
                 f"**Quality:** {image_params.quality}\n"
                 f"**Size:** {image_params.size}\n"
             )
 
             embed = Embed(
-                title="Image Generation",
+                title=mode,
                 description=description,
                 color=Colour.blue(),
             )
@@ -1124,25 +1173,28 @@ class OpenAIAPI(commands.Cog):
             )
             daily_cost = self._track_daily_cost_direct(
                 ctx.author.id, "image", model, image_cost,
-                f"quality={effective_quality} | size={effective_size} | n={len(image_files)}"
+                f"mode={mode.lower()} | quality={effective_quality} | size={effective_size} | n={len(image_files)}"
             )
             if SHOW_COST_EMBEDS:
                 append_flat_pricing_embed(
                     embeds, image_cost, daily_cost,
-                    f"{effective_quality} · {effective_size} · {len(image_files)} image(s)"
+                    f"{mode.lower()} · {effective_quality} · {effective_size} · {len(image_files)} image(s)"
                 )
 
             await ctx.send_followup(embeds=embeds, files=image_files)
             self.logger.info(
-                f"Successfully generated and sent {len(image_files)} image(s)"
+                f"Successfully {mode.lower().replace(' ', '-')}d and sent {len(image_files)} image(s)"
             )
 
         except Exception as e:
             description = format_openai_error(e)
-            self.logger.error(f"Image generation failed: {description}", exc_info=True)
+            self.logger.error(f"{mode} failed: {description}", exc_info=True)
             await ctx.send_followup(
                 embed=Embed(title="Error", description=description, color=Colour.red())
             )
+        finally:
+            if image_file_path and image_file_path.exists():
+                image_file_path.unlink(missing_ok=True)
 
     @openai.command(
         name="tts",

@@ -25,7 +25,7 @@ All grouped under `/openai` using Pycord's `SlashCommandGroup`.
 
 - **`/openai chat`** (14 params): `prompt`, `persona`, `model`, `attachment`, `frequency_penalty`, `presence_penalty`, `temperature`, `top_p`, `reasoning_effort`, `verbosity`, `web_search`, `code_interpreter`, `file_search`, `shell`
 - **`/openai research`** (4 params): `prompt`, `model`, `file_search`, `code_interpreter`
-- **`/openai image`**: Prompt-based image generation
+- **`/openai image`**: Image generation and editing (attach an image to edit)
 - **`/openai tts`**: Text-to-speech
 - **`/openai stt`**: Speech-to-text / transcription
 - **`/openai video`**: Sora video generation
