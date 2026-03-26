@@ -51,6 +51,8 @@ All grouped under `/openai` using Pycord's `SlashCommandGroup`.
 
 - `context_management=[{"type": "compaction", "compact_threshold": 200000}]` on every Responses API call
 - `prompt_cache_retention="24h"` on every Responses API call
+- `safety_identifier` sent on every Responses API call (SHA-256 hash of Discord user ID, truncated to 16 chars) via `hash_user_id()` in `util.py`
+- `prompt_cache_key` derived from SHA-256 hash of system instructions (16 chars)
 - Deep research uses `background=True` with 15s polling, 20-min timeout
 
 ### Discord Embed Limits

@@ -223,6 +223,11 @@ INPUT_FILE_TYPE = "input_file"
 IMAGE_CONTENT_TYPES = frozenset({"image/png", "image/jpeg", "image/gif", "image/webp"})
 
 
+def hash_user_id(user_id: int) -> str:
+    """Hash a numeric user ID into a short, stable safety identifier for OpenAI."""
+    return hashlib.sha256(str(user_id).encode()).hexdigest()[:16]
+
+
 def build_attachment_content_block(content_type: Optional[str], url: str) -> dict:
     """Return the appropriate Responses API content block for an attachment.
 
@@ -342,6 +347,8 @@ class ResponseParameters:
         paused: bool = False,
         # For regeneration support
         response_id_history: Optional[List[str]] = None,
+        # OpenAI safety identifier (hashed user ID for abuse detection)
+        safety_identifier: Optional[str] = None,
     ):
         self.model = model
         self.instructions = instructions
@@ -387,6 +394,7 @@ class ResponseParameters:
         self.response_id_history = (
             response_id_history if response_id_history is not None else []
         )
+        self.safety_identifier = safety_identifier
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for API calls (excludes Discord-specific fields)."""
@@ -420,6 +428,8 @@ class ResponseParameters:
             payload["prompt_cache_key"] = hashlib.sha256(
                 self.instructions.encode()
             ).hexdigest()[:16]
+        if self.safety_identifier:
+            payload["safety_identifier"] = self.safety_identifier
 
         return payload
 

@@ -50,6 +50,7 @@ from util import (
     chunk_text,
     estimate_audio_duration_seconds,
     format_openai_error,
+    hash_user_id,
     truncate_text,
 )
 from config.auth import GUILD_IDS, OPENAI_API_KEY, OPENAI_VECTOR_STORE_IDS, SHOW_COST_EMBEDS
@@ -465,6 +466,7 @@ class OpenAIAPI(commands.Cog):
                 api_params["prompt_cache_key"] = hashlib.sha256(
                     conversation.instructions.encode()
                 ).hexdigest()[:16]
+            api_params["safety_identifier"] = hash_user_id(message.author.id)
 
             # API call using Responses API
             self.logger.debug("Making API call to OpenAI Responses API.")
@@ -896,6 +898,7 @@ class OpenAIAPI(commands.Cog):
             conversation_id=ctx.interaction.id,
             channel_id=ctx.channel_id,
             response_id_history=[],
+            safety_identifier=hash_user_id(ctx.author.id),
         )
 
         try:
@@ -1782,9 +1785,9 @@ class OpenAIAPI(commands.Cog):
             self.logger.info(f"Starting deep research with model {model}")
 
             # Create background research request
-            response = await self.openai_client.responses.create(
-                **research_params.to_dict(tools)
-            )
+            api_dict = research_params.to_dict(tools)
+            api_dict["safety_identifier"] = hash_user_id(ctx.author.id)
+            response = await self.openai_client.responses.create(**api_dict)
 
             self.logger.info(
                 f"Deep research started: {response.id}, status: {response.status}"
