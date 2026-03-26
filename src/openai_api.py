@@ -468,6 +468,8 @@ class OpenAIAPI(commands.Cog):
             # Update conversation state with new response ID
             conversation.previous_response_id = response.id
             conversation.response_id_history.append(response.id)
+            # Clear input after sending; subsequent turns use previous_response_id
+            conversation.input = []
             self.logger.debug(f"Updated previous_response_id to: {response.id}")
 
             # Assemble the response embeds (view attaches to these)

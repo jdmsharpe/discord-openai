@@ -14,6 +14,16 @@ class HistoryReadableChannel(Protocol):
         ...
 
 
+async def _send_interaction_error(interaction: Interaction, context: str, error: Exception) -> None:
+    """Log an error and send the user a safe ephemeral message."""
+    logging.error(f"Error in {context}: {error}", exc_info=True)
+    msg = f"An error occurred while {context}."
+    if interaction.response.is_done():
+        await interaction.followup.send(msg, ephemeral=True)
+    else:
+        await interaction.response.send_message(msg, ephemeral=True)
+
+
 class ButtonView(View):
     def __init__(
         self,
@@ -82,39 +92,42 @@ class ButtonView(View):
         self.add_item(tool_select)
 
     async def tool_select_callback(self, interaction: Interaction, tool_select: Select):
-        if interaction.user != self.conversation_starter:
+        try:
+            if interaction.user != self.conversation_starter:
+                await interaction.response.send_message(
+                    "You are not allowed to change tools for this conversation.",
+                    ephemeral=True,
+                )
+                return
+
+            conversation = self._get_conversation(self.conversation_id)
+            if conversation is None:
+                await interaction.response.send_message(
+                    "No active conversation found.", ephemeral=True
+                )
+                return
+
+            selected_values = [
+                value for value in tool_select.values if value in AVAILABLE_TOOLS
+            ]
+
+            tools, error_message = self._on_tools_changed(
+                selected_values, conversation.model
+            )
+            if error_message:
+                await interaction.response.send_message(error_message, ephemeral=True)
+                return
+
+            conversation.tools = tools
+
+            status = ", ".join(selected_values) if selected_values else "none"
             await interaction.response.send_message(
-                "You are not allowed to change tools for this conversation.",
+                f"Tools updated: {status}.",
                 ephemeral=True,
+                delete_after=3,
             )
-            return
-
-        conversation = self._get_conversation(self.conversation_id)
-        if conversation is None:
-            await interaction.response.send_message(
-                "No active conversation found.", ephemeral=True
-            )
-            return
-
-        selected_values = [
-            value for value in tool_select.values if value in AVAILABLE_TOOLS
-        ]
-
-        tools, error_message = self._on_tools_changed(
-            selected_values, conversation.model
-        )
-        if error_message:
-            await interaction.response.send_message(error_message, ephemeral=True)
-            return
-
-        conversation.tools = tools
-
-        status = ", ".join(selected_values) if selected_values else "none"
-        await interaction.response.send_message(
-            f"Tools updated: {status}.",
-            ephemeral=True,
-            delete_after=3,
-        )
+        except Exception as e:
+            await _send_interaction_error(interaction, "updating tools", e)
 
     @button(emoji="🔄", style=ButtonStyle.green, row=0)
     async def regenerate_button(self, _: Button, interaction: Interaction):
@@ -167,55 +180,53 @@ class ButtonView(View):
                 "Response regenerated.", ephemeral=True, delete_after=3
             )
         except Exception as e:
-            logging.error(f"Error in regenerate_button: {str(e)}", exc_info=True)
-            if interaction.response.is_done():
-                await interaction.followup.send(
-                    "An error occurred while regenerating the response.", ephemeral=True
-                )
-            else:
-                await interaction.response.send_message(
-                    "An error occurred while regenerating the response.", ephemeral=True
-                )
+            await _send_interaction_error(interaction, "regenerating the response", e)
 
     @button(emoji="⏯️", style=ButtonStyle.gray, row=0)
     async def play_pause_button(self, _: Button, interaction: Interaction):
         """Pause or resume the conversation."""
-        if interaction.user != self.conversation_starter:
-            await interaction.response.send_message(
-                "You are not allowed to pause the conversation.", ephemeral=True
-            )
-            return
+        try:
+            if interaction.user != self.conversation_starter:
+                await interaction.response.send_message(
+                    "You are not allowed to pause the conversation.", ephemeral=True
+                )
+                return
 
-        conversation = self._get_conversation(self.conversation_id)
-        if conversation is not None:
-            conversation.paused = not conversation.paused
-            status = "paused" if conversation.paused else "resumed"
-            await interaction.response.send_message(
-                f"Conversation {status}. Press again to toggle.",
-                ephemeral=True,
-                delete_after=3,
-            )
-        else:
-            await interaction.response.send_message(
-                "No active conversation found.", ephemeral=True
-            )
+            conversation = self._get_conversation(self.conversation_id)
+            if conversation is not None:
+                conversation.paused = not conversation.paused
+                status = "paused" if conversation.paused else "resumed"
+                await interaction.response.send_message(
+                    f"Conversation {status}. Press again to toggle.",
+                    ephemeral=True,
+                    delete_after=3,
+                )
+            else:
+                await interaction.response.send_message(
+                    "No active conversation found.", ephemeral=True
+                )
+        except Exception as e:
+            await _send_interaction_error(interaction, "toggling pause", e)
 
     @button(emoji="⏹️", style=ButtonStyle.blurple, row=0)
     async def stop_button(self, _: Button, interaction: Interaction):
         """End the conversation."""
-        if interaction.user != self.conversation_starter:
-            await interaction.response.send_message(
-                "You are not allowed to end this conversation.", ephemeral=True
-            )
-            return
+        try:
+            if interaction.user != self.conversation_starter:
+                await interaction.response.send_message(
+                    "You are not allowed to end this conversation.", ephemeral=True
+                )
+                return
 
-        conversation = self._get_conversation(self.conversation_id)
-        if conversation is not None:
-            await self._on_stop(self.conversation_id, self.conversation_starter)
-            await interaction.response.send_message(
-                "Conversation ended.", ephemeral=True, delete_after=3
-            )
-        else:
-            await interaction.response.send_message(
-                "No active conversation found.", ephemeral=True
-            )
+            conversation = self._get_conversation(self.conversation_id)
+            if conversation is not None:
+                await self._on_stop(self.conversation_id, self.conversation_starter)
+                await interaction.response.send_message(
+                    "Conversation ended.", ephemeral=True, delete_after=3
+                )
+            else:
+                await interaction.response.send_message(
+                    "No active conversation found.", ephemeral=True
+                )
+        except Exception as e:
+            await _send_interaction_error(interaction, "ending the conversation", e)
