@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import MagicMock
 import httpx
 from openai import APIError
 from util import (
@@ -14,6 +15,7 @@ from util import (
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
     STT_PRICING_PER_MINUTE,
+    TOOL_CALL_PRICING,
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
@@ -26,15 +28,21 @@ from util import (
     TextToSpeechParameters,
     VideoGenerationParameters,
     build_attachment_content_block,
+    build_input_content,
     calculate_cost,
     calculate_image_cost,
     calculate_stt_cost,
+    calculate_tool_cost,
     calculate_tts_cost,
     calculate_video_cost,
     chunk_text,
     estimate_audio_duration_seconds,
+    extract_usage,
     format_openai_error,
+    hash_user_id,
     truncate_text,
+    _parse_error_payload,
+    _extract_response_error_info,
 )
 
 
@@ -804,6 +812,281 @@ class TestFormatOpenAIError(unittest.TestCase):
             ]
         )
         self.assertEqual(formatted, expected)
+
+
+class TestHashUserId(unittest.TestCase):
+    def test_deterministic(self):
+        """Same user ID should always produce the same hash."""
+        self.assertEqual(hash_user_id(123456), hash_user_id(123456))
+
+    def test_length_is_16(self):
+        """Hash should be truncated to 16 hex characters."""
+        self.assertEqual(len(hash_user_id(99999)), 16)
+
+    def test_different_ids_produce_different_hashes(self):
+        self.assertNotEqual(hash_user_id(1), hash_user_id(2))
+
+    def test_hex_characters_only(self):
+        """Output should only contain valid hex digits."""
+        result = hash_user_id(42)
+        self.assertTrue(all(c in "0123456789abcdef" for c in result))
+
+    def test_large_user_id(self):
+        """Should handle large Discord snowflake-style IDs."""
+        result = hash_user_id(1234567890123456789)
+        self.assertEqual(len(result), 16)
+
+
+class TestCalculateToolCost(unittest.TestCase):
+    def test_single_web_search(self):
+        cost = calculate_tool_cost({"web_search": 1})
+        self.assertAlmostEqual(cost, 0.01)
+
+    def test_multiple_web_searches(self):
+        cost = calculate_tool_cost({"web_search": 5})
+        self.assertAlmostEqual(cost, 0.05)
+
+    def test_code_interpreter(self):
+        cost = calculate_tool_cost({"code_interpreter": 1})
+        self.assertAlmostEqual(cost, 0.03)
+
+    def test_file_search(self):
+        cost = calculate_tool_cost({"file_search": 1})
+        self.assertAlmostEqual(cost, 0.0025)
+
+    def test_shell(self):
+        cost = calculate_tool_cost({"shell": 1})
+        self.assertAlmostEqual(cost, 0.03)
+
+    def test_mixed_tools(self):
+        cost = calculate_tool_cost({"web_search": 3, "code_interpreter": 1})
+        self.assertAlmostEqual(cost, 0.03 + 0.03)
+
+    def test_empty_dict(self):
+        cost = calculate_tool_cost({})
+        self.assertEqual(cost, 0.0)
+
+    def test_unknown_tool_is_free(self):
+        cost = calculate_tool_cost({"unknown_tool": 10})
+        self.assertEqual(cost, 0.0)
+
+    def test_unknown_tool_mixed_with_known(self):
+        cost = calculate_tool_cost({"web_search": 1, "some_future_tool": 5})
+        self.assertAlmostEqual(cost, 0.01)
+
+
+class TestExtractUsage(unittest.TestCase):
+    def test_full_usage(self):
+        response = MagicMock()
+        response.usage.input_tokens = 100
+        response.usage.output_tokens = 200
+        response.usage.input_tokens_details.cached_tokens = 50
+        response.usage.output_tokens_details.reasoning_tokens = 30
+        result = extract_usage(response)
+        self.assertEqual(result["input_tokens"], 100)
+        self.assertEqual(result["output_tokens"], 200)
+        self.assertEqual(result["cached_tokens"], 50)
+        self.assertEqual(result["reasoning_tokens"], 30)
+
+    def test_no_usage_attribute(self):
+        response = object()  # no 'usage' attribute
+        result = extract_usage(response)
+        self.assertEqual(result["input_tokens"], 0)
+        self.assertEqual(result["output_tokens"], 0)
+        self.assertEqual(result["cached_tokens"], 0)
+        self.assertEqual(result["reasoning_tokens"], 0)
+
+    def test_none_token_values_default_to_zero(self):
+        response = MagicMock()
+        response.usage.input_tokens = None
+        response.usage.output_tokens = None
+        response.usage.input_tokens_details.cached_tokens = None
+        response.usage.output_tokens_details.reasoning_tokens = None
+        result = extract_usage(response)
+        self.assertEqual(result["input_tokens"], 0)
+        self.assertEqual(result["output_tokens"], 0)
+        self.assertEqual(result["cached_tokens"], 0)
+        self.assertEqual(result["reasoning_tokens"], 0)
+
+    def test_no_details(self):
+        """When input/output details are missing, cached/reasoning should be 0."""
+        response = MagicMock()
+        response.usage.input_tokens = 500
+        response.usage.output_tokens = 300
+        response.usage.input_tokens_details = None
+        response.usage.output_tokens_details = None
+        result = extract_usage(response)
+        self.assertEqual(result["input_tokens"], 500)
+        self.assertEqual(result["output_tokens"], 300)
+        self.assertEqual(result["cached_tokens"], 0)
+        self.assertEqual(result["reasoning_tokens"], 0)
+
+
+class TestBuildInputContent(unittest.TestCase):
+    def test_text_only_no_attachments(self):
+        """Plain text with no attachments returns a string."""
+        result = build_input_content("Hello", [])
+        self.assertEqual(result, "Hello")
+
+    def test_none_text_no_attachments(self):
+        result = build_input_content(None, [])
+        self.assertEqual(result, "")
+
+    def test_empty_text_no_attachments(self):
+        result = build_input_content("", [])
+        self.assertEqual(result, "")
+
+    def test_text_with_image_attachment(self):
+        att = MagicMock()
+        att.content_type = "image/png"
+        att.url = "https://cdn.example.com/photo.png"
+        result = build_input_content("Describe this", [att])
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], {"type": "text", "text": "Describe this"})
+        self.assertEqual(result[1]["type"], "image_url")
+        self.assertEqual(result[1]["image_url"], "https://cdn.example.com/photo.png")
+
+    def test_text_with_file_attachment(self):
+        att = MagicMock()
+        att.content_type = "application/pdf"
+        att.url = "https://cdn.example.com/doc.pdf"
+        result = build_input_content("Read this", [att])
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[1]["type"], "input_file")
+        self.assertEqual(result[1]["file_url"], "https://cdn.example.com/doc.pdf")
+
+    def test_no_text_with_attachment(self):
+        att = MagicMock()
+        att.content_type = "image/jpeg"
+        att.url = "https://cdn.example.com/img.jpg"
+        result = build_input_content(None, [att])
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["type"], "image_url")
+
+    def test_multiple_attachments(self):
+        att1 = MagicMock()
+        att1.content_type = "image/png"
+        att1.url = "https://cdn.example.com/a.png"
+        att2 = MagicMock()
+        att2.content_type = "application/pdf"
+        att2.url = "https://cdn.example.com/b.pdf"
+        result = build_input_content("Check these", [att1, att2])
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 3)  # text + 2 attachments
+
+    def test_attachment_missing_url_skipped(self):
+        att = MagicMock()
+        att.content_type = "image/png"
+        att.url = None
+        result = build_input_content("Hello", [att])
+        # Attachment with None url is skipped, only text remains
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["type"], "text")
+
+    def test_attachment_missing_content_type_skipped(self):
+        att = MagicMock()
+        att.content_type = None
+        att.url = "https://cdn.example.com/mystery"
+        result = build_input_content("Hello", [att])
+        # content_type is None, so the `content_type and url` check fails
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+
+    def test_all_attachments_invalid_falls_back(self):
+        """If all attachments are skipped, returns text or empty string."""
+        att = MagicMock()
+        att.content_type = None
+        att.url = None
+        result = build_input_content(None, [att])
+        # content is empty list, falls back to text or ""
+        self.assertEqual(result, "")
+
+
+class TestParseErrorPayload(unittest.TestCase):
+    def test_standard_openai_error_body(self):
+        payload = {
+            "error": {
+                "message": "Rate limit exceeded",
+                "type": "rate_limit_error",
+                "code": "rate_limit",
+                "param": None,
+            }
+        }
+        result = _parse_error_payload(payload)
+        self.assertEqual(result["message"], "Rate limit exceeded")
+        self.assertEqual(result["type"], "rate_limit_error")
+        self.assertEqual(result["code"], "rate_limit")
+        self.assertNotIn("param", result)  # None is not a str, so excluded
+
+    def test_flat_error_fields(self):
+        payload = {
+            "message": "Something went wrong",
+            "type": "server_error",
+        }
+        result = _parse_error_payload(payload)
+        self.assertEqual(result["message"], "Something went wrong")
+        self.assertEqual(result["type"], "server_error")
+
+    def test_non_dict_returns_empty(self):
+        self.assertEqual(_parse_error_payload("not a dict"), {})
+        self.assertEqual(_parse_error_payload(None), {})
+        self.assertEqual(_parse_error_payload(42), {})
+
+    def test_empty_dict(self):
+        self.assertEqual(_parse_error_payload({}), {})
+
+    def test_whitespace_values_excluded(self):
+        payload = {"message": "  ", "type": "valid_type"}
+        result = _parse_error_payload(payload)
+        self.assertNotIn("message", result)
+        self.assertEqual(result["type"], "valid_type")
+
+
+class TestExtractResponseErrorInfo(unittest.TestCase):
+    def test_none_response(self):
+        self.assertEqual(_extract_response_error_info(None), {})
+
+    def test_json_with_standard_error(self):
+        response = MagicMock()
+        response.json.return_value = {
+            "error": {
+                "message": "Invalid API key",
+                "type": "auth_error",
+            }
+        }
+        result = _extract_response_error_info(response)
+        self.assertEqual(result["message"], "Invalid API key")
+        self.assertEqual(result["type"], "auth_error")
+
+    def test_json_with_detail_fallback(self):
+        response = MagicMock()
+        response.json.return_value = {"detail": "Not found"}
+        result = _extract_response_error_info(response)
+        self.assertEqual(result["message"], "Not found")
+
+    def test_json_parse_failure_falls_back_to_text(self):
+        response = MagicMock()
+        response.json.side_effect = ValueError("No JSON")
+        response.text = "Internal Server Error"
+        result = _extract_response_error_info(response)
+        self.assertEqual(result["message"], "Internal Server Error")
+
+    def test_no_json_method_uses_text(self):
+        class SimpleResponse:
+            text = "Bad Gateway"
+        result = _extract_response_error_info(SimpleResponse())
+        self.assertEqual(result["message"], "Bad Gateway")
+
+    def test_empty_text_returns_empty(self):
+        response = MagicMock()
+        response.json.side_effect = ValueError()
+        response.text = "   "
+        result = _extract_response_error_info(response)
+        self.assertEqual(result, {})
 
 
 if __name__ == "__main__":

@@ -1,7 +1,17 @@
 from unittest.mock import MagicMock, patch
 import unittest
 from typing import Any, cast
-from openai_api import OpenAIAPI, append_flat_pricing_embed, append_pricing_embed, append_response_embeds, append_sources_embed, extract_tool_info
+from openai_api import (
+    OpenAIAPI,
+    append_flat_pricing_embed,
+    append_pricing_embed,
+    append_response_embeds,
+    append_sources_embed,
+    append_thinking_embeds,
+    extract_summary_text,
+    extract_tool_info,
+    _error_embed,
+)
 from discord import Bot, Colour, Embed, Intents
 
 
@@ -339,6 +349,156 @@ class TestAppendFlatPricingEmbed(unittest.TestCase):
         self.assertEqual(len(embeds), 2)
         self.assertEqual(embeds[0].title, "Image")
         self.assertEqual(embeds[1].color, Colour.blue())
+
+
+class TestExtractSummaryText(unittest.TestCase):
+    def test_single_reasoning_block(self):
+        response = MagicMock()
+        summary_block = MagicMock()
+        summary_block.type = "summary_text"
+        summary_block.text = "The model considered multiple approaches."
+        reasoning_item = MagicMock()
+        reasoning_item.type = "reasoning"
+        reasoning_item.summary = [summary_block]
+        response.output = [reasoning_item]
+        result = extract_summary_text(response)
+        self.assertEqual(result, "The model considered multiple approaches.")
+
+    def test_multiple_summary_blocks(self):
+        response = MagicMock()
+        block1 = MagicMock()
+        block1.type = "summary_text"
+        block1.text = "First thought."
+        block2 = MagicMock()
+        block2.type = "summary_text"
+        block2.text = "Second thought."
+        reasoning_item = MagicMock()
+        reasoning_item.type = "reasoning"
+        reasoning_item.summary = [block1, block2]
+        response.output = [reasoning_item]
+        result = extract_summary_text(response)
+        self.assertEqual(result, "First thought.\n\nSecond thought.")
+
+    def test_no_reasoning_items(self):
+        response = MagicMock()
+        message_item = MagicMock()
+        message_item.type = "message"
+        response.output = [message_item]
+        self.assertEqual(extract_summary_text(response), "")
+
+    def test_empty_output(self):
+        response = MagicMock()
+        response.output = []
+        self.assertEqual(extract_summary_text(response), "")
+
+    def test_none_output(self):
+        response = MagicMock()
+        response.output = None
+        self.assertEqual(extract_summary_text(response), "")
+
+    def test_reasoning_with_none_summary(self):
+        response = MagicMock()
+        reasoning_item = MagicMock()
+        reasoning_item.type = "reasoning"
+        reasoning_item.summary = None
+        response.output = [reasoning_item]
+        self.assertEqual(extract_summary_text(response), "")
+
+    def test_summary_block_with_none_text(self):
+        response = MagicMock()
+        block = MagicMock()
+        block.type = "summary_text"
+        block.text = None
+        reasoning_item = MagicMock()
+        reasoning_item.type = "reasoning"
+        reasoning_item.summary = [block]
+        response.output = [reasoning_item]
+        self.assertEqual(extract_summary_text(response), "")
+
+    def test_non_summary_text_blocks_ignored(self):
+        response = MagicMock()
+        block = MagicMock()
+        block.type = "other_type"
+        block.text = "Should be ignored"
+        reasoning_item = MagicMock()
+        reasoning_item.type = "reasoning"
+        reasoning_item.summary = [block]
+        response.output = [reasoning_item]
+        self.assertEqual(extract_summary_text(response), "")
+
+    def test_mixed_output_items(self):
+        """Only reasoning items are processed, message items are skipped."""
+        response = MagicMock()
+        block = MagicMock()
+        block.type = "summary_text"
+        block.text = "Reasoning output"
+        reasoning_item = MagicMock()
+        reasoning_item.type = "reasoning"
+        reasoning_item.summary = [block]
+        message_item = MagicMock()
+        message_item.type = "message"
+        response.output = [reasoning_item, message_item]
+        self.assertEqual(extract_summary_text(response), "Reasoning output")
+
+
+class TestAppendThinkingEmbeds(unittest.TestCase):
+    def test_short_thinking_text(self):
+        embeds = []
+        append_thinking_embeds(embeds, "Quick thought")
+        self.assertEqual(len(embeds), 1)
+        self.assertEqual(embeds[0].title, "Thinking")
+        self.assertIn("Quick thought", embeds[0].description)
+        # Should be wrapped in spoiler tags
+        self.assertTrue(embeds[0].description.startswith("||"))
+        self.assertTrue(embeds[0].description.endswith("||"))
+
+    def test_empty_thinking_text(self):
+        embeds = []
+        append_thinking_embeds(embeds, "")
+        self.assertEqual(len(embeds), 0)
+
+    def test_truncation_at_3500_chars(self):
+        embeds = []
+        long_text = "x" * 4000
+        append_thinking_embeds(embeds, long_text)
+        self.assertEqual(len(embeds), 1)
+        desc = embeds[0].description
+        # Remove spoiler tags to check inner content
+        inner = desc[2:-2]  # strip leading/trailing ||
+        self.assertIn("[thinking truncated]", inner)
+        self.assertLessEqual(len(inner), 3500)
+
+    def test_under_3500_not_truncated(self):
+        embeds = []
+        text = "y" * 3000
+        append_thinking_embeds(embeds, text)
+        inner = embeds[0].description[2:-2]
+        self.assertEqual(len(inner), 3000)
+        self.assertNotIn("truncated", inner)
+
+    def test_embed_color(self):
+        embeds = []
+        append_thinking_embeds(embeds, "Some thought")
+        self.assertEqual(embeds[0].color, Colour.light_grey())
+
+    def test_appends_to_existing_embeds(self):
+        embeds = [Embed(title="Prompt", description="User question")]
+        append_thinking_embeds(embeds, "Reasoning here")
+        self.assertEqual(len(embeds), 2)
+        self.assertEqual(embeds[0].title, "Prompt")
+        self.assertEqual(embeds[1].title, "Thinking")
+
+
+class TestErrorEmbed(unittest.TestCase):
+    def test_creates_red_embed(self):
+        embed = _error_embed("Something went wrong")
+        self.assertEqual(embed.title, "Error")
+        self.assertEqual(embed.description, "Something went wrong")
+        self.assertEqual(embed.color, Colour.red())
+
+    def test_empty_description(self):
+        embed = _error_embed("")
+        self.assertEqual(embed.description, "")
 
 
 if __name__ == "__main__":
