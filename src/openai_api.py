@@ -1,9 +1,7 @@
-import aiohttp
 import asyncio
 import base64
 import tempfile
 from button_view import ButtonView
-import hashlib
 import logging
 import io
 from openai import AsyncOpenAI
@@ -13,35 +11,31 @@ from discord import (
     Colour,
     Embed,
     File,
+    Member,
+    Message,
+    User,
 )
 from discord.ext import commands
 from discord.commands import option, OptionChoice, SlashCommandGroup
 from pathlib import Path
 from datetime import date
-from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, cast
+from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict, Union, cast
 import time
 from util import (
     AVAILABLE_TOOLS,
-    CONTEXT_MANAGEMENT,
-    DEEP_RESEARCH_MODELS,
-    GPT5_NO_TEMP_MODELS,
     IMAGE_CONTENT_TYPES,
-    PROMPT_CACHE_RETENTION,
-    INPUT_TEXT_TYPE,
     REASONING_EFFORT_MEDIUM,
-    REASONING_EFFORT_NONE,
     REASONING_MODELS,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
-    TOOL_WEB_SEARCH,
-    TOOL_CODE_INTERPRETER,
     ImageGenerationParameters,
     ResearchParameters,
     ResponseParameters,
     TextToSpeechParameters,
     VideoGenerationParameters,
-    build_attachment_content_block,
+    build_input_content,
     calculate_cost,
+    download_attachment,
     calculate_image_cost,
     calculate_stt_cost,
     calculate_tool_cost,
@@ -49,6 +43,7 @@ from util import (
     calculate_video_cost,
     chunk_text,
     estimate_audio_duration_seconds,
+    extract_usage,
     format_openai_error,
     hash_user_id,
     truncate_text,
@@ -281,6 +276,11 @@ def append_flat_pricing_embed(
     embeds.append(Embed(description=" · ".join(parts), color=Colour.blue()))
 
 
+def _error_embed(description: str) -> Embed:
+    """Create a red error embed with the given description."""
+    return Embed(title="Error", description=description, color=Colour.red())
+
+
 class OpenAIAPI(commands.Cog):
     openai = SlashCommandGroup("openai", "OpenAI commands", guild_ids=GUILD_IDS)
 
@@ -291,22 +291,14 @@ class OpenAIAPI(commands.Cog):
         Args:
             bot: The bot instance.
         """
-        logging.basicConfig(
-            level=logging.DEBUG,  # Capture all levels of logs
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
         self.logger = logging.getLogger(__name__)
         self.bot = bot
         self.openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-        # Dictionary to store conversation histories for each chat interaction
-        self.conversation_histories = {}
-        # Dictionary to store UI views for each conversation
-        self.views = {}
-        # Last message with a ButtonView attached, keyed by user — used to strip old buttons
-        self.last_view_messages = {}
-        # Daily cost accumulator keyed by (user_id, date_iso)
-        self.daily_costs = {}
+        self.conversation_histories: Dict[int, ResponseParameters] = {}
+        self.views: Dict[Union[Member, User], ButtonView] = {}
+        self.last_view_messages: Dict[Union[Member, User], Message] = {}
+        self.daily_costs: Dict[Tuple[int, str], float] = {}
 
     async def _strip_previous_view(self, user) -> None:
         """Edit the last message that had buttons to remove its view."""
@@ -321,6 +313,23 @@ class OpenAIAPI(commands.Cog):
         """Remove button view from the last message and clean up view state."""
         await self._strip_previous_view(user)
         self.views.pop(user, None)
+
+    async def _stop_conversation(self, conversation_id: int, user) -> None:
+        """Stop callback for ButtonView: delete conversation and clean up."""
+        self.conversation_histories.pop(conversation_id, None)
+        await self._cleanup_conversation(user)
+
+    def _create_button_view(self, user, conversation_id: int, tools=None) -> ButtonView:
+        """Create a ButtonView wired to this cog's callbacks."""
+        return ButtonView(
+            conversation_starter=user,
+            conversation_id=conversation_id,
+            initial_tools=tools,
+            get_conversation=lambda cid: self.conversation_histories.get(cid),
+            on_regenerate=self.handle_new_message_in_conversation,
+            on_stop=self._stop_conversation,
+            on_tools_changed=self.resolve_selected_tools,
+        )
 
     def _track_daily_cost(
         self,
@@ -366,6 +375,30 @@ class OpenAIAPI(commands.Cog):
             + (f" | {details}" if details else "")
         )
         return self.daily_costs[key]
+
+    def _track_and_append_cost(
+        self,
+        embeds: List[Embed],
+        user_id: int,
+        model: str,
+        response: Any,
+        tool_info: ToolInfo,
+        command: str = "chat",
+    ) -> None:
+        """Extract usage from response, track daily cost, and append pricing embed."""
+        usage = extract_usage(response)
+        tool_call_counts = tool_info["tool_call_counts"] or None
+        daily_cost = self._track_daily_cost(
+            user_id, model,
+            usage["input_tokens"], usage["output_tokens"],
+            usage["cached_tokens"], tool_call_counts, command=command
+        )
+        if SHOW_COST_EMBEDS:
+            append_pricing_embed(
+                embeds, model,
+                usage["input_tokens"], usage["output_tokens"], daily_cost,
+                usage["cached_tokens"], usage["reasoning_tokens"], tool_call_counts
+            )
 
     def resolve_selected_tools(
         self, selected_tool_names: List[str], model: str
@@ -418,59 +451,14 @@ class OpenAIAPI(commands.Cog):
             # Start typing indicator
             typing_task = asyncio.create_task(self.keep_typing(message.channel))
 
-            # Build input for Responses API
-            # For text-only, use a simple string. For multimodal, use content array.
-            if message.attachments:
-                input_content = []
-                if message.content:
-                    input_content.append({"type": INPUT_TEXT_TYPE, "text": message.content})
-                for attachment in message.attachments:
-                    input_content.append(
-                        build_attachment_content_block(
-                            attachment.content_type, attachment.url
-                        )
-                    )
-            else:
-                input_content = message.content  # Simple string for text-only
-            self.logger.debug(f"Built input content: {input_content}")
+            # Update conversation input and reuse to_dict() for API params
+            conversation.input = build_input_content(
+                message.content, message.attachments
+            )
+            self.logger.debug(f"Built input content: {conversation.input}")
 
-            # Build API call parameters
-            api_params = {
-                "model": conversation.model,
-                "input": input_content,
-            }
-
-            # Add previous_response_id for conversation chaining
-            if conversation.previous_response_id:
-                api_params["previous_response_id"] = conversation.previous_response_id
-
-            # Add optional parameters if set
-            if conversation.frequency_penalty is not None:
-                api_params["frequency_penalty"] = conversation.frequency_penalty
-            if conversation.presence_penalty is not None:
-                api_params["presence_penalty"] = conversation.presence_penalty
-            if conversation.temperature is not None:
-                api_params["temperature"] = conversation.temperature
-            if conversation.top_p is not None:
-                api_params["top_p"] = conversation.top_p
-            if conversation.reasoning is not None:
-                api_params["reasoning"] = conversation.reasoning
-            if conversation.verbosity:
-                api_params["text"] = {"verbosity": conversation.verbosity}
-            if conversation.tools:
-                api_params["tools"] = conversation.tools
-            api_params["context_management"] = CONTEXT_MANAGEMENT
-            api_params["prompt_cache_retention"] = PROMPT_CACHE_RETENTION
-            if conversation.instructions:
-                api_params["instructions"] = conversation.instructions
-                api_params["prompt_cache_key"] = hashlib.sha256(
-                    conversation.instructions.encode()
-                ).hexdigest()[:16]
-            api_params["safety_identifier"] = hash_user_id(message.author.id)
-
-            # API call using Responses API
             self.logger.debug("Making API call to OpenAI Responses API.")
-            response = await self.openai_client.responses.create(**api_params)
+            response = await self.openai_client.responses.create(**conversation.to_dict())
             response_text = (
                 response.output_text if response.output_text else "No response."
             )
@@ -491,33 +479,16 @@ class OpenAIAPI(commands.Cog):
                     embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
-            usage = getattr(response, "usage", None)
-            input_tokens = getattr(usage, "input_tokens", 0) or 0
-            output_tokens = getattr(usage, "output_tokens", 0) or 0
-            input_details = getattr(usage, "input_tokens_details", None)
-            output_details = getattr(usage, "output_tokens_details", None)
-            cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
-            reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
-            tool_call_counts = tool_info["tool_call_counts"] or None
-            daily_cost = self._track_daily_cost(
-                message.author.id, conversation.model, input_tokens, output_tokens,
-                cached_tokens, tool_call_counts
+            self._track_and_append_cost(
+                embeds, message.author.id, conversation.model, response, tool_info
             )
-            if SHOW_COST_EMBEDS:
-                append_pricing_embed(
-                    embeds, conversation.model, input_tokens, output_tokens, daily_cost,
-                    cached_tokens, reasoning_tokens, tool_call_counts
-                )
 
             # Strip buttons from previous turn's message
             await self._strip_previous_view(message.author)
 
             # Recreate the ButtonView so the tool select reflects current state
-            self.views[message.author] = ButtonView(
-                self,
-                message.author,
-                conversation.conversation_id,
-                initial_tools=conversation.tools,
+            self.views[message.author] = self._create_button_view(
+                message.author, conversation.conversation_id, conversation.tools
             )
 
             if embeds:
@@ -542,9 +513,7 @@ class OpenAIAPI(commands.Cog):
                 exc_info=True,
             )
             await self._cleanup_conversation(message.author)
-            await message.reply(
-                embed=Embed(title="Error", description=description, color=Colour.red())
-            )
+            await message.reply(embed=_error_embed(description))
 
         finally:
             if typing_task:
@@ -834,24 +803,16 @@ class OpenAIAPI(commands.Cog):
                 conversation.conversation_starter == ctx.author
                 and conversation.channel_id == ctx.channel_id
             ):
-                await ctx.send_followup(
-                    embed=Embed(
-                        title="Error",
-                        description="You already have an active conversation in this channel. Please finish it before starting a new one.",
-                        color=Colour.red(),
-                    )
-                )
+                await ctx.send_followup(embed=_error_embed(
+                    "You already have an active conversation in this channel. Please finish it before starting a new one."
+                ))
                 return
 
         # Build input for Responses API
         # For text-only, use a simple string. For multimodal, use content array.
-        if attachment is not None:
-            input_content = [
-                {"type": INPUT_TEXT_TYPE, "text": prompt},
-                build_attachment_content_block(attachment.content_type, attachment.url),
-            ]
-        else:
-            input_content = prompt  # Simple string for text-only input
+        input_content = build_input_content(
+            prompt, [attachment] if attachment else []
+        )
         selected_tool_names = []
         if web_search:
             selected_tool_names.append("web_search")
@@ -864,13 +825,7 @@ class OpenAIAPI(commands.Cog):
 
         tools, tool_error = self.resolve_selected_tools(selected_tool_names, model)
         if tool_error:
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=tool_error,
-                    color=Colour.red(),
-                )
-            )
+            await ctx.send_followup(embed=_error_embed(tool_error))
             return
 
         # Build reasoning dict: o-series always use reasoning (default medium);
@@ -972,31 +927,15 @@ class OpenAIAPI(commands.Cog):
                     embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
-            usage = getattr(response, "usage", None)
-            input_tokens = getattr(usage, "input_tokens", 0) or 0
-            output_tokens = getattr(usage, "output_tokens", 0) or 0
-            input_details = getattr(usage, "input_tokens_details", None)
-            output_details = getattr(usage, "output_tokens_details", None)
-            cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
-            reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
-            tool_call_counts = tool_info["tool_call_counts"] or None
-            daily_cost = self._track_daily_cost(
-                ctx.author.id, model, input_tokens, output_tokens, cached_tokens, tool_call_counts
+            self._track_and_append_cost(
+                embeds, ctx.author.id, model, response, tool_info
             )
-            if SHOW_COST_EMBEDS:
-                append_pricing_embed(
-                    embeds, model, input_tokens, output_tokens, daily_cost,
-                    cached_tokens, reasoning_tokens, tool_call_counts
-                )
 
             # Strip buttons from any prior conversation's last message
             await self._strip_previous_view(ctx.author)
 
-            self.views[ctx.author] = ButtonView(
-                self,
-                ctx.author,
-                ctx.interaction.id,
-                initial_tools=tools,
+            self.views[ctx.author] = self._create_button_view(
+                ctx.author, ctx.interaction.id, tools
             )
 
             reply_msg = await ctx.send_followup(
@@ -1009,15 +948,8 @@ class OpenAIAPI(commands.Cog):
             self.conversation_histories[ctx.interaction.id] = params
 
         except Exception as e:
-            error_message = format_openai_error(e)
             await self._cleanup_conversation(ctx.author)
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=error_message,
-                    color=Colour.red(),
-                )
-            )
+            await ctx.send_followup(embed=_error_embed(format_openai_error(e)))
 
     @openai.command(
         name="image",
@@ -1094,13 +1026,9 @@ class OpenAIAPI(commands.Cog):
         if is_editing:
             mime = (attachment.content_type or "").split(";")[0].strip()
             if mime not in IMAGE_CONTENT_TYPES:
-                await ctx.send_followup(
-                    embed=Embed(
-                        title="Error",
-                        description=f"Attachment must be an image (PNG, JPEG, GIF, WebP), got `{mime or 'unknown'}`.",
-                        color=Colour.red(),
-                    )
-                )
+                await ctx.send_followup(embed=_error_embed(
+                    f"Attachment must be an image (PNG, JPEG, GIF, WebP), got `{mime or 'unknown'}`."
+                ))
                 return
 
         image_params = ImageGenerationParameters(
@@ -1114,16 +1042,9 @@ class OpenAIAPI(commands.Cog):
         image_file_path = None
         try:
             if is_editing:
-                # Download the attachment and pass as file to images.edit
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(attachment.url) as dl_resp:
-                        if dl_resp.status != 200:
-                            raise Exception("Failed to download the attachment.")
-                        image_content = await dl_resp.read()
-
-                image_file_path = Path(tempfile.gettempdir()) / attachment.filename
-                image_file_path.write_bytes(image_content)
-
+                image_file_path = await download_attachment(
+                    attachment.url, attachment.filename
+                )
                 with open(image_file_path, "rb") as image_file:
                     response = await self.openai_client.images.edit(
                         image=image_file,
@@ -1192,9 +1113,7 @@ class OpenAIAPI(commands.Cog):
         except Exception as e:
             description = format_openai_error(e)
             self.logger.error(f"{mode} failed: {description}", exc_info=True)
-            await ctx.send_followup(
-                embed=Embed(title="Error", description=description, color=Colour.red())
-            )
+            await ctx.send_followup(embed=_error_embed(description))
         finally:
             if image_file_path and image_file_path.exists():
                 image_file_path.unlink(missing_ok=True)
@@ -1339,13 +1258,7 @@ class OpenAIAPI(commands.Cog):
 
             await ctx.send_followup(embeds=embeds, file=File(speech_file_path))
         except Exception as e:
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=format_openai_error(e),
-                    color=Colour.red(),
-                )
-            )
+            await ctx.send_followup(embed=_error_embed(format_openai_error(e)))
         finally:
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
@@ -1415,15 +1328,9 @@ class OpenAIAPI(commands.Cog):
 
         speech_file_path = None
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(attachment.url) as dl_resp:
-                    if dl_resp.status != 200:
-                        raise Exception("Failed to download the attachment")
-                    speech_file_content = await dl_resp.read()
-
-            speech_file_path = Path(tempfile.gettempdir()) / attachment.filename
-            speech_file_path.write_bytes(speech_file_content)
-
+            speech_file_path = await download_attachment(
+                attachment.url, attachment.filename
+            )
             with open(speech_file_path, "rb") as speech_file:
                 if action == "transcription":
                     # Diarization models require chunking_strategy and diarized_json format
@@ -1486,13 +1393,7 @@ class OpenAIAPI(commands.Cog):
 
             await ctx.send_followup(embeds=embeds, file=File(speech_file_path))
         except Exception as e:
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=format_openai_error(e),
-                    color=Colour.red(),
-                )
-            )
+            await ctx.send_followup(embed=_error_embed(format_openai_error(e)))
         finally:
             if speech_file_path and speech_file_path.exists():
                 speech_file_path.unlink(missing_ok=True)
@@ -1567,13 +1468,9 @@ class OpenAIAPI(commands.Cog):
 
         # 1080p sizes require sora-2-pro
         if size in ("1920x1080", "1080x1920") and model != "sora-2-pro":
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description="1080p resolutions (1920x1080, 1080x1920) are only supported with Sora 2 Pro.",
-                    color=Colour.red(),
-                )
-            )
+            await ctx.send_followup(embed=_error_embed(
+                "1080p resolutions (1920x1080, 1080x1920) are only supported with Sora 2 Pro."
+            ))
             return
 
         video_params = VideoGenerationParameters(
@@ -1661,17 +1558,9 @@ class OpenAIAPI(commands.Cog):
             self.logger.info("Successfully sent generated video")
 
         except Exception as e:
-            error_message = format_openai_error(e)
-            self.logger.error(
-                f"Video generation failed: {error_message}", exc_info=True
-            )
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=error_message,
-                    color=Colour.red(),
-                )
-            )
+            description = format_openai_error(e)
+            self.logger.error(f"Video generation failed: {description}", exc_info=True)
+            await ctx.send_followup(embed=_error_embed(description))
         finally:
             if video_file_path and video_file_path.exists():
                 video_file_path.unlink(missing_ok=True)
@@ -1743,35 +1632,22 @@ class OpenAIAPI(commands.Cog):
         )
 
         try:
-            # Build tools list — web_search is always required
-            tools: List[Dict[str, Any]] = [TOOL_WEB_SEARCH.copy()]
-
+            # Build tools list — web_search is always required for research
+            selected_tool_names = ["web_search"]
             if file_search:
-                if not OPENAI_VECTOR_STORE_IDS:
-                    await ctx.send_followup(
-                        embed=Embed(
-                            title="Error",
-                            description="File search requires OPENAI_VECTOR_STORE_IDS to be set in your .env.",
-                            color=Colour.red(),
-                        )
-                    )
-                    return
-                tool: Dict[str, Any] = TOOL_FILE_SEARCH.copy()
-                tool["vector_store_ids"] = OPENAI_VECTOR_STORE_IDS.copy()
-                tools.append(tool)
-
+                selected_tool_names.append("file_search")
             if code_interpreter:
-                tools.append(TOOL_CODE_INTERPRETER.copy())
+                selected_tool_names.append("code_interpreter")
+
+            tools, tool_error = self.resolve_selected_tools(selected_tool_names, model)
+            if tool_error:
+                await ctx.send_followup(embed=_error_embed(tool_error))
+                return
 
             # Send initial "researching" embed so the user knows it's working
             description = f"**Prompt:** {truncate_text(prompt, 2000)}\n"
             description += f"**Model:** {model}\n"
-            tool_names = ["web_search"]
-            if file_search:
-                tool_names.append("file_search")
-            if code_interpreter:
-                tool_names.append("code_interpreter")
-            description += f"**Tools:** {', '.join(tool_names)}\n"
+            description += f"**Tools:** {', '.join(selected_tool_names)}\n"
             description += "\nResearching... this may take several minutes."
 
             status_msg = await ctx.send_followup(
@@ -1849,7 +1725,7 @@ class OpenAIAPI(commands.Cog):
             elapsed = int(time.time() - start_time)
             final_description = f"**Prompt:** {truncate_text(prompt, 2000)}\n"
             final_description += f"**Model:** {model}\n"
-            final_description += f"**Tools:** {', '.join(tool_names)}\n"
+            final_description += f"**Tools:** {', '.join(selected_tool_names)}\n"
             final_description += f"**Time:** {elapsed // 60}m {elapsed % 60}s\n"
 
             header_embed = Embed(
@@ -1867,23 +1743,10 @@ class OpenAIAPI(commands.Cog):
                     extra_embeds, tool_info["citations"], tool_info["file_citations"]
                 )
 
-            usage = getattr(response, "usage", None)
-            input_tokens = getattr(usage, "input_tokens", 0) or 0
-            output_tokens = getattr(usage, "output_tokens", 0) or 0
-            input_details = getattr(usage, "input_tokens_details", None)
-            output_details = getattr(usage, "output_tokens_details", None)
-            cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
-            reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
-            tool_call_counts = tool_info["tool_call_counts"] or None
-            daily_cost = self._track_daily_cost(
-                ctx.author.id, model, input_tokens, output_tokens, cached_tokens,
-                tool_call_counts, command="research"
+            self._track_and_append_cost(
+                extra_embeds, ctx.author.id, model, response, tool_info,
+                command="research"
             )
-            if SHOW_COST_EMBEDS:
-                append_pricing_embed(
-                    extra_embeds, model, input_tokens, output_tokens, daily_cost,
-                    cached_tokens, reasoning_tokens, tool_call_counts
-                )
 
             # Edit the original status message with the header embed
             await status_msg.edit(embed=header_embed)
@@ -1899,14 +1762,6 @@ class OpenAIAPI(commands.Cog):
             )
 
         except Exception as e:
-            error_message = format_openai_error(e)
-            self.logger.error(
-                f"Deep research failed: {error_message}", exc_info=True
-            )
-            await ctx.send_followup(
-                embed=Embed(
-                    title="Error",
-                    description=error_message,
-                    color=Colour.red(),
-                )
-            )
+            description = format_openai_error(e)
+            self.logger.error(f"Deep research failed: {description}", exc_info=True)
+            await ctx.send_followup(embed=_error_embed(description))

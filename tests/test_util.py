@@ -20,7 +20,6 @@ from util import (
     TOOL_WEB_SEARCH,
     TTS_PRICING_PER_CHAR,
     VIDEO_PRICING_PER_SECOND,
-    ChatCompletionParameters,
     ImageGenerationParameters,
     ResearchParameters,
     ResponseParameters,
@@ -37,63 +36,6 @@ from util import (
     format_openai_error,
     truncate_text,
 )
-
-
-class TestChatCompletionParameters(unittest.TestCase):
-    def test_to_dict(self):
-        params = ChatCompletionParameters(
-            messages=[{"role": "system", "content": "You are a helpful assistant."}],
-            model="gpt-5.2",
-            frequency_penalty=0.5,
-            presence_penalty=0.5,
-            temperature=0.8,
-            top_p=0.9,
-        )
-        result = params.to_dict()
-        self.assertEqual(
-            result["messages"],
-            [{"role": "system", "content": ["You are a helpful assistant."]}],
-        )
-        self.assertEqual(result["model"], "gpt-5.2")
-        self.assertEqual(result["frequency_penalty"], 0.5)
-        self.assertEqual(result["presence_penalty"], 0.5)
-        self.assertEqual(result["temperature"], 0.8)
-        self.assertEqual(result["top_p"], 0.9)
-
-    def test_reasoning_model_behavior(self):
-        # Test that reasoning models force temperature=1.0 and ignore top_p
-        params = ChatCompletionParameters(
-            messages=[{"role": "user", "content": "Test message"}],
-            model="o1",  # This is a reasoning model
-            temperature=0.5,  # This should be overridden to 1.0
-            top_p=0.8,  # This should be ignored (set to None)
-        )
-        result = params.to_dict()
-        self.assertEqual(result["model"], "o1")
-        self.assertEqual(result["temperature"], 1.0)  # Forced for reasoning models
-        self.assertNotIn("top_p", result)  # Should not be included when None
-
-    def test_non_reasoning_model_behavior(self):
-        # Test that non-reasoning models use provided temperature and top_p
-        params = ChatCompletionParameters(
-            messages=[{"role": "user", "content": "Test message"}],
-            model="gpt-5",  # This is NOT a reasoning model
-            temperature=0.7,
-            top_p=0.9,
-        )
-        result = params.to_dict()
-        self.assertEqual(result["model"], "gpt-5")
-        self.assertEqual(result["temperature"], 0.7)  # Should use provided value
-        self.assertEqual(result["top_p"], 0.9)  # Should use provided value
-
-    def test_messages_default_isolated(self):
-        params_one = ChatCompletionParameters()
-        params_one.messages.append(
-            {"role": "user", "content": {"type": "text", "text": "hello"}}
-        )
-        params_two = ChatCompletionParameters()
-        self.assertEqual(params_two.messages, [])
-        self.assertIsNot(params_one.messages, params_two.messages)
 
 
 class TestResponseParameters(unittest.TestCase):

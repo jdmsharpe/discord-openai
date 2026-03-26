@@ -1,6 +1,9 @@
 import hashlib
-from typing import Any, Dict, List, Optional, Tuple
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
+import aiohttp
 from openai import APIError
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
@@ -36,6 +39,30 @@ MODEL_PRICING: Dict[str, Tuple[float, float]] = {
     "gpt-4-turbo": (10.00, 30.00),
     "gpt-3.5-turbo": (0.50, 1.50),
 }
+
+
+class UsageInfo(TypedDict):
+    input_tokens: int
+    output_tokens: int
+    cached_tokens: int
+    reasoning_tokens: int
+
+
+def extract_usage(response: Any) -> UsageInfo:
+    """Extract token usage info from an OpenAI Responses API object."""
+    usage = getattr(response, "usage", None)
+    input_tokens = getattr(usage, "input_tokens", 0) or 0
+    output_tokens = getattr(usage, "output_tokens", 0) or 0
+    input_details = getattr(usage, "input_tokens_details", None)
+    output_details = getattr(usage, "output_tokens_details", None)
+    cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
+    reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cached_tokens": cached_tokens,
+        "reasoning_tokens": reasoning_tokens,
+    }
 
 
 def calculate_cost(
@@ -262,66 +289,6 @@ MODEL_SUPPORTED_TTS_VOICES = {
     "gpt-4o-mini-tts": STANDARD_TTS_VOICES | RICH_TTS_VOICES,
 }
 DEFAULT_SUPPORTED_TTS_VOICES = STANDARD_TTS_VOICES | RICH_TTS_VOICES
-
-
-class ChatCompletionParameters:
-    def __init__(
-        self,
-        messages: Optional[List[dict]] = None,
-        model: str = "gpt-5.4",
-        persona: str = "You are a helpful assistant.",
-        frequency_penalty: Optional[float] = None,
-        presence_penalty: Optional[float] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        conversation_starter: Optional[str] = None,
-        conversation_id: Optional[int] = None,
-        channel_id: Optional[int] = None,
-        paused: Optional[bool] = False,
-    ):
-        self.messages = [msg.copy() for msg in messages] if messages is not None else []
-        self.model = model
-        self.persona = persona
-        self.frequency_penalty = frequency_penalty
-        self.presence_penalty = presence_penalty
-
-        # Define the models that do not support custom temperature and top_p.
-        if model in REASONING_MODELS:
-            # For reasoning models, force the default temperature (1.0) and ignore top_p.
-            self.temperature = 1.0
-            self.top_p = None
-        else:
-            self.temperature = temperature
-            self.top_p = top_p
-
-        self.conversation_starter = conversation_starter
-        self.conversation_id = conversation_id
-        self.channel_id = channel_id
-        self.paused = paused
-
-    def to_dict(self):
-        # Create a copy of messages to avoid mutating the original list.
-        messages_copy = [msg.copy() for msg in self.messages]
-        for message in messages_copy:
-            if "content" in message:
-                # Ensure the content is a list of dictionaries if not already.
-                if not isinstance(message["content"], list):
-                    message["content"] = [message["content"]]
-
-        payload = {
-            "messages": messages_copy,
-            "model": self.model,
-        }
-        if self.frequency_penalty is not None:
-            payload["frequency_penalty"] = self.frequency_penalty
-        if self.presence_penalty is not None:
-            payload["presence_penalty"] = self.presence_penalty
-        if self.temperature is not None:
-            payload["temperature"] = self.temperature
-        if self.top_p is not None:
-            payload["top_p"] = self.top_p
-
-        return payload
 
 
 class ResponseParameters:
@@ -671,3 +638,33 @@ def format_openai_error(error: Exception) -> str:
     if details:
         return f"{message}\n\n" + "\n".join(details)
     return message
+
+
+def build_input_content(text: Optional[str], attachments: list) -> Any:
+    """Build Responses API input from text and optional Discord attachments.
+
+    Returns a plain string when there are no attachments, or a list of
+    content blocks when multimodal input is needed.
+    """
+    if not attachments:
+        return text or ""
+    content: List[Dict[str, Any]] = []
+    if text:
+        content.append({"type": INPUT_TEXT_TYPE, "text": text})
+    for att in attachments:
+        content_type = getattr(att, "content_type", None)
+        url = getattr(att, "url", None)
+        if content_type and url:
+            content.append(build_attachment_content_block(content_type, url))
+    return content if content else (text or "")
+
+
+async def download_attachment(url: str, filename: str) -> Path:
+    """Download a URL to a temp file and return the path. Caller must clean up."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                raise Exception(f"Failed to download the attachment (status {resp.status}).")
+            path = Path(tempfile.gettempdir()) / Path(filename).name
+            path.write_bytes(await resp.read())
+            return path

@@ -5,7 +5,7 @@ from discord import (
 )
 from discord.ui import button, Button, Select, View
 import logging
-from typing import Any, AsyncIterator, Protocol, cast
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Protocol, Tuple, cast
 from util import AVAILABLE_TOOLS
 
 
@@ -15,14 +15,24 @@ class HistoryReadableChannel(Protocol):
 
 
 class ButtonView(View):
-    def __init__(self, cog, conversation_starter, conversation_id, initial_tools=None):
-        """
-        Initialize the ButtonView class.
-        """
+    def __init__(
+        self,
+        *,
+        conversation_starter,
+        conversation_id,
+        initial_tools=None,
+        get_conversation: Callable[[int], Optional[Any]],
+        on_regenerate: Callable[[Any, Any], Awaitable[None]],
+        on_stop: Callable[[int, Any], Awaitable[None]],
+        on_tools_changed: Callable[[List[str], str], Tuple[List[Dict[str, Any]], Optional[str]]],
+    ):
         super().__init__(timeout=None)
-        self.cog = cog
         self.conversation_starter = conversation_starter
         self.conversation_id = conversation_id
+        self._get_conversation = get_conversation
+        self._on_regenerate = on_regenerate
+        self._on_stop = on_stop
+        self._on_tools_changed = on_tools_changed
         self._add_tool_select(initial_tools)
 
     def _add_tool_select(self, initial_tools=None):
@@ -79,7 +89,8 @@ class ButtonView(View):
             )
             return
 
-        if self.conversation_id not in self.cog.conversation_histories:
+        conversation = self._get_conversation(self.conversation_id)
+        if conversation is None:
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
             )
@@ -88,15 +99,8 @@ class ButtonView(View):
         selected_values = [
             value for value in tool_select.values if value in AVAILABLE_TOOLS
         ]
-        conversation = self.cog.conversation_histories[self.conversation_id]
-        if not hasattr(self.cog, "resolve_selected_tools"):
-            await interaction.response.send_message(
-                "Tool configuration is unavailable.",
-                ephemeral=True,
-            )
-            return
 
-        tools, error_message = self.cog.resolve_selected_tools(
+        tools, error_message = self._on_tools_changed(
             selected_values, conversation.model
         )
         if error_message:
@@ -114,23 +118,17 @@ class ButtonView(View):
 
     @button(emoji="🔄", style=ButtonStyle.green, row=0)
     async def regenerate_button(self, _: Button, interaction: Interaction):
-        """
-        Regenerate the last response for the current conversation.
-
-        Args:
-            button (Button): The button that was clicked.
-            interaction (Interaction): The interaction object.
-        """
+        """Regenerate the last response for the current conversation."""
         logging.info("Regenerate button clicked.")
         try:
-            # Check if the interaction user is the one who started the conversation
             if interaction.user != self.conversation_starter:
                 await interaction.response.send_message(
                     "You are not allowed to regenerate the response.", ephemeral=True
                 )
                 return
 
-            if self.conversation_id not in self.cog.conversation_histories:
+            conversation = self._get_conversation(self.conversation_id)
+            if conversation is None:
                 await interaction.response.send_message(
                     "No active conversation found.", ephemeral=True
                 )
@@ -138,21 +136,16 @@ class ButtonView(View):
 
             await interaction.response.defer(ephemeral=True)
 
-            # Get the conversation and revert to previous response state
-            conversation = self.cog.conversation_histories[self.conversation_id]
-
             # Go back to the previous response ID (skip the last exchange)
             if len(conversation.response_id_history) >= 1:
-                # Remove the last response ID
                 conversation.response_id_history.pop()
-                # Set previous_response_id to the one before that (or None if at start)
                 conversation.previous_response_id = (
                     conversation.response_id_history[-1]
                     if conversation.response_id_history
                     else None
                 )
 
-            # For now, get the last user message from the channel history
+            # Get the last user message from the channel history
             channel = interaction.channel
             if channel is None or not hasattr(channel, "history"):
                 await interaction.followup.send(
@@ -169,9 +162,7 @@ class ButtonView(View):
 
             user_message = messages[1]
 
-            await self.cog.handle_new_message_in_conversation(
-                user_message, conversation
-            )
+            await self._on_regenerate(user_message, conversation)
             await interaction.followup.send(
                 "Response regenerated.", ephemeral=True, delete_after=3
             )
@@ -188,23 +179,15 @@ class ButtonView(View):
 
     @button(emoji="⏯️", style=ButtonStyle.gray, row=0)
     async def play_pause_button(self, _: Button, interaction: Interaction):
-        """
-        Pause or resume the conversation.
-
-        Args:
-            button (Button): The button that was clicked.
-            interaction (Interaction): The interaction object.
-        """
-        # Check if the interaction user is the one who started the conversation
+        """Pause or resume the conversation."""
         if interaction.user != self.conversation_starter:
             await interaction.response.send_message(
                 "You are not allowed to pause the conversation.", ephemeral=True
             )
             return
 
-        # Toggle the paused state
-        if self.conversation_id in self.cog.conversation_histories:
-            conversation = self.cog.conversation_histories[self.conversation_id]
+        conversation = self._get_conversation(self.conversation_id)
+        if conversation is not None:
             conversation.paused = not conversation.paused
             status = "paused" if conversation.paused else "resumed"
             await interaction.response.send_message(
@@ -218,25 +201,17 @@ class ButtonView(View):
             )
 
     @button(emoji="⏹️", style=ButtonStyle.blurple, row=0)
-    async def stop_button(self, button: Button, interaction: Interaction):
-        """
-        End the conversation.
-
-        Args:
-            button (Button): The button that was clicked.
-            interaction (Interaction): The interaction object.
-        """
-        # Check if the interaction user is the one who started the conversation
+    async def stop_button(self, _: Button, interaction: Interaction):
+        """End the conversation."""
         if interaction.user != self.conversation_starter:
             await interaction.response.send_message(
                 "You are not allowed to end this conversation.", ephemeral=True
             )
             return
 
-        # End the conversation
-        if self.conversation_id in self.cog.conversation_histories:
-            del self.cog.conversation_histories[self.conversation_id]
-            await self.cog._cleanup_conversation(self.conversation_starter)
+        conversation = self._get_conversation(self.conversation_id)
+        if conversation is not None:
+            await self._on_stop(self.conversation_id, self.conversation_starter)
             await interaction.response.send_message(
                 "Conversation ended.", ephemeral=True, delete_after=3
             )
@@ -244,4 +219,3 @@ class ButtonView(View):
             await interaction.response.send_message(
                 "No active conversation found.", ephemeral=True
             )
-

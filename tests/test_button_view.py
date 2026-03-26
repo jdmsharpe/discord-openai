@@ -10,20 +10,29 @@ from util import (
 )
 
 
+def _make_view(conversation_starter=None, conversation_id=None, initial_tools=None):
+    """Create a ButtonView with mock callbacks for testing."""
+    return ButtonView(
+        conversation_starter=conversation_starter or MagicMock(),
+        conversation_id=conversation_id or MagicMock(),
+        initial_tools=initial_tools,
+        get_conversation=MagicMock(return_value=None),
+        on_regenerate=AsyncMock(),
+        on_stop=AsyncMock(),
+        on_tools_changed=MagicMock(return_value=([], None)),
+    )
+
+
 class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        self.cog = AsyncMock()
         self.conversation_starter = MagicMock()
         self.conversation_id = MagicMock()
-        self.view = ButtonView(
-            self.cog, self.conversation_starter, self.conversation_id
-        )
+        self.view = _make_view(self.conversation_starter, self.conversation_id)
         self.view.regenerate_button = AsyncMock()
         self.view.play_pause_button = AsyncMock()
         self.view.stop_button = AsyncMock()
 
     async def test_init(self):
-        self.assertEqual(self.view.cog, self.cog)
         self.assertEqual(self.view.conversation_starter, self.conversation_starter)
         self.assertEqual(self.view.conversation_id, self.conversation_id)
 
@@ -34,10 +43,7 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(selects[0].max_values, 4)
 
     async def test_tool_select_initial_defaults(self):
-        view = ButtonView(
-            self.cog,
-            self.conversation_starter,
-            self.conversation_id,
+        view = _make_view(
             initial_tools=[
                 TOOL_WEB_SEARCH,
                 TOOL_CODE_INTERPRETER,
