@@ -1,7 +1,9 @@
-from button_view import ButtonView
 import unittest
 from unittest.mock import AsyncMock, MagicMock
+
 from discord.ui import Select
+
+from button_view import ButtonView
 from util import (
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,

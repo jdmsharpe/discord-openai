@@ -1,8 +1,12 @@
-from unittest.mock import MagicMock, patch
 import unittest
 from typing import Any, cast
+from unittest.mock import MagicMock, patch
+
+from discord import Bot, Colour, Embed, Intents
+
 from openai_api import (
     OpenAIAPI,
+    _error_embed,
     append_flat_pricing_embed,
     append_pricing_embed,
     append_response_embeds,
@@ -10,9 +14,7 @@ from openai_api import (
     append_thinking_embeds,
     extract_summary_text,
     extract_tool_info,
-    _error_embed,
 )
-from discord import Bot, Colour, Embed, Intents
 
 
 class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):

@@ -89,6 +89,21 @@ All commands show a blue pricing embed (toggle: `SHOW_COST_EMBEDS` env var, defa
 - Token extraction: `extract_usage()` in `util.py` returns `UsageInfo` TypedDict from API responses
 - `_track_and_append_cost()` combines usage extraction, daily cost tracking, and pricing embed in one call
 
+## Code Quality
+
+Pre-commit hook (`.git/hooks/pre-commit`) auto-formats and lints staged Python files in `src/` and `tests/` using ruff. Configuration in `pyproject.toml`:
+
+- **Target:** Python 3.12, 100-column line length
+- **Lint rules:** E, W, F, I, UP, B, SIM
+- **Behavior:** Format is auto-applied and re-staged; lint violations block the commit
+- **Missing ruff:** Hook warns but does not block (soft-fail)
+
+```bash
+# Manual check
+ruff check src/ tests/ --config pyproject.toml
+ruff format --check src/ tests/ --config pyproject.toml
+```
+
 ## Running Tests
 
 ```bash

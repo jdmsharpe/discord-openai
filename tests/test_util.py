@@ -1,21 +1,22 @@
 import unittest
 from unittest.mock import MagicMock
+
 import httpx
 from openai import APIError
+
 from util import (
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
     IMAGE_PRICING,
     IMAGE_PRICING_DEFAULTS,
     INPUT_FILE_TYPE,
-    MODEL_PRICING,
-    PROMPT_CACHE_RETENTION,
     INPUT_IMAGE_TYPE,
     INPUT_TEXT_TYPE,
+    MODEL_PRICING,
+    PROMPT_CACHE_RETENTION,
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
     STT_PRICING_PER_MINUTE,
-    TOOL_CALL_PRICING,
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
@@ -27,6 +28,8 @@ from util import (
     ResponseParameters,
     TextToSpeechParameters,
     VideoGenerationParameters,
+    _extract_response_error_info,
+    _parse_error_payload,
     build_attachment_content_block,
     build_input_content,
     calculate_cost,
@@ -41,8 +44,6 @@ from util import (
     format_openai_error,
     hash_user_id,
     truncate_text,
-    _parse_error_payload,
-    _extract_response_error_info,
 )
 
 
@@ -566,7 +567,9 @@ class TestBuildAttachmentContentBlock(unittest.TestCase):
         self.assertEqual(result["type"], INPUT_IMAGE_TYPE)
 
     def test_pdf_file(self):
-        result = build_attachment_content_block("application/pdf", "https://cdn.example.com/report.pdf")
+        result = build_attachment_content_block(
+            "application/pdf", "https://cdn.example.com/report.pdf"
+        )
         self.assertEqual(result["type"], INPUT_FILE_TYPE)
         self.assertEqual(result["file_url"], "https://cdn.example.com/report.pdf")
 
@@ -601,14 +604,32 @@ class TestBuildAttachmentContentBlock(unittest.TestCase):
 
 class TestModelPricing(unittest.TestCase):
     CHAT_MODELS = [
-        "gpt-5.4-pro", "gpt-5.4", "gpt-5.3-chat-latest",
-        "gpt-5.2-pro", "gpt-5.2", "gpt-5.1",
-        "gpt-5-pro", "gpt-5", "gpt-5-mini", "gpt-5-nano",
-        "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano",
-        "o3-deep-research", "o4-mini-deep-research",
-        "o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1",
-        "gpt-4o", "gpt-4o-mini",
-        "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo",
+        "gpt-5.4-pro",
+        "gpt-5.4",
+        "gpt-5.3-chat-latest",
+        "gpt-5.2-pro",
+        "gpt-5.2",
+        "gpt-5.1",
+        "gpt-5-pro",
+        "gpt-5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "o3-deep-research",
+        "o4-mini-deep-research",
+        "o4-mini",
+        "o3-pro",
+        "o3",
+        "o3-mini",
+        "o1-pro",
+        "o1",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4",
+        "gpt-4-turbo",
+        "gpt-3.5-turbo",
     ]
 
     def test_all_chat_models_have_pricing(self):
@@ -652,7 +673,8 @@ class TestImagePricing(unittest.TestCase):
             for quality in self.QUALITIES:
                 for size in self.SIZES:
                     self.assertIn(
-                        (model, quality, size), IMAGE_PRICING,
+                        (model, quality, size),
+                        IMAGE_PRICING,
                         f"Missing pricing for ({model}, {quality}, {size})",
                     )
 
@@ -705,8 +727,12 @@ class TestTtsPricing(unittest.TestCase):
 
 class TestSttPricing(unittest.TestCase):
     def test_all_models_have_pricing(self):
-        for model in ["gpt-4o-transcribe", "gpt-4o-transcribe-diarize",
-                       "gpt-4o-mini-transcribe", "whisper-1"]:
+        for model in [
+            "gpt-4o-transcribe",
+            "gpt-4o-transcribe-diarize",
+            "gpt-4o-mini-transcribe",
+            "whisper-1",
+        ]:
             self.assertIn(model, STT_PRICING_PER_MINUTE)
 
     def test_calculate_one_minute(self):
@@ -1078,6 +1104,7 @@ class TestExtractResponseErrorInfo(unittest.TestCase):
     def test_no_json_method_uses_text(self):
         class SimpleResponse:
             text = "Bad Gateway"
+
         result = _extract_response_error_info(SimpleResponse())
         self.assertEqual(result["message"], "Bad Gateway")
 

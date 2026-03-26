@@ -1,17 +1,23 @@
+import logging
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import (
+    Any,
+    Protocol,
+    cast,
+)
+
 from discord import (
     ButtonStyle,
     Interaction,
     SelectOption,
 )
-from discord.ui import button, Button, Select, View
-import logging
-from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Protocol, Tuple, cast
+from discord.ui import Button, Select, View, button
+
 from util import AVAILABLE_TOOLS
 
 
 class HistoryReadableChannel(Protocol):
-    def history(self, *args: Any, **kwargs: Any) -> AsyncIterator[Any]:
-        ...
+    def history(self, *args: Any, **kwargs: Any) -> AsyncIterator[Any]: ...
 
 
 async def _send_interaction_error(interaction: Interaction, context: str, error: Exception) -> None:
@@ -31,10 +37,10 @@ class ButtonView(View):
         conversation_starter,
         conversation_id,
         initial_tools=None,
-        get_conversation: Callable[[int], Optional[Any]],
+        get_conversation: Callable[[int], Any | None],
         on_regenerate: Callable[[Any, Any], Awaitable[None]],
         on_stop: Callable[[int, Any], Awaitable[None]],
-        on_tools_changed: Callable[[List[str], str], Tuple[List[Dict[str, Any]], Optional[str]]],
+        on_tools_changed: Callable[[list[str], str], tuple[list[dict[str, Any]], str | None]],
     ):
         super().__init__(timeout=None)
         self.conversation_starter = conversation_starter
@@ -107,13 +113,9 @@ class ButtonView(View):
                 )
                 return
 
-            selected_values = [
-                value for value in tool_select.values if value in AVAILABLE_TOOLS
-            ]
+            selected_values = [value for value in tool_select.values if value in AVAILABLE_TOOLS]
 
-            tools, error_message = self._on_tools_changed(
-                selected_values, conversation.model
-            )
+            tools, error_message = self._on_tools_changed(selected_values, conversation.model)
             if error_message:
                 await interaction.response.send_message(error_message, ephemeral=True)
                 return
@@ -161,9 +163,7 @@ class ButtonView(View):
             # Get the last user message from the channel history
             channel = interaction.channel
             if channel is None or not hasattr(channel, "history"):
-                await interaction.followup.send(
-                    "Cannot access channel history.", ephemeral=True
-                )
+                await interaction.followup.send("Cannot access channel history.", ephemeral=True)
                 return
             history_channel = cast(HistoryReadableChannel, channel)
             messages = [m async for m in history_channel.history(limit=2)]
@@ -176,9 +176,7 @@ class ButtonView(View):
             user_message = messages[1]
 
             await self._on_regenerate(user_message, conversation)
-            await interaction.followup.send(
-                "Response regenerated.", ephemeral=True, delete_after=3
-            )
+            await interaction.followup.send("Response regenerated.", ephemeral=True, delete_after=3)
         except Exception as e:
             await _send_interaction_error(interaction, "regenerating the response", e)
 

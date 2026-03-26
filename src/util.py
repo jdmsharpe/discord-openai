@@ -1,7 +1,7 @@
 import hashlib
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, TypedDict
 
 import aiohttp
 from openai import APIError
@@ -9,7 +9,7 @@ from openai import APIError
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
 
 # Per-million-token pricing: (input_cost, output_cost)
-MODEL_PRICING: Dict[str, Tuple[float, float]] = {
+MODEL_PRICING: dict[str, tuple[float, float]] = {
     "gpt-5.4-pro": (3.00, 12.00),
     "gpt-5.4": (2.00, 8.00),
     "gpt-5.4-mini": (0.75, 4.50),
@@ -83,26 +83,23 @@ def calculate_cost(
 
 
 # Per-call tool pricing (dollars per call/container)
-TOOL_CALL_PRICING: Dict[str, float] = {
-    "web_search": 0.01,       # $10.00 / 1k calls
-    "file_search": 0.0025,    # $2.50 / 1k calls (Responses API)
-    "code_interpreter": 0.03, # $0.03 / container (1 GB default)
-    "shell": 0.03,            # $0.03 / container (same billing as code_interpreter)
+TOOL_CALL_PRICING: dict[str, float] = {
+    "web_search": 0.01,  # $10.00 / 1k calls
+    "file_search": 0.0025,  # $2.50 / 1k calls (Responses API)
+    "code_interpreter": 0.03,  # $0.03 / container (1 GB default)
+    "shell": 0.03,  # $0.03 / container (same billing as code_interpreter)
 }
 
 
-def calculate_tool_cost(tool_call_counts: Dict[str, int]) -> float:
+def calculate_tool_cost(tool_call_counts: dict[str, int]) -> float:
     """Calculate the cost in dollars for tool calls made in a response."""
-    return sum(
-        count * TOOL_CALL_PRICING.get(tool, 0.0)
-        for tool, count in tool_call_counts.items()
-    )
+    return sum(count * TOOL_CALL_PRICING.get(tool, 0.0) for tool, count in tool_call_counts.items())
 
 
 # ---------------------------------------------------------------------------
 # Image generation pricing: (model, quality, size) -> cost per image
 # ---------------------------------------------------------------------------
-IMAGE_PRICING: Dict[Tuple[str, str, str], float] = {
+IMAGE_PRICING: dict[tuple[str, str, str], float] = {
     # GPT Image 1.5
     ("gpt-image-1.5", "low", "1024x1024"): 0.009,
     ("gpt-image-1.5", "low", "1024x1536"): 0.013,
@@ -136,7 +133,7 @@ IMAGE_PRICING: Dict[Tuple[str, str, str], float] = {
 }
 
 # Default image costs when quality or size is "auto" (medium 1024x1024 estimate)
-IMAGE_PRICING_DEFAULTS: Dict[str, float] = {
+IMAGE_PRICING_DEFAULTS: dict[str, float] = {
     "gpt-image-1.5": 0.034,
     "gpt-image-1": 0.042,
     "gpt-image-1-mini": 0.011,
@@ -158,9 +155,9 @@ def calculate_image_cost(model: str, quality: str, size: str, n: int = 1) -> flo
 # ---------------------------------------------------------------------------
 # TTS pricing: per character
 # ---------------------------------------------------------------------------
-TTS_PRICING_PER_CHAR: Dict[str, float] = {
-    "tts-1": 0.000015,          # $15.00 / 1M characters
-    "tts-1-hd": 0.000030,       # $30.00 / 1M characters
+TTS_PRICING_PER_CHAR: dict[str, float] = {
+    "tts-1": 0.000015,  # $15.00 / 1M characters
+    "tts-1-hd": 0.000030,  # $30.00 / 1M characters
     "gpt-4o-mini-tts": 0.000020,  # ~$0.015/min, ~750 chars/min
     "gpt-4o-tts": 0.000020,
 }
@@ -175,7 +172,7 @@ def calculate_tts_cost(model: str, num_characters: int) -> float:
 # ---------------------------------------------------------------------------
 # STT pricing: per minute of audio
 # ---------------------------------------------------------------------------
-STT_PRICING_PER_MINUTE: Dict[str, float] = {
+STT_PRICING_PER_MINUTE: dict[str, float] = {
     "gpt-4o-transcribe": 0.006,
     "gpt-4o-transcribe-diarize": 0.006,
     "gpt-4o-mini-transcribe": 0.003,
@@ -183,7 +180,7 @@ STT_PRICING_PER_MINUTE: Dict[str, float] = {
 }
 
 # Rough bytes-per-second used to estimate audio duration from file size
-_AUDIO_BPS_WAV = 88_000       # mono 16-bit 44.1 kHz
+_AUDIO_BPS_WAV = 88_000  # mono 16-bit 44.1 kHz
 _AUDIO_BPS_COMPRESSED = 16_000  # ~128 kbps
 
 
@@ -203,7 +200,7 @@ def calculate_stt_cost(model: str, duration_seconds: float) -> float:
 # ---------------------------------------------------------------------------
 # Video generation pricing: per second of video
 # ---------------------------------------------------------------------------
-VIDEO_PRICING_PER_SECOND: Dict[str, float] = {
+VIDEO_PRICING_PER_SECOND: dict[str, float] = {
     "sora-2": 0.10,
     "sora-2-pro": 0.20,
 }
@@ -255,7 +252,7 @@ def hash_user_id(user_id: int) -> str:
     return hashlib.sha256(str(user_id).encode()).hexdigest()[:16]
 
 
-def build_attachment_content_block(content_type: Optional[str], url: str) -> dict:
+def build_attachment_content_block(content_type: str | None, url: str) -> dict:
     """Return the appropriate Responses API content block for an attachment.
 
     Images are sent as ``image_url`` blocks; all other supported file types
@@ -265,6 +262,7 @@ def build_attachment_content_block(content_type: Optional[str], url: str) -> dic
     if content_type and content_type.split(";")[0].strip() in IMAGE_CONTENT_TYPES:
         return {"type": INPUT_IMAGE_TYPE, "image_url": url}
     return {"type": INPUT_FILE_TYPE, "file_url": url}
+
 
 # Reasoning effort levels
 REASONING_EFFORT_NONE = "none"
@@ -299,23 +297,23 @@ class ResponseParameters:
         model: str = "gpt-5.4",
         instructions: str = "You are a helpful assistant.",
         input: Any = None,  # Can be string or list of content items
-        previous_response_id: Optional[str] = None,
-        frequency_penalty: Optional[float] = None,
-        presence_penalty: Optional[float] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        reasoning: Optional[dict] = None,
-        verbosity: Optional[str] = None,
-        tools: Optional[List[dict]] = None,
+        previous_response_id: str | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        reasoning: dict | None = None,
+        verbosity: str | None = None,
+        tools: list[dict] | None = None,
         # Discord-specific fields (not sent to API)
-        conversation_starter: Optional[Any] = None,
-        conversation_id: Optional[int] = None,
-        channel_id: Optional[int] = None,
+        conversation_starter: Any | None = None,
+        conversation_id: int | None = None,
+        channel_id: int | None = None,
         paused: bool = False,
         # For regeneration support
-        response_id_history: Optional[List[str]] = None,
+        response_id_history: list[str] | None = None,
         # OpenAI safety identifier (hashed user ID for abuse detection)
-        safety_identifier: Optional[str] = None,
+        safety_identifier: str | None = None,
     ):
         self.model = model
         self.instructions = instructions
@@ -328,7 +326,9 @@ class ResponseParameters:
             # o-series: reasoning required, temperature/top_p not supported.
             self.temperature = None
             self.top_p = None
-            self.reasoning = reasoning if reasoning else {"effort": REASONING_EFFORT_MEDIUM, "summary": "auto"}
+            self.reasoning = (
+                reasoning if reasoning else {"effort": REASONING_EFFORT_MEDIUM, "summary": "auto"}
+            )
         elif model in GPT5_NO_TEMP_MODELS:
             # gpt-5, gpt-5-mini, gpt-5-nano never support temperature/top_p.
             self.temperature = None
@@ -358,14 +358,12 @@ class ResponseParameters:
         self.paused = paused
 
         # Response ID history for regeneration
-        self.response_id_history = (
-            response_id_history if response_id_history is not None else []
-        )
+        self.response_id_history = response_id_history if response_id_history is not None else []
         self.safety_identifier = safety_identifier
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API calls (excludes Discord-specific fields)."""
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self.model,
         }
 
@@ -392,9 +390,9 @@ class ResponseParameters:
         payload["context_management"] = CONTEXT_MANAGEMENT
         payload["prompt_cache_retention"] = PROMPT_CACHE_RETENTION
         if self.instructions:
-            payload["prompt_cache_key"] = hashlib.sha256(
-                self.instructions.encode()
-            ).hexdigest()[:16]
+            payload["prompt_cache_key"] = hashlib.sha256(self.instructions.encode()).hexdigest()[
+                :16
+            ]
         if self.safety_identifier:
             payload["safety_identifier"] = self.safety_identifier
 
@@ -407,8 +405,8 @@ class ImageGenerationParameters:
         prompt: str = "",
         model: str = "gpt-image-1.5",
         n: int = 1,
-        quality: Optional[str] = "auto",
-        size: Optional[str] = "auto",
+        quality: str | None = "auto",
+        size: str | None = "auto",
     ):
         self.prompt = prompt
         self.model = model
@@ -444,7 +442,7 @@ class VideoGenerationParameters:
         self.size = size
         self.seconds = seconds
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API calls."""
         return {
             "prompt": self.prompt,
@@ -469,7 +467,7 @@ class ResearchParameters:
         self.file_search = file_search
         self.code_interpreter = code_interpreter
 
-    def to_dict(self, tools: List[dict]) -> Dict[str, Any]:
+    def to_dict(self, tools: list[dict]) -> dict[str, Any]:
         """Convert to dictionary for API calls.
 
         Args:
@@ -496,9 +494,7 @@ class TextToSpeechParameters:
         self.input = input
         self.model = model
 
-        supported_voices = MODEL_SUPPORTED_TTS_VOICES.get(
-            model, DEFAULT_SUPPORTED_TTS_VOICES
-        )
+        supported_voices = MODEL_SUPPORTED_TTS_VOICES.get(model, DEFAULT_SUPPORTED_TTS_VOICES)
         if voice in supported_voices:
             self.voice = voice
         elif DEFAULT_TTS_VOICE in supported_voices:
@@ -548,7 +544,7 @@ def truncate_text(text, max_length, suffix="..."):
     return text[:max_length] + suffix
 
 
-def _parse_error_payload(payload: Any) -> Dict[str, str]:
+def _parse_error_payload(payload: Any) -> dict[str, str]:
     """Pull standard OpenAI error fields from a payload structure."""
     if not isinstance(payload, dict):
         return {}
@@ -557,7 +553,7 @@ def _parse_error_payload(payload: Any) -> Dict[str, str]:
     if isinstance(candidate, dict):
         payload = candidate
 
-    extracted: Dict[str, str] = {}
+    extracted: dict[str, str] = {}
     for key in ("message", "type", "code", "param"):
         value = payload.get(key)
         if isinstance(value, str) and value.strip():
@@ -565,9 +561,9 @@ def _parse_error_payload(payload: Any) -> Dict[str, str]:
     return extracted
 
 
-def _extract_response_error_info(response: Any) -> Dict[str, str]:
+def _extract_response_error_info(response: Any) -> dict[str, str]:
     """Attempt to parse error details from an HTTP-like response object."""
-    info: Dict[str, str] = {}
+    info: dict[str, str] = {}
     if response is None:
         return info
 
@@ -640,7 +636,7 @@ def format_openai_error(error: Exception) -> str:
     return message
 
 
-def build_input_content(text: Optional[str], attachments: list) -> Any:
+def build_input_content(text: str | None, attachments: list) -> Any:
     """Build Responses API input from text and optional Discord attachments.
 
     Returns a plain string when there are no attachments, or a list of
@@ -648,7 +644,7 @@ def build_input_content(text: Optional[str], attachments: list) -> Any:
     """
     if not attachments:
         return text or ""
-    content: List[Dict[str, Any]] = []
+    content: list[dict[str, Any]] = []
     if text:
         content.append({"type": INPUT_TEXT_TYPE, "text": text})
     for att in attachments:
@@ -661,10 +657,9 @@ def build_input_content(text: Optional[str], attachments: list) -> Any:
 
 async def download_attachment(url: str, filename: str) -> Path:
     """Download a URL to a temp file and return the path. Caller must clean up."""
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            if resp.status != 200:
-                raise Exception(f"Failed to download the attachment (status {resp.status}).")
-            path = Path(tempfile.gettempdir()) / Path(filename).name
-            path.write_bytes(await resp.read())
-            return path
+    async with aiohttp.ClientSession() as session, session.get(url) as resp:
+        if resp.status != 200:
+            raise Exception(f"Failed to download the attachment (status {resp.status}).")
+        path = Path(tempfile.gettempdir()) / Path(filename).name
+        path.write_bytes(await resp.read())
+        return path

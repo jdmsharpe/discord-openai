@@ -6,9 +6,11 @@ python -m pip install --upgrade --no-deps --force-reinstall git+https://github.c
 """
 
 import logging
+
 from discord import Bot, Intents
-from openai_api import OpenAIAPI
+
 from config.auth import BOT_TOKEN
+from openai_api import OpenAIAPI
 
 if __name__ == "__main__":
     logging.basicConfig(
