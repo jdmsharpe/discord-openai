@@ -91,14 +91,17 @@ All commands show a blue pricing embed (toggle: `SHOW_COST_EMBEDS` env var, defa
 
 ## Code Quality
 
-Pre-commit hook (`.git/hooks/pre-commit`) auto-formats and lints staged Python files in `src/` and `tests/` using ruff. Configuration in `pyproject.toml`:
+Pre-commit hook (`.githooks/pre-commit`) auto-formats and lints staged Python files in `src/` and `tests/` using ruff. Configuration in `pyproject.toml`:
 
 - **Target:** Python 3.12, 100-column line length
-- **Lint rules:** E, W, F, I, UP, B, SIM
+- **Lint rules:** E, W, F, I, UP, B, SIM (E501 ignored — formatter handles it)
 - **Behavior:** Format is auto-applied and re-staged; lint violations block the commit
 - **Missing ruff:** Hook warns but does not block (soft-fail)
 
 ```bash
+# One-time setup after cloning (points git to the checked-in hooks directory)
+git config core.hooksPath .githooks
+
 # Manual check
 ruff check src/ tests/ --config pyproject.toml
 ruff format --check src/ tests/ --config pyproject.toml

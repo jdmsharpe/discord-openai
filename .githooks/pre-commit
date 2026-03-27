@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook: format and lint staged Python files with ruff.
+# Soft-fails if ruff is not installed (warning only).
+# Format is auto-applied and re-staged; lint violations block the commit.
+
+# Gather staged Python files (Added, Copied, Modified)
+PYTHON_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^(src|tests)/.*\.py$')
+
+if [ -z "$PYTHON_FILES" ]; then
+    exit 0
+fi
+
+# Check if ruff is available
+if ! command -v ruff &>/dev/null; then
+    echo "WARNING: ruff not found — skipping Python format/lint checks"
+    exit 0
+fi
+
+# Format staged files and re-stage
+echo "$PYTHON_FILES" | xargs ruff format --config pyproject.toml
+echo "$PYTHON_FILES" | xargs git add
+
+# Lint staged files (strict — blocks commit on failure)
+echo "$PYTHON_FILES" | xargs ruff check --config pyproject.toml
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "ERROR: ruff lint check failed — fix the above issues before committing"
+    exit 1
+fi
+
+exit 0
