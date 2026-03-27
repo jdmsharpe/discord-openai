@@ -554,8 +554,7 @@ class OpenAIAPI(commands.Cog):
     async def on_message(self, message):
         """
         Event listener that runs when a message is sent.
-        Generates a response using chat completion API when a new message
-        from the conversation author is detected.
+        Generates a response using chat completion API when a new message from the conversation author is detected.
 
         Args:
             message: The incoming Discord Message object.
@@ -630,7 +629,7 @@ class OpenAIAPI(commands.Cog):
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
         "persona",
-        description="What role you want the model to emulate. (default: helpful assistant)",
+        description="What role you want the model to emulate. (default: You are a helpful assistant.)",
         required=False,
         type=str,
     )
@@ -675,25 +674,25 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "frequency_penalty",
-        description="(Advanced) Controls model repetition. (default: not set)",
+        description="(Advanced) Controls how much the model should repeat itself. (default: not set)",
         required=False,
         type=float,
     )
     @option(
         "presence_penalty",
-        description="(Advanced) Controls topic focus on the prompt. (default: not set)",
+        description="(Advanced) Controls how much the model should talk about the prompt. (default: not set)",
         required=False,
         type=float,
     )
     @option(
         "temperature",
-        description="(Advanced) Controls randomness. Use this or top_p. (default: not set)",
+        description="(Advanced) Controls the randomness of the model. Set this or top_p, but not both. (default: not set)",
         required=False,
         type=float,
     )
     @option(
         "top_p",
-        description="(Advanced) Nucleus sampling. Use this or temperature. (default: not set)",
+        description="(Advanced) Nucleus sampling. Set this or temperature, but not both. (default: not set)",
         required=False,
         type=float,
     )
@@ -713,7 +712,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "verbosity",
-        description="(Advanced) Response length: low=concise, high=detailed. (default: medium)",
+        description="(Advanced) Controls response length. low=concise, high=detailed. (default: medium)",
         required=False,
         type=str,
         choices=[
@@ -795,8 +794,7 @@ class OpenAIAPI(commands.Cog):
 
           shell: Enable hosted shell command execution (GPT-5 models).
 
-          Please see https://platform.openai.com/docs/guides/text-generation
-          for more information on advanced parameters.
+          Please see https://platform.openai.com/docs/guides/text-generation for more information on advanced parameters.
         """
         # Acknowledge the interaction immediately - reply can take some time
         await ctx.defer()
@@ -808,8 +806,7 @@ class OpenAIAPI(commands.Cog):
             ):
                 await ctx.send_followup(
                     embed=_error_embed(
-                        "You already have an active conversation in this channel. "
-                        "Please finish it before starting a new one."
+                        "You already have an active conversation in this channel. Please finish it before starting a new one."
                     )
                 )
                 return
@@ -890,7 +887,7 @@ class OpenAIAPI(commands.Cog):
                 description += f"**Verbosity:** {params.verbosity}\n"
 
             self.logger.info(
-                f"chat: Conversation params initialized for interaction {ctx.interaction.id}."
+                f"chat: Conversation parameters initialized for interaction ID {ctx.interaction.id}."
             )
 
             # API call using Responses API
@@ -1023,8 +1020,7 @@ class OpenAIAPI(commands.Cog):
             if mime not in IMAGE_CONTENT_TYPES:
                 await ctx.send_followup(
                     embed=_error_embed(
-                        "Attachment must be an image (PNG, JPEG, GIF, WebP), "
-                        f"got `{mime or 'unknown'}`."
+                        f"Attachment must be an image (PNG, JPEG, GIF, WebP), got `{mime or 'unknown'}`."
                     )
                 )
                 return
@@ -1094,22 +1090,19 @@ class OpenAIAPI(commands.Cog):
                 "image",
                 model,
                 image_cost,
-                f"mode={mode.lower()} | quality={effective_quality}"
-                f" | size={effective_size} | n={len(image_files)}",
+                f"mode={mode.lower()} | quality={effective_quality} | size={effective_size} | n={len(image_files)}",
             )
             if SHOW_COST_EMBEDS:
                 append_flat_pricing_embed(
                     embeds,
                     image_cost,
                     daily_cost,
-                    f"{mode.lower()} · {effective_quality} · {effective_size}"
-                    f" · {len(image_files)} image(s)",
+                    f"{mode.lower()} · {effective_quality} · {effective_size} · {len(image_files)} image(s)",
                 )
 
             await ctx.send_followup(embeds=embeds, files=image_files)
             self.logger.info(
-                f"Successfully {mode.lower().replace(' ', '-')}d"
-                f" and sent {len(image_files)} image(s)"
+                f"Successfully {mode.lower().replace(' ', '-')}d and sent {len(image_files)} image(s)"
             )
 
         except Exception as e:
@@ -1164,7 +1157,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "instructions",
-        description="Control voice with additional instructions. (default: not set)",
+        description="Control the voice of your generated audio with additional instructions. (default: not set)",
         required=False,
         type=str,
     )
@@ -1265,7 +1258,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "attachment",
-        description="Audio file (max 25 MB). Types: mp3, mp4, mpeg, mpga, m4a, wav, webm.",
+        description="Attachment audio file. Max size 25 MB. Supported types: mp3, mp4, mpeg, mpga, m4a, wav, and webm.",
         required=True,
         type=Attachment,
     )
@@ -1392,7 +1385,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "prompt",
-        description="Prompt for video generation (shot type, subject, action, setting).",
+        description="Prompt for video generation (describe shot type, subject, action, setting, lighting).",
         required=True,
         type=str,
     )
@@ -1553,7 +1546,7 @@ class OpenAIAPI(commands.Cog):
 
     @openai.command(
         name="research",
-        description="Run a deep research task that synthesizes a detailed report.",
+        description="Run a deep research task that searches, reads, and synthesizes a detailed report.",
     )
     @option(
         "prompt",
@@ -1573,7 +1566,7 @@ class OpenAIAPI(commands.Cog):
     )
     @option(
         "file_search",
-        description="Search your uploaded document stores (File Search). (default: false)",
+        description="Also search your uploaded document stores (File Search / RAG). (default: false)",
         required=False,
         type=bool,
     )
@@ -1687,10 +1680,7 @@ class OpenAIAPI(commands.Cog):
                 await status_msg.edit(
                     embed=Embed(
                         title="Deep Research",
-                        description=(
-                            "The research model did not produce any output. "
-                            "Please try again with a different prompt."
-                        ),
+                        description="The research model did not produce any output. Please try again with a different prompt.",
                         color=Colour.orange(),
                     )
                 )
