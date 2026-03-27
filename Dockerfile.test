@@ -9,6 +9,6 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install --no-cache-dir -r req
 COPY ./src /bot/src/
 COPY ./tests /bot/tests/
 
-ENV PYTHONPATH=/bot/src
+COPY ./pyproject.toml /bot
 
-CMD ["python", "-m", "unittest", "discover", "-s", "tests"]
+CMD ["python", "-m", "pytest", "-v"]
