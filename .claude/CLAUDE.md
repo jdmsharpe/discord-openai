@@ -93,7 +93,7 @@ All commands show a blue pricing embed (toggle: `SHOW_COST_EMBEDS` env var, defa
 
 Pre-commit hook (`.githooks/pre-commit`) auto-formats and lints staged Python files in `src/` and `tests/` using ruff. Configuration in `pyproject.toml`:
 
-- **Target:** Python 3.12, 100-column line length
+- **Target:** Python 3.13, 100-column line length
 - **Lint rules:** E, W, F, I, UP, B, SIM (E501 ignored — formatter handles it)
 - **Behavior:** Format is auto-applied and re-staged; lint violations block the commit
 - **Missing ruff:** Hook warns but does not block (soft-fail)
