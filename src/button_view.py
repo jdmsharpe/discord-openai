@@ -40,7 +40,7 @@ class ButtonView(View):
         get_conversation: Callable[[int], Any | None],
         on_regenerate: Callable[[Any, Any], Awaitable[None]],
         on_stop: Callable[[int, Any], Awaitable[None]],
-        on_tools_changed: Callable[[list[str], str], tuple[list[dict[str, Any]], str | None]],
+        on_tools_changed: Callable[[list[str], Any], tuple[set[str], str | None]],
     ):
         super().__init__(timeout=None)
         self.conversation_starter = conversation_starter
@@ -115,14 +115,19 @@ class ButtonView(View):
 
             selected_values = [value for value in tool_select.values if value in AVAILABLE_TOOLS]
 
-            tools, error_message = self._on_tools_changed(selected_values, conversation.model)
+            active_names, error_message = self._on_tools_changed(selected_values, conversation)
             if error_message:
                 await interaction.response.send_message(error_message, ephemeral=True)
                 return
 
-            conversation.tools = tools
+            # Update Select dropdown defaults
+            for child in self.children:
+                if isinstance(child, Select):
+                    for option in child.options:
+                        option.default = option.value in active_names
+                    break
 
-            status = ", ".join(selected_values) if selected_values else "none"
+            status = ", ".join(sorted(active_names)) if active_names else "none"
             await interaction.response.send_message(
                 f"Tools updated: {status}.",
                 ephemeral=True,

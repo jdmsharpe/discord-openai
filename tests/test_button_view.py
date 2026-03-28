@@ -21,7 +21,7 @@ def _make_view(conversation_starter=None, conversation_id=None, initial_tools=No
         get_conversation=MagicMock(return_value=None),
         on_regenerate=AsyncMock(),
         on_stop=AsyncMock(),
-        on_tools_changed=MagicMock(return_value=([], None)),
+        on_tools_changed=MagicMock(return_value=(set(), None)),
     )
 
 
@@ -60,6 +60,46 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(option_defaults["code_interpreter"])
         self.assertTrue(option_defaults["file_search"])
         self.assertTrue(option_defaults["shell"])
+
+    async def test_tool_select_updates_defaults_after_callback(self):
+        """After tool_select_callback, Select option defaults reflect active tools."""
+        user = MagicMock()
+        conversation = MagicMock()
+        active_names = {"web_search", "code_interpreter"}
+        view = ButtonView(
+            conversation_starter=user,
+            conversation_id=42,
+            initial_tools=None,
+            get_conversation=MagicMock(return_value=conversation),
+            on_regenerate=AsyncMock(),
+            on_stop=AsyncMock(),
+            on_tools_changed=MagicMock(return_value=(active_names, None)),
+        )
+        # Find the real Select (to check defaults after callback)
+        tool_select = next(c for c in view.children if isinstance(c, Select))
+
+        # Create a mock select whose .values returns the user's selection
+        mock_select = MagicMock()
+        mock_select.values = ["web_search", "code_interpreter"]
+
+        interaction = AsyncMock()
+        interaction.user = user
+        interaction.response.is_done.return_value = False
+
+        await view.tool_select_callback(interaction, mock_select)
+
+        # Verify Select defaults were updated
+        option_defaults = {opt.value: opt.default for opt in tool_select.options}
+        self.assertTrue(option_defaults["web_search"])
+        self.assertTrue(option_defaults["code_interpreter"])
+        self.assertFalse(option_defaults["file_search"])
+        self.assertFalse(option_defaults["shell"])
+
+        # Verify the status message
+        interaction.response.send_message.assert_called_once()
+        call_args = interaction.response.send_message.call_args
+        self.assertIn("code_interpreter", call_args[0][0])
+        self.assertIn("web_search", call_args[0][0])
 
     async def test_regenerate_button(self):
         await self.view.regenerate_button(None, None)

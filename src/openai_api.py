@@ -326,8 +326,19 @@ class OpenAIAPI(commands.Cog):
             get_conversation=lambda cid: self.conversation_histories.get(cid),
             on_regenerate=self.handle_new_message_in_conversation,
             on_stop=self._stop_conversation,
-            on_tools_changed=self.resolve_selected_tools,
+            on_tools_changed=self._handle_tools_changed,
         )
+
+    def _handle_tools_changed(
+        self, selected_values: list[str], conversation
+    ) -> tuple[set[str], str | None]:
+        """Callback for ButtonView: resolve tools, update conversation, return active names."""
+        tools, error = self.resolve_selected_tools(selected_values, conversation.model)
+        if error:
+            return set(), error
+        conversation.tools = tools
+        active_names = {tool["type"] for tool in tools if isinstance(tool, dict)}
+        return active_names, None
 
     def _track_daily_cost(
         self,
