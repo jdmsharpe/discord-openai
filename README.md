@@ -152,3 +152,28 @@ All commands are grouped under the `/openai` slash command group.
   - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai chat` file search tool (Optional)
   - `SHOW_COST_EMBEDS`: Show cost/token usage embeds on chat responses — `true` (default) or `false` (Optional)
 - Run the bot with `python src/bot.py`
+
+## Development
+
+### Testing
+
+Tests use pytest with pytest-asyncio (`asyncio_mode = "auto"`). All tests are mocked — no real API calls.
+
+```bash
+# Run tests
+.venv/Scripts/python.exe -m pytest -q    # Windows
+.venv/bin/python -m pytest -q            # Unix
+
+# Run tests in Docker
+docker build -f Dockerfile.test -t discord-openai-test . && docker run --rm discord-openai-test
+```
+
+### Linting & Type Checking
+
+```bash
+ruff check src/ tests/
+ruff format src/ tests/
+pyright src/
+```
+
+After cloning, run `git config core.hooksPath .githooks` to enable the pre-commit hook.

@@ -107,14 +107,15 @@ ruff check src/ tests/ --config pyproject.toml
 ruff format --check src/ tests/ --config pyproject.toml
 ```
 
-## Running Tests
+## Testing
+
+- `pytest` from project root — pytest-native with `asyncio_mode = "auto"` (no `@pytest.mark.asyncio` needed)
+- `pythonpath = ["src"]` configured in `pyproject.toml` — use direct imports (`from util import ...`)
+- Mocked Discord/OpenAI clients, no real API calls
 
 ```bash
-# Windows (with venv)
-PYTHONPATH=src .venv/Scripts/python.exe -m unittest discover -s tests -v
-
-# Unix/macOS (with venv)
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+.venv/Scripts/python.exe -m pytest -q    # Windows
+.venv/bin/python -m pytest -q            # Unix
 ```
 
 ## Environment Variables

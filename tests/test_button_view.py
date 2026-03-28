@@ -1,6 +1,6 @@
-import unittest
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from discord.ui import Select
 
 from button_view import ButtonView
@@ -25,8 +25,9 @@ def _make_view(conversation_starter=None, conversation_id=None, initial_tools=No
     )
 
 
-class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
+class TestButtonView:
+    @pytest.fixture(autouse=True)
+    async def setup(self):
         self.conversation_starter = MagicMock()
         self.conversation_id = MagicMock()
         self.view = _make_view(self.conversation_starter, self.conversation_id)
@@ -35,14 +36,14 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
         self.view.stop_button = AsyncMock()
 
     async def test_init(self):
-        self.assertEqual(self.view.conversation_starter, self.conversation_starter)
-        self.assertEqual(self.view.conversation_id, self.conversation_id)
+        assert self.view.conversation_starter == self.conversation_starter
+        assert self.view.conversation_id == self.conversation_id
 
     async def test_tool_select_exists(self):
         selects = [component for component in self.view.children if isinstance(component, Select)]
-        self.assertEqual(len(selects), 1)
-        self.assertEqual(selects[0].min_values, 0)
-        self.assertEqual(selects[0].max_values, 4)
+        assert len(selects) == 1
+        assert selects[0].min_values == 0
+        assert selects[0].max_values == 4
 
     async def test_tool_select_initial_defaults(self):
         view = _make_view(
@@ -54,12 +55,12 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
             ],
         )
         selects = [component for component in view.children if isinstance(component, Select)]
-        self.assertEqual(len(selects), 1)
+        assert len(selects) == 1
         option_defaults = {option.value: option.default for option in selects[0].options}
-        self.assertTrue(option_defaults["web_search"])
-        self.assertTrue(option_defaults["code_interpreter"])
-        self.assertTrue(option_defaults["file_search"])
-        self.assertTrue(option_defaults["shell"])
+        assert option_defaults["web_search"] is True
+        assert option_defaults["code_interpreter"] is True
+        assert option_defaults["file_search"] is True
+        assert option_defaults["shell"] is True
 
     async def test_tool_select_updates_defaults_after_callback(self):
         """After tool_select_callback, Select option defaults reflect active tools."""
@@ -90,16 +91,16 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
 
         # Verify Select defaults were updated
         option_defaults = {opt.value: opt.default for opt in tool_select.options}
-        self.assertTrue(option_defaults["web_search"])
-        self.assertTrue(option_defaults["code_interpreter"])
-        self.assertFalse(option_defaults["file_search"])
-        self.assertFalse(option_defaults["shell"])
+        assert option_defaults["web_search"] is True
+        assert option_defaults["code_interpreter"] is True
+        assert option_defaults["file_search"] is False
+        assert option_defaults["shell"] is False
 
         # Verify the status message
         interaction.response.send_message.assert_called_once()
         call_args = interaction.response.send_message.call_args
-        self.assertIn("code_interpreter", call_args[0][0])
-        self.assertIn("web_search", call_args[0][0])
+        assert "code_interpreter" in call_args[0][0]
+        assert "web_search" in call_args[0][0]
 
     async def test_regenerate_button(self):
         await self.view.regenerate_button(None, None)
@@ -112,7 +113,3 @@ class TestOpenAIAPI(unittest.IsolatedAsyncioTestCase):
     async def test_stop_button(self):
         await self.view.stop_button(None, None)
         self.view.stop_button.assert_called_once()
-
-
-if __name__ == "__main__":
-    unittest.main()
