@@ -93,7 +93,7 @@ All commands show a blue pricing embed (toggle: `SHOW_COST_EMBEDS` env var, defa
 
 Pre-commit hook (`.githooks/pre-commit`) auto-formats and lints staged Python files in `src/` and `tests/` using ruff. Configuration in `pyproject.toml`:
 
-- **Target:** Python 3.13, 100-column line length
+- **Target:** Python 3.10+, 100-column line length (`ruff.target-version = "py310"`)
 - **Lint rules:** E, W, F, I, UP, B, SIM (E501 ignored — formatter handles it)
 - **Behavior:** Format is auto-applied and re-staged; lint violations block the commit
 - **Missing ruff:** Hook warns but does not block (soft-fail)
@@ -109,13 +109,16 @@ ruff format --check src/ tests/ --config pyproject.toml
 
 ## Testing
 
+- CI runs `pytest` on Python 3.10, 3.11, 3.12, and 3.13 via `.github/workflows/main.yml`
 - `pytest` from project root — pytest-native with `asyncio_mode = "auto"` (no `@pytest.mark.asyncio` needed)
 - `pythonpath = ["src"]` configured in `pyproject.toml` — use direct imports (`from util import ...`)
 - Mocked Discord/OpenAI clients, no real API calls
+- Docker smoke tests use `Dockerfile.test`, which accepts `PYTHON_VERSION` as a build arg (default `3.13`)
 
 ```bash
 .venv/Scripts/python.exe -m pytest -q    # Windows
 .venv/bin/python -m pytest -q            # Unix
+docker build --build-arg PYTHON_VERSION=3.13 -f Dockerfile.test -t discord-openai-test . && docker run --rm discord-openai-test
 ```
 
 ## Environment Variables

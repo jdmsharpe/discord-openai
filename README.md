@@ -157,7 +157,7 @@ All commands are grouped under the `/openai` slash command group.
 
 ### Testing
 
-Tests use pytest with pytest-asyncio (`asyncio_mode = "auto"`). All tests are mocked — no real API calls.
+Tests use pytest with pytest-asyncio (`asyncio_mode = "auto"`). All tests are mocked — no real API calls. CI runs the suite on Python 3.10, 3.11, 3.12, and 3.13.
 
 ```bash
 # Run tests
@@ -165,7 +165,10 @@ Tests use pytest with pytest-asyncio (`asyncio_mode = "auto"`). All tests are mo
 .venv/bin/python -m pytest -q            # Unix
 
 # Run tests in Docker
-docker build -f Dockerfile.test -t discord-openai-test . && docker run --rm discord-openai-test
+docker build --build-arg PYTHON_VERSION=3.13 -f Dockerfile.test -t discord-openai-test . && docker run --rm discord-openai-test
+
+# Smoke-test another supported version
+docker build --build-arg PYTHON_VERSION=3.10 -f Dockerfile.test -t discord-openai-test:3.10 . && docker run --rm discord-openai-test:3.10
 ```
 
 ### Linting & Type Checking
