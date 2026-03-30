@@ -4,7 +4,7 @@ import httpx
 import pytest
 from openai import APIError
 
-from util import (
+from discord_openai.util import (
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
     IMAGE_PRICING,

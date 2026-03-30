@@ -4,17 +4,19 @@ from unittest.mock import MagicMock, patch
 import pytest
 from discord import Bot, Colour, Embed, Intents
 
-from openai_api import (
-    OpenAIAPI,
-    _error_embed,
+from discord_openai import OpenAIAPI
+from discord_openai.cogs.openai.embeds import (
     append_flat_pricing_embed,
     append_pricing_embed,
     append_response_embeds,
     append_sources_embed,
     append_thinking_embeds,
     extract_summary_text,
-    extract_tool_info,
 )
+from discord_openai.cogs.openai.embeds import (
+    error_embed as _error_embed,
+)
+from discord_openai.cogs.openai.tooling import extract_tool_info
 
 
 class TestOpenAIAPI:
@@ -31,14 +33,14 @@ class TestOpenAIAPI:
 
     async def test_resolve_selected_tools_file_search_requires_vector_store(self):
         cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
-        with patch("openai_api.OPENAI_VECTOR_STORE_IDS", []):
+        with patch("discord_openai.cogs.openai.cog.OPENAI_VECTOR_STORE_IDS", []):
             tools, error = cog.resolve_selected_tools(["file_search"], "gpt-5.2")
         assert tools == []
         assert "OPENAI_VECTOR_STORE_IDS" in error
 
     async def test_resolve_selected_tools_file_search_success(self):
         cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
-        with patch("openai_api.OPENAI_VECTOR_STORE_IDS", ["vs_123"]):
+        with patch("discord_openai.cogs.openai.cog.OPENAI_VECTOR_STORE_IDS", ["vs_123"]):
             tools, error = cog.resolve_selected_tools(["file_search"], "gpt-5.2")
         assert error is None
         assert tools[0]["type"] == "file_search"

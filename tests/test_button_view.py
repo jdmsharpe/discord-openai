@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from discord.ui import Select
 
-from button_view import ButtonView
-from util import (
+from discord_openai.cogs.openai.views import ButtonView
+from discord_openai.util import (
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,

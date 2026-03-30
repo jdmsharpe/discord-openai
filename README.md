@@ -153,6 +153,20 @@ All commands are grouped under the `/openai` slash command group.
   - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai chat` file search tool (Optional)
   - `SHOW_COST_EMBEDS`: Show cost/token usage embeds on chat responses — `true` (default) or `false` (Optional)
 - Run the bot with `python src/bot.py`
+  - `src/bot.py` remains a thin repo-local launcher that delegates to `discord_openai.bot.main`
+
+### Using as a Cog
+
+To compose this repo into a larger bot, import the namespaced package:
+
+```python
+from discord_openai import OpenAIAPI
+
+bot.add_cog(OpenAIAPI(bot=bot))
+```
+
+The legacy top-level `openai_api` module remains as a temporary compatibility shim and emits a `DeprecationWarning`.
+Top-level `bot.py`, `button_view.py`, `util.py`, and `config` are repo-local implementation details and are not the installed public API surface.
 
 ## Development
 
