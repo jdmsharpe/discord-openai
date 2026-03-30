@@ -4,10 +4,13 @@
 # Ignore VS Code settings
 .vscode/
 
+# Ignore virtual environment folders
+.venv/
+.venv-wsl/
+
 # Ignore system files
 .DS_Store
 Thumbs.db
 
 # Ignore Python cache files
 __pycache__/
-nul
