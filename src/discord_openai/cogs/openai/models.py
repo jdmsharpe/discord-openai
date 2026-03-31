@@ -1,3 +1,5 @@
+from typing import Any, Protocol
+
 from ...util import (
     ImageGenerationParameters,
     ResearchParameters,
@@ -6,8 +8,14 @@ from ...util import (
     VideoGenerationParameters,
 )
 
+
+class PermissionAwareChannel(Protocol):
+    def permissions_for(self, member: Any) -> Any: ...
+
+
 __all__ = [
     "ImageGenerationParameters",
+    "PermissionAwareChannel",
     "ResearchParameters",
     "ResponseParameters",
     "TextToSpeechParameters",

@@ -1,23 +1,6 @@
-from typing import Any
-
 from discord import Colour, Embed
 
 from ...util import calculate_cost, calculate_tool_cost, chunk_text, truncate_text
-
-
-def extract_summary_text(response: Any) -> str:
-    """Extract reasoning summary text from a Responses API object."""
-    parts: list[str] = []
-    output_items = getattr(response, "output", None) or []
-    for item in output_items:
-        if getattr(item, "type", None) != "reasoning":
-            continue
-        for block in getattr(item, "summary", None) or []:
-            if getattr(block, "type", None) == "summary_text":
-                text = getattr(block, "text", None)
-                if text:
-                    parts.append(text)
-    return "\n\n".join(parts)
 
 
 def append_thinking_embeds(embeds: list[Embed], thinking_text: str) -> None:
@@ -142,3 +125,13 @@ def append_flat_pricing_embed(
 def error_embed(description: str) -> Embed:
     """Create a red error embed with the given description."""
     return Embed(title="Error", description=description, color=Colour.red())
+
+
+__all__ = [
+    "append_flat_pricing_embed",
+    "append_pricing_embed",
+    "append_response_embeds",
+    "append_sources_embed",
+    "append_thinking_embeds",
+    "error_embed",
+]

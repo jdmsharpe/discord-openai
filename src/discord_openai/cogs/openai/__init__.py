@@ -1,3 +1,3 @@
-from .cog import OpenAIAPI
+from .cog import OpenAICog
 
-__all__ = ["OpenAIAPI"]
+__all__ = ["OpenAICog"]

@@ -1,6 +1,7 @@
 from typing import Any, TypedDict
 
-from ...util import AVAILABLE_TOOLS
+from ...config.auth import OPENAI_VECTOR_STORE_IDS
+from ...util import AVAILABLE_TOOLS, TOOL_FILE_SEARCH, TOOL_SHELL
 
 
 class ToolInfo(TypedDict):
@@ -8,6 +9,40 @@ class ToolInfo(TypedDict):
     tool_call_counts: dict[str, int]
     citations: list[dict[str, str]]
     file_citations: list[dict[str, str]]
+
+
+def resolve_selected_tools(
+    selected_tool_names: list[str],
+    model: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Build tool payloads for selected tool names and model constraints."""
+    tools: list[dict[str, Any]] = []
+
+    for tool_name in selected_tool_names:
+        if tool_name == "file_search":
+            if not OPENAI_VECTOR_STORE_IDS:
+                return (
+                    [],
+                    "File search requires OPENAI_VECTOR_STORE_IDS to be set in your .env.",
+                )
+            tool: dict[str, Any] = TOOL_FILE_SEARCH.copy()
+            tool["vector_store_ids"] = OPENAI_VECTOR_STORE_IDS.copy()
+            tools.append(tool)
+            continue
+
+        if tool_name == "shell":
+            if not model.startswith("gpt-5"):
+                return (
+                    [],
+                    "Shell currently requires a GPT-5 series model in this bot configuration.",
+                )
+            tools.append(TOOL_SHELL.copy())
+            continue
+
+        if tool_name in AVAILABLE_TOOLS:
+            tools.append(AVAILABLE_TOOLS[tool_name].copy())
+
+    return tools, None
 
 
 def extract_tool_info(response: Any) -> ToolInfo:
@@ -72,3 +107,6 @@ def extract_tool_info(response: Any) -> ToolInfo:
         "citations": citations,
         "file_citations": file_citations,
     }
+
+
+__all__ = ["ToolInfo", "extract_tool_info", "resolve_selected_tools"]
