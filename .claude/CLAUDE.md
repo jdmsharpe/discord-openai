@@ -47,6 +47,7 @@ Top-level `button_view.py`, `util.py`, and `config/` remain repo-local implement
 
 - `pytest` runs with `pythonpath = ["src"]`.
 - The test suite is organized into module-aligned files such as `tests/test_openai_cog.py`, `tests/test_openai_embeds.py`, `tests/test_openai_responses.py`, and `tests/test_openai_tooling.py`.
+- `tests/test_package_import.py` is the package import smoke test.
 - New tests and patches should target real owners under `discord_openai...`.
 - Examples:
   - `discord_openai.cogs.openai.tooling.OPENAI_VECTOR_STORE_IDS`
