@@ -11,14 +11,11 @@
   bot.add_cog(OpenAICog(bot=bot))
   ```
 
-- Legacy shim: `src/openai_api.py` exists only for import compatibility, emits a `DeprecationWarning`, and re-exports `OpenAICog` without preserving `OpenAIAPI`.
-
 ## Package Layout
 
 ```text
 src/
 ├── bot.py                           # Thin repo-local launcher
-├── openai_api.py                    # Temporary compatibility shim
 └── discord_openai/
     ├── __init__.py                  # Re-exports OpenAICog
     ├── bot.py                       # Namespaced launcher
@@ -49,12 +46,13 @@ Top-level `button_view.py`, `util.py`, and `config/` remain repo-local implement
 ## Testing And Patch Targets
 
 - `pytest` runs with `pythonpath = ["src"]`.
-- New tests and patches should target real owners under `discord_openai...`, not `openai_api`.
+- The test suite is organized into module-aligned files such as `tests/test_openai_cog.py`, `tests/test_openai_embeds.py`, `tests/test_openai_responses.py`, and `tests/test_openai_tooling.py`.
+- New tests and patches should target real owners under `discord_openai...`.
 - Examples:
   - `discord_openai.cogs.openai.tooling.OPENAI_VECTOR_STORE_IDS`
   - `discord_openai.cogs.openai.embeds.append_pricing_embed`
   - `discord_openai.cogs.openai.tooling.extract_tool_info`
-- `tests/test_openai_api_shim.py` is the only place that should intentionally import `openai_api`.
+- Import `OpenAICog` from `discord_openai`; do not reintroduce legacy `openai_api` shim paths.
 
 ## Validation Commands
 
