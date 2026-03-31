@@ -48,7 +48,13 @@ All commands are grouped under the `/openai` slash command group.
 
 ### MCP Setup For `/openai chat`
 
-Configure trusted MCP presets in either `OPENAI_MCP_PRESETS_JSON` or `OPENAI_MCP_PRESETS_PATH`. Each preset is keyed by name and supports this schema:
+Configure trusted MCP presets in `OPENAI_MCP_PRESETS_JSON`, `OPENAI_MCP_PRESETS_PATH`, or both.
+
+- `OPENAI_MCP_PRESETS_JSON` should contain a single JSON object inline in `.env`.
+- `OPENAI_MCP_PRESETS_PATH` should point to a JSON file with the same top-level object shape.
+- When both are set, the sources are merged additively and duplicate preset names across the two sources are rejected.
+
+Each preset is keyed by name and supports this schema:
 
 ```json
 {
@@ -71,9 +77,11 @@ Configure trusted MCP presets in either `OPENAI_MCP_PRESETS_JSON` or `OPENAI_MCP
 }
 ```
 
+- `kind: "remote_mcp"` requires `server_url`, and the URL must be HTTPS.
+- `kind: "connector"` requires `connector_id`.
 - `approval` supports `always` (default), `never`, or `selective`.
 - `never_tool_names` is only valid when `approval` is `selective`.
-- `authorization_env_var` is optional, but when set it must resolve at runtime or the preset is marked unavailable.
+- `authorization_env_var` is optional and names another env var you define separately, such as `GITHUB_MCP_TOKEN`. When set, it must resolve at runtime or the preset is marked unavailable.
 - Presets are re-resolved on every Responses call so connector/OAuth tokens are always re-injected and never stored in conversation state.
 - Use trusted servers only, prefer least-privilege `allowed_tools`, and keep approval enabled for anything that can read sensitive data or take action.
 
@@ -180,13 +188,13 @@ Configure trusted MCP presets in either `OPENAI_MCP_PRESETS_JSON` or `OPENAI_MCP
 
 - (Recommended) Create a virtual environment
 - Install the dependencies with `pip install -r requirements.txt`
-- Copy `.env.example` to `.env` and fill in your values:
+- Copy `.env.example` to `.env` and fill in your values. Optional settings are included as commented examples in the template:
   - `BOT_TOKEN`: Your Discord bot token
   - `GUILD_IDS`: Comma-separated list of Discord server IDs to deploy the bot on
   - `OPENAI_API_KEY`: Your OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
   - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai chat` file search tool (Optional)
   - `OPENAI_MCP_PRESETS_JSON`: Inline JSON object of named MCP presets for `/openai chat mcp` (Optional)
-  - `OPENAI_MCP_PRESETS_PATH`: Path to a JSON file containing named MCP presets for `/openai chat mcp` (Optional)
+  - `OPENAI_MCP_PRESETS_PATH`: Path to a JSON file containing named MCP presets for `/openai chat mcp`; additive with `OPENAI_MCP_PRESETS_JSON`, and preset names must be unique across both sources (Optional)
   - `SHOW_COST_EMBEDS`: Show cost/token usage embeds on chat responses — `true` (default) or `false` (Optional)
 - Run the bot with `python src/bot.py`
   - `src/bot.py` remains a thin repo-local launcher that delegates to `discord_openai.bot.main`

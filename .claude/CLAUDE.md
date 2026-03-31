@@ -75,7 +75,8 @@ pytest -q
 - `file_search` requires `OPENAI_VECTOR_STORE_IDS`.
 - `shell` remains limited to GPT-5 series models.
 - `ResponseParameters.to_dict()` in `discord_openai.util` remains the canonical request-construction path.
-- Named MCP presets are loaded from `OPENAI_MCP_PRESETS_JSON` and `OPENAI_MCP_PRESETS_PATH`.
+- Named MCP presets are loaded from `OPENAI_MCP_PRESETS_JSON` and `OPENAI_MCP_PRESETS_PATH`; when both are set they merge additively, and duplicate preset names are rejected.
 - Presets support both remote MCP servers (`kind="remote_mcp"`) and OpenAI connectors (`kind="connector"`).
+- `authorization_env_var` names are user-defined token env vars that must be present at runtime for those presets to be available.
 - MCP state is persisted separately from built-in tool selections via `tool_names`, `mcp_preset_names`, and `pending_mcp_approval`.
 - While an approval is pending, the bot swaps to `McpApprovalView`, blocks typed follow-ups, and resumes the same response chain with `mcp_approval_response` when the owner approves or denies.
