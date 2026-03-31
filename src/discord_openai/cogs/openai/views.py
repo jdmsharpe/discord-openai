@@ -1,9 +1,7 @@
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import Awaitable, Callable
 from typing import (
     Any,
-    Protocol,
-    cast,
 )
 
 from discord import (
@@ -13,11 +11,7 @@ from discord import (
 )
 from discord.ui import Button, Select, View, button
 
-from ...util import AVAILABLE_TOOLS
-
-
-class HistoryReadableChannel(Protocol):
-    def history(self, *args: Any, **kwargs: Any) -> AsyncIterator[Any]: ...
+from .tooling import get_tool_select_max_values, get_tool_select_options, is_known_tool
 
 
 async def _send_interaction_error(interaction: Interaction, context: str, error: Exception) -> None:
@@ -34,16 +28,16 @@ class ButtonView(View):
     def __init__(
         self,
         *,
-        conversation_starter,
+        conversation_starter_id,
         conversation_id,
         initial_tools=None,
         get_conversation: Callable[[int], Any | None],
-        on_regenerate: Callable[[Any, Any], Awaitable[None]],
+        on_regenerate: Callable[[Interaction, Any], Awaitable[None]],
         on_stop: Callable[[int, Any], Awaitable[None]],
         on_tools_changed: Callable[[list[str], Any], tuple[set[str], str | None]],
     ):
         super().__init__(timeout=None)
-        self.conversation_starter = conversation_starter
+        self.conversation_starter_id = conversation_starter_id
         self.conversation_id = conversation_id
         self._get_conversation = get_conversation
         self._on_regenerate = on_regenerate
@@ -52,42 +46,22 @@ class ButtonView(View):
         self._add_tool_select(initial_tools)
 
     def _add_tool_select(self, initial_tools=None):
-        selected_tool_types = {
-            tool.get("type")
-            for tool in (initial_tools or [])
-            if isinstance(tool, dict) and tool.get("type")
-        }
+        selected_tool_types: set[str] = set()
+        for tool in initial_tools or []:
+            if not isinstance(tool, dict):
+                continue
+            tool_type = tool.get("type")
+            if isinstance(tool_type, str):
+                selected_tool_types.add(tool_type)
 
         tool_select = Select(
             placeholder="Tools",
             options=[
-                SelectOption(
-                    label="Web Search",
-                    value="web_search",
-                    description="Search the web for current information.",
-                    default="web_search" in selected_tool_types,
-                ),
-                SelectOption(
-                    label="Code Interpreter",
-                    value="code_interpreter",
-                    description="Run Python code in a sandbox.",
-                    default="code_interpreter" in selected_tool_types,
-                ),
-                SelectOption(
-                    label="File Search",
-                    value="file_search",
-                    description="Search your indexed vector store files.",
-                    default="file_search" in selected_tool_types,
-                ),
-                SelectOption(
-                    label="Shell",
-                    value="shell",
-                    description="Run commands in an OpenAI hosted container.",
-                    default="shell" in selected_tool_types,
-                ),
+                SelectOption(**option)
+                for option in get_tool_select_options(selected_tool_types)
             ],
             min_values=0,
-            max_values=4,
+            max_values=get_tool_select_max_values(),
             row=1,
         )
 
@@ -99,7 +73,8 @@ class ButtonView(View):
 
     async def tool_select_callback(self, interaction: Interaction, tool_select: Select):
         try:
-            if interaction.user != self.conversation_starter:
+            user = interaction.user
+            if user is None or user.id != self.conversation_starter_id:
                 await interaction.response.send_message(
                     "You are not allowed to change tools for this conversation.",
                     ephemeral=True,
@@ -113,7 +88,7 @@ class ButtonView(View):
                 )
                 return
 
-            selected_values = [value for value in tool_select.values if value in AVAILABLE_TOOLS]
+            selected_values = [value for value in tool_select.values if is_known_tool(value)]
 
             active_names, error_message = self._on_tools_changed(selected_values, conversation)
             if error_message:
@@ -141,7 +116,8 @@ class ButtonView(View):
         """Regenerate the last response for the current conversation."""
         logging.info("Regenerate button clicked.")
         try:
-            if interaction.user != self.conversation_starter:
+            user = interaction.user
+            if user is None or user.id != self.conversation_starter_id:
                 await interaction.response.send_message(
                     "You are not allowed to regenerate the response.", ephemeral=True
                 )
@@ -165,22 +141,13 @@ class ButtonView(View):
                     else None
                 )
 
-            # Get the last user message from the channel history
-            channel = interaction.channel
-            if channel is None or not hasattr(channel, "history"):
-                await interaction.followup.send("Cannot access channel history.", ephemeral=True)
-                return
-            history_channel = cast(HistoryReadableChannel, channel)
-            messages = [m async for m in history_channel.history(limit=2)]
-            if len(messages) < 2:
+            if conversation.last_user_input is None:
                 await interaction.followup.send(
-                    "Couldn't find the message to regenerate.", ephemeral=True
+                    "No saved prompt was found for this conversation.", ephemeral=True
                 )
                 return
 
-            user_message = messages[1]
-
-            await self._on_regenerate(user_message, conversation)
+            await self._on_regenerate(interaction, conversation)
             await interaction.followup.send("Response regenerated.", ephemeral=True, delete_after=3)
         except Exception as e:
             await _send_interaction_error(interaction, "regenerating the response", e)
@@ -189,7 +156,8 @@ class ButtonView(View):
     async def play_pause_button(self, _: Button, interaction: Interaction):
         """Pause or resume the conversation."""
         try:
-            if interaction.user != self.conversation_starter:
+            user = interaction.user
+            if user is None or user.id != self.conversation_starter_id:
                 await interaction.response.send_message(
                     "You are not allowed to pause the conversation.", ephemeral=True
                 )
@@ -198,6 +166,7 @@ class ButtonView(View):
             conversation = self._get_conversation(self.conversation_id)
             if conversation is not None:
                 conversation.paused = not conversation.paused
+                conversation.touch()
                 status = "paused" if conversation.paused else "resumed"
                 await interaction.response.send_message(
                     f"Conversation {status}. Press again to toggle.",
@@ -215,7 +184,8 @@ class ButtonView(View):
     async def stop_button(self, _: Button, interaction: Interaction):
         """End the conversation."""
         try:
-            if interaction.user != self.conversation_starter:
+            user = interaction.user
+            if user is None or user.id != self.conversation_starter_id:
                 await interaction.response.send_message(
                     "You are not allowed to end this conversation.", ephemeral=True
                 )
@@ -223,7 +193,88 @@ class ButtonView(View):
 
             conversation = self._get_conversation(self.conversation_id)
             if conversation is not None:
-                await self._on_stop(self.conversation_id, self.conversation_starter)
+                await self._on_stop(self.conversation_id, self.conversation_starter_id)
+                await interaction.response.send_message(
+                    "Conversation ended.", ephemeral=True, delete_after=3
+                )
+            else:
+                await interaction.response.send_message(
+                    "No active conversation found.", ephemeral=True
+                )
+        except Exception as e:
+            await _send_interaction_error(interaction, "ending the conversation", e)
+
+
+class McpApprovalView(View):
+    def __init__(
+        self,
+        *,
+        conversation_starter_id,
+        conversation_id,
+        get_conversation: Callable[[int], Any | None],
+        on_approve: Callable[[Interaction, Any], Awaitable[None]],
+        on_deny: Callable[[Interaction, Any], Awaitable[None]],
+        on_stop: Callable[[int, Any], Awaitable[None]],
+    ):
+        super().__init__(timeout=None)
+        self.conversation_starter_id = conversation_starter_id
+        self.conversation_id = conversation_id
+        self._get_conversation = get_conversation
+        self._on_approve = on_approve
+        self._on_deny = on_deny
+        self._on_stop = on_stop
+
+    def _get_pending_conversation(self, interaction: Interaction):
+        user = interaction.user
+        if user is None or user.id != self.conversation_starter_id:
+            return None, "You are not allowed to approve MCP tool calls for this conversation."
+
+        conversation = self._get_conversation(self.conversation_id)
+        if conversation is None:
+            return None, "No active conversation found."
+        if not getattr(conversation, "pending_mcp_approval", None):
+            return None, "No pending MCP approval request was found."
+        return conversation, None
+
+    @button(label="Approve MCP", style=ButtonStyle.green, row=0)
+    async def approve_button(self, _: Button, interaction: Interaction):
+        try:
+            conversation, error_message = self._get_pending_conversation(interaction)
+            if error_message:
+                await interaction.response.send_message(error_message, ephemeral=True)
+                return
+
+            await interaction.response.defer(ephemeral=True)
+            await self._on_approve(interaction, conversation)
+        except Exception as e:
+            await _send_interaction_error(interaction, "approving the MCP request", e)
+
+    @button(label="Deny MCP", style=ButtonStyle.red, row=0)
+    async def deny_button(self, _: Button, interaction: Interaction):
+        try:
+            conversation, error_message = self._get_pending_conversation(interaction)
+            if error_message:
+                await interaction.response.send_message(error_message, ephemeral=True)
+                return
+
+            await interaction.response.defer(ephemeral=True)
+            await self._on_deny(interaction, conversation)
+        except Exception as e:
+            await _send_interaction_error(interaction, "denying the MCP request", e)
+
+    @button(emoji="⏹️", style=ButtonStyle.blurple, row=0)
+    async def stop_button(self, _: Button, interaction: Interaction):
+        try:
+            user = interaction.user
+            if user is None or user.id != self.conversation_starter_id:
+                await interaction.response.send_message(
+                    "You are not allowed to end this conversation.", ephemeral=True
+                )
+                return
+
+            conversation = self._get_conversation(self.conversation_id)
+            if conversation is not None:
+                await self._on_stop(self.conversation_id, self.conversation_starter_id)
                 await interaction.response.send_message(
                     "Conversation ended.", ephemeral=True, delete_after=3
                 )

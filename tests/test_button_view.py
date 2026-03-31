@@ -1,115 +1,134 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from discord.ui import Select
+from discord.ui import Button, Select
 
-from discord_openai.cogs.openai.views import ButtonView
-from discord_openai.util import (
+from discord_openai.cogs.openai.tooling import (
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
     TOOL_SHELL,
     TOOL_WEB_SEARCH,
 )
+from discord_openai.cogs.openai.views import ButtonView, McpApprovalView
 
 
-def _make_view(conversation_starter=None, conversation_id=None, initial_tools=None):
-    """Create a ButtonView with mock callbacks for testing."""
+def _make_button_view(*, get_conversation=None, initial_tools=None, on_tools_changed=None):
     return ButtonView(
-        conversation_starter=conversation_starter or MagicMock(),
-        conversation_id=conversation_id or MagicMock(),
+        conversation_starter_id=123,
+        conversation_id=42,
         initial_tools=initial_tools,
-        get_conversation=MagicMock(return_value=None),
+        get_conversation=get_conversation or MagicMock(return_value=None),
         on_regenerate=AsyncMock(),
         on_stop=AsyncMock(),
-        on_tools_changed=MagicMock(return_value=(set(), None)),
+        on_tools_changed=on_tools_changed or MagicMock(return_value=(set(), None)),
+    )
+
+
+def _make_approval_view(*, get_conversation=None, on_approve=None, on_deny=None):
+    return McpApprovalView(
+        conversation_starter_id=123,
+        conversation_id=42,
+        get_conversation=get_conversation or MagicMock(return_value=None),
+        on_approve=on_approve or AsyncMock(),
+        on_deny=on_deny or AsyncMock(),
+        on_stop=AsyncMock(),
     )
 
 
 class TestButtonView:
-    @pytest.fixture(autouse=True)
-    async def setup(self):
-        self.conversation_starter = MagicMock()
-        self.conversation_id = MagicMock()
-        self.view = _make_view(self.conversation_starter, self.conversation_id)
-        self.view.regenerate_button = AsyncMock()
-        self.view.play_pause_button = AsyncMock()
-        self.view.stop_button = AsyncMock()
-
-    async def test_init(self):
-        assert self.view.conversation_starter == self.conversation_starter
-        assert self.view.conversation_id == self.conversation_id
-
+    @pytest.mark.asyncio
     async def test_tool_select_exists(self):
-        selects = [component for component in self.view.children if isinstance(component, Select)]
+        view = _make_button_view()
+        selects = [component for component in view.children if isinstance(component, Select)]
         assert len(selects) == 1
         assert selects[0].min_values == 0
         assert selects[0].max_values == 4
 
+    @pytest.mark.asyncio
     async def test_tool_select_initial_defaults(self):
-        view = _make_view(
+        view = _make_button_view(
             initial_tools=[
                 TOOL_WEB_SEARCH,
                 TOOL_CODE_INTERPRETER,
                 TOOL_FILE_SEARCH,
                 TOOL_SHELL,
-            ],
+            ]
         )
-        selects = [component for component in view.children if isinstance(component, Select)]
-        assert len(selects) == 1
-        option_defaults = {option.value: option.default for option in selects[0].options}
+        tool_select = next(component for component in view.children if isinstance(component, Select))
+        option_defaults = {option.value: option.default for option in tool_select.options}
         assert option_defaults["web_search"] is True
         assert option_defaults["code_interpreter"] is True
         assert option_defaults["file_search"] is True
         assert option_defaults["shell"] is True
 
-    async def test_tool_select_updates_defaults_after_callback(self):
-        """After tool_select_callback, Select option defaults reflect active tools."""
-        user = MagicMock()
-        conversation = MagicMock()
+    @pytest.mark.asyncio
+    async def test_tool_select_callback_updates_defaults(self):
+        conversation = SimpleNamespace()
         active_names = {"web_search", "code_interpreter"}
-        view = ButtonView(
-            conversation_starter=user,
-            conversation_id=42,
-            initial_tools=None,
+        on_tools_changed = MagicMock(return_value=(active_names, None))
+        view = _make_button_view(
             get_conversation=MagicMock(return_value=conversation),
-            on_regenerate=AsyncMock(),
-            on_stop=AsyncMock(),
-            on_tools_changed=MagicMock(return_value=(active_names, None)),
+            on_tools_changed=on_tools_changed,
         )
-        # Find the real Select (to check defaults after callback)
-        tool_select = next(c for c in view.children if isinstance(c, Select))
+        tool_select = next(component for component in view.children if isinstance(component, Select))
 
-        # Create a mock select whose .values returns the user's selection
-        mock_select = MagicMock()
-        mock_select.values = ["web_search", "code_interpreter"]
+        selected = MagicMock()
+        selected.values = ["web_search", "code_interpreter"]
 
-        interaction = AsyncMock()
-        interaction.user = user
-        interaction.response.is_done.return_value = False
+        interaction = MagicMock()
+        interaction.user.id = 123
+        interaction.response.send_message = AsyncMock()
 
-        await view.tool_select_callback(interaction, mock_select)
+        await view.tool_select_callback(interaction, selected)
 
-        # Verify Select defaults were updated
-        option_defaults = {opt.value: opt.default for opt in tool_select.options}
+        option_defaults = {option.value: option.default for option in tool_select.options}
         assert option_defaults["web_search"] is True
         assert option_defaults["code_interpreter"] is True
         assert option_defaults["file_search"] is False
         assert option_defaults["shell"] is False
+        on_tools_changed.assert_called_once_with(["web_search", "code_interpreter"], conversation)
+        interaction.response.send_message.assert_awaited_once()
 
-        # Verify the status message
-        interaction.response.send_message.assert_called_once()
-        call_args = interaction.response.send_message.call_args
-        assert "code_interpreter" in call_args[0][0]
-        assert "web_search" in call_args[0][0]
 
-    async def test_regenerate_button(self):
-        await self.view.regenerate_button(None, None)
-        self.view.regenerate_button.assert_called_once()
+class TestMcpApprovalView:
+    @pytest.mark.asyncio
+    async def test_non_owner_cannot_approve(self):
+        conversation = SimpleNamespace(pending_mcp_approval={"approval_request_id": "mcpr_1"})
+        view = _make_approval_view(get_conversation=MagicMock(return_value=conversation))
+        approve_button = next(
+            component
+            for component in view.children
+            if isinstance(component, Button) and component.label == "Approve MCP"
+        )
 
-    async def test_play_pause_button(self):
-        await self.view.play_pause_button(None, None)
-        self.view.play_pause_button.assert_called_once()
+        interaction = MagicMock()
+        interaction.user.id = 999
+        interaction.response.send_message = AsyncMock()
 
-    async def test_stop_button(self):
-        await self.view.stop_button(None, None)
-        self.view.stop_button.assert_called_once()
+        await approve_button.callback(interaction)
+
+        interaction.response.send_message.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_owner_can_approve_pending_request(self):
+        conversation = SimpleNamespace(pending_mcp_approval={"approval_request_id": "mcpr_1"})
+        on_approve = AsyncMock()
+        view = _make_approval_view(
+            get_conversation=MagicMock(return_value=conversation),
+            on_approve=on_approve,
+        )
+        approve_button = next(
+            component
+            for component in view.children
+            if isinstance(component, Button) and component.label == "Approve MCP"
+        )
+
+        interaction = MagicMock()
+        interaction.user.id = 123
+        interaction.response.defer = AsyncMock()
+
+        await approve_button.callback(interaction)
+
+        interaction.response.defer.assert_awaited_once()
+        on_approve.assert_awaited_once_with(interaction, conversation)

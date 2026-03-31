@@ -5,11 +5,31 @@ from .auth import (
     OPENAI_VECTOR_STORE_IDS,
     SHOW_COST_EMBEDS,
 )
+from .mcp import (
+    APPROVAL_ALWAYS,
+    APPROVAL_NEVER,
+    APPROVAL_SELECTIVE,
+    OPENAI_MCP_PRESETS,
+    OpenAIMcpPreset,
+    build_mcp_tool,
+    load_openai_mcp_presets,
+    parse_mcp_preset_names,
+    resolve_mcp_presets,
+)
 
 __all__ = [
     "BOT_TOKEN",
     "GUILD_IDS",
+    "APPROVAL_ALWAYS",
+    "APPROVAL_NEVER",
+    "APPROVAL_SELECTIVE",
     "OPENAI_API_KEY",
+    "OPENAI_MCP_PRESETS",
+    "OpenAIMcpPreset",
     "OPENAI_VECTOR_STORE_IDS",
     "SHOW_COST_EMBEDS",
+    "build_mcp_tool",
+    "load_openai_mcp_presets",
+    "parse_mcp_preset_names",
+    "resolve_mcp_presets",
 ]

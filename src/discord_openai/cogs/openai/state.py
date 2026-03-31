@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, TypeAlias
 
 from discord import Member, Message, User
@@ -8,17 +8,47 @@ from ...util import ResponseParameters, calculate_cost, calculate_tool_cost
 from .embeds import append_pricing_embed
 from .responses import get_usage
 from .tooling import ToolInfo, resolve_selected_tools
-from .views import ButtonView
+from .views import ButtonView, McpApprovalView
 
 ConversationStore: TypeAlias = dict[int, ResponseParameters]
-ViewStore: TypeAlias = dict[Member | User, ButtonView]
-ViewMessageStore: TypeAlias = dict[Member | User, Message]
+ViewStore: TypeAlias = dict[int, ButtonView | McpApprovalView]
+ViewMessageStore: TypeAlias = dict[int, Message]
 DailyCostStore: TypeAlias = dict[tuple[int, str], float]
 
+MAX_ACTIVE_CONVERSATIONS = 100
+MAX_VIEW_STATES = 200
+CONVERSATION_TTL = timedelta(hours=12)
+DAILY_COST_RETENTION_DAYS = 30
 
-async def strip_previous_view(cog, user) -> None:
+
+def _user_state_key(user_or_id: Member | User | int) -> int:
+    return user_or_id if isinstance(user_or_id, int) else user_or_id.id
+
+
+def _conversation_timestamp(conversation: ResponseParameters) -> datetime:
+    updated_at = conversation.updated_at
+    if updated_at.tzinfo is None:
+        return updated_at.replace(tzinfo=timezone.utc)
+    return updated_at
+
+
+def remember_view_state(
+    cog,
+    user_or_id: Member | User | int,
+    view: ButtonView | McpApprovalView,
+    message: Message,
+) -> None:
+    """Store the latest interactive view/message for a user using a stable ID key."""
+    user_id = _user_state_key(user_or_id)
+    cog.views.pop(user_id, None)
+    cog.last_view_messages.pop(user_id, None)
+    cog.views[user_id] = view
+    cog.last_view_messages[user_id] = message
+
+
+async def strip_previous_view(cog, user_or_id: Member | User | int) -> None:
     """Edit the last message that had buttons to remove its view."""
-    prev = cog.last_view_messages.pop(user, None)
+    prev = cog.last_view_messages.pop(_user_state_key(user_or_id), None)
     if prev is not None:
         try:
             await prev.edit(view=None)
@@ -26,30 +56,116 @@ async def strip_previous_view(cog, user) -> None:
             cog.logger.debug(f"Could not edit previous message: {e}")
 
 
-async def cleanup_conversation(cog, user) -> None:
-    """Remove button view from the last message and clean up view state."""
-    await strip_previous_view(cog, user)
-    cog.views.pop(user, None)
+def prune_daily_costs(cog) -> None:
+    """Discard old daily cost entries so the in-memory store stays bounded."""
+    cutoff = date.today() - timedelta(days=DAILY_COST_RETENTION_DAYS)
+    expired_keys = [key for key in cog.daily_costs if date.fromisoformat(key[1]) < cutoff]
+    for key in expired_keys:
+        cog.daily_costs.pop(key, None)
 
 
-async def stop_conversation(cog, conversation_id: int, user) -> None:
+async def prune_runtime_state(cog) -> None:
+    """Prune stale conversations and orphaned view state."""
+    now = datetime.now(timezone.utc)
+    stale_conversation_ids = [
+        conversation_id
+        for conversation_id, conversation in cog.conversation_histories.items()
+        if now - _conversation_timestamp(conversation) > CONVERSATION_TTL
+    ]
+
+    active_conversations = [
+        (conversation_id, conversation)
+        for conversation_id, conversation in cog.conversation_histories.items()
+        if conversation_id not in stale_conversation_ids
+    ]
+    overflow = len(active_conversations) - MAX_ACTIVE_CONVERSATIONS
+    if overflow > 0:
+        active_conversations.sort(key=lambda item: _conversation_timestamp(item[1]))
+        stale_conversation_ids.extend(
+            conversation_id for conversation_id, _ in active_conversations[:overflow]
+        )
+
+    for conversation_id in dict.fromkeys(stale_conversation_ids):
+        cog.conversation_histories.pop(conversation_id, None)
+
+    active_user_ids = {
+        conversation.conversation_starter_id
+        for conversation in cog.conversation_histories.values()
+        if conversation.conversation_starter_id is not None
+    }
+    stale_user_ids = [
+        user_id
+        for user_id in set(cog.views) | set(cog.last_view_messages)
+        if user_id not in active_user_ids
+    ]
+    for user_id in stale_user_ids:
+        await strip_previous_view(cog, user_id)
+        cog.views.pop(user_id, None)
+
+    overflow_user_ids = list(cog.views)[: max(0, len(cog.views) - MAX_VIEW_STATES)]
+    for user_id in overflow_user_ids:
+        await strip_previous_view(cog, user_id)
+        cog.views.pop(user_id, None)
+
+    prune_daily_costs(cog)
+
+
+async def cleanup_conversation(
+    cog,
+    user_or_id: Member | User | int,
+    conversation_id: int | None = None,
+) -> None:
+    """Remove button view state and optionally drop a conversation from history."""
+    if conversation_id is not None:
+        cog.conversation_histories.pop(conversation_id, None)
+    user_id = _user_state_key(user_or_id)
+    await strip_previous_view(cog, user_id)
+    cog.views.pop(user_id, None)
+    await prune_runtime_state(cog)
+
+
+async def stop_conversation(
+    cog,
+    conversation_id: int,
+    user_or_id: Member | User | int,
+) -> None:
     """Stop callback for ButtonView: delete conversation and clean up."""
-    cog.conversation_histories.pop(conversation_id, None)
-    await cleanup_conversation(cog, user)
+    await cleanup_conversation(cog, user_or_id, conversation_id)
 
 
-def create_button_view(cog, user, conversation_id: int, tools=None) -> ButtonView:
+def create_button_view(
+    cog,
+    user_or_id: Member | User | int,
+    conversation_id: int,
+    tools=None,
+) -> ButtonView:
     """Create a ButtonView wired to the cog's callbacks."""
     return ButtonView(
-        conversation_starter=user,
+        conversation_starter_id=_user_state_key(user_or_id),
         conversation_id=conversation_id,
         initial_tools=tools,
         get_conversation=lambda cid: cog.conversation_histories.get(cid),
-        on_regenerate=cog.handle_new_message_in_conversation,
+        on_regenerate=cog.regenerate_conversation_response,
         on_stop=cog._stop_conversation,
         on_tools_changed=lambda selected_values, conversation: handle_tools_changed(
             cog, selected_values, conversation
         ),
+    )
+
+
+def create_mcp_approval_view(
+    cog,
+    user_or_id: Member | User | int,
+    conversation_id: int,
+) -> McpApprovalView:
+    """Create the approval-only view used while an MCP approval request is pending."""
+    return McpApprovalView(
+        conversation_starter_id=_user_state_key(user_or_id),
+        conversation_id=conversation_id,
+        get_conversation=lambda cid: cog.conversation_histories.get(cid),
+        on_approve=cog.handle_mcp_approval,
+        on_deny=cog.handle_mcp_denial,
+        on_stop=cog._stop_conversation,
     )
 
 
@@ -59,11 +175,18 @@ def handle_tools_changed(
     conversation,
 ) -> tuple[set[str], str | None]:
     """Resolve tools, update conversation state, and return active names."""
-    tools, error = resolve_selected_tools(selected_values, conversation.model)
+    tools, error = resolve_selected_tools(
+        selected_values,
+        conversation.model,
+        mcp_preset_names=conversation.mcp_preset_names,
+    )
     if error:
         return set(), error
+    conversation.tool_names = list(selected_values)
     conversation.tools = tools
+    conversation.touch()
     active_names = {tool["type"] for tool in tools if isinstance(tool, dict)}
+    active_names -= {"mcp"}
     return active_names, None
 
 
@@ -78,6 +201,7 @@ def track_daily_cost(
     command: str = "chat",
 ) -> float:
     """Add this request's cost to the user's daily total and return the new daily total."""
+    prune_daily_costs(cog)
     cost = calculate_cost(model, input_tokens, output_tokens, cached_tokens)
     tool_cost = 0.0
     if tool_call_counts:
@@ -104,6 +228,7 @@ def track_daily_cost_direct(
     details: str = "",
 ) -> float:
     """Track a pre-computed cost and return the new daily total."""
+    prune_daily_costs(cog)
     key = (user_id, date.today().isoformat())
     cog.daily_costs[key] = cog.daily_costs.get(key, 0.0) + cost
     cog.logger.info(
@@ -156,7 +281,11 @@ __all__ = [
     "ViewStore",
     "cleanup_conversation",
     "create_button_view",
+    "create_mcp_approval_view",
     "handle_tools_changed",
+    "prune_daily_costs",
+    "prune_runtime_state",
+    "remember_view_state",
     "stop_conversation",
     "strip_previous_view",
     "track_and_append_cost",

@@ -11,6 +11,7 @@ This is a Discord bot built on [Pycord 2.0](https://github.com/Pycord-Developmen
 ## Features
 
 - **Conversational AI:** Engage in interactive, ongoing conversations with various OpenAI models using `/openai chat`. The bot maintains conversation history as you write further messages in the same channel, and accepts image, PDF, document, spreadsheet, and code file attachments.
+- **Remote MCP and connectors:** `/openai chat` can enable trusted remote MCP servers and OpenAI connectors through named MCP presets loaded from config, with optional tool allow-lists and approval policies.
 - **Image Generation:** Create images from text prompts with `/openai image` using GPT Image models, with controls for quality and aspect ratio.
 - **Text-to-Speech:** Convert text into lifelike audio using `/openai tts`, with customizable voice, audio format, and speed.
 - **Speech-to-Text:** Transform audio attachments into text with `/openai stt` and pick Whisper or GPT-4o transcription models, plus transcription or translation into English.
@@ -42,6 +43,39 @@ All commands are grouped under the `/openai` slash command group.
 - **Reasoning summary:** When using reasoning models (o-series, GPT-5.x with reasoning effort), the model's thinking process is displayed in a spoilered "Thinking" embed before the response.
 - **Advanced tuning:** Frequency penalty, presence penalty, temperature (or nucleus sampling via `top_p`), and `seed` are all optional. Reasoning models ignore custom temperature/`top_p` and fall back to their defaults automatically.
 - **Built-in tools:** Optional tool calling supports `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`; surfaces file citations in a Sources embed), and `shell` (GPT-5 series models only).
+- **MCP presets:** The optional `mcp` parameter accepts a comma-separated list of preset names. Presets can target either a remote MCP server (`kind: "remote_mcp"`) or an OpenAI connector (`kind: "connector"`). MCP selections persist for the life of the conversation and are kept separate from the built-in tool dropdown.
+- **Approval loop:** OpenAI MCP and connector tool calls default to requiring approval. When the model requests access, the bot swaps the normal controls for `Approve MCP`, `Deny MCP`, and `Stop`, blocks typed follow-ups until a decision is made, and then edits the same Discord message in place with the final response.
+
+### MCP Setup For `/openai chat`
+
+Configure trusted MCP presets in either `OPENAI_MCP_PRESETS_JSON` or `OPENAI_MCP_PRESETS_PATH`. Each preset is keyed by name and supports this schema:
+
+```json
+{
+  "github": {
+    "kind": "remote_mcp",
+    "server_label": "GitHub",
+    "server_url": "https://api.githubcopilot.com/mcp/",
+    "authorization_env_var": "GITHUB_MCP_TOKEN",
+    "allowed_tools": ["search_issues"],
+    "approval": "selective",
+    "never_tool_names": ["search_issues"]
+  },
+  "gmail": {
+    "kind": "connector",
+    "server_label": "Gmail",
+    "connector_id": "connector_gmail",
+    "authorization_env_var": "GMAIL_OAUTH_TOKEN",
+    "approval": "always"
+  }
+}
+```
+
+- `approval` supports `always` (default), `never`, or `selective`.
+- `never_tool_names` is only valid when `approval` is `selective`.
+- `authorization_env_var` is optional, but when set it must resolve at runtime or the preset is marked unavailable.
+- Presets are re-resolved on every Responses call so connector/OAuth tokens are always re-injected and never stored in conversation state.
+- Use trusted servers only, prefer least-privilege `allowed_tools`, and keep approval enabled for anything that can read sensitive data or take action.
 
 ### `/openai image`
 
@@ -151,6 +185,8 @@ All commands are grouped under the `/openai` slash command group.
   - `GUILD_IDS`: Comma-separated list of Discord server IDs to deploy the bot on
   - `OPENAI_API_KEY`: Your OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
   - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai chat` file search tool (Optional)
+  - `OPENAI_MCP_PRESETS_JSON`: Inline JSON object of named MCP presets for `/openai chat mcp` (Optional)
+  - `OPENAI_MCP_PRESETS_PATH`: Path to a JSON file containing named MCP presets for `/openai chat mcp` (Optional)
   - `SHOW_COST_EMBEDS`: Show cost/token usage embeds on chat responses — `true` (default) or `false` (Optional)
 - Run the bot with `python src/bot.py`
   - `src/bot.py` remains a thin repo-local launcher that delegates to `discord_openai.bot.main`
@@ -172,7 +208,7 @@ Only `src/bot.py` remains at the repository root as a thin launcher; package cod
 ### Testing
 
 Tests use pytest with pytest-asyncio (`asyncio_mode = "auto"`). All tests are mocked — no real API calls. CI runs the suite on Python 3.10, 3.11, 3.12, and 3.13.
-The suite is organized around the refactored package layout, with focused files such as `tests/test_openai_cog.py`, `tests/test_openai_embeds.py`, `tests/test_openai_responses.py`, and `tests/test_openai_tooling.py`.
+The suite is organized around the refactored package layout, with focused files such as `tests/test_openai_cog.py`, `tests/test_openai_embeds.py`, `tests/test_openai_responses.py`, `tests/test_openai_tooling.py`, `tests/test_openai_mcp_config.py`, and `tests/test_openai_chat.py`.
 `tests/test_package_import.py` is the package import smoke test.
 Import from `discord_openai` directly; legacy top-level shim modules are no longer part of the supported workflow.
 

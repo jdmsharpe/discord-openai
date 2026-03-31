@@ -1,6 +1,7 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from discord_openai.cogs.openai.tooling import extract_tool_info
+from discord_openai.cogs.openai.tooling import extract_tool_info, resolve_selected_tools
+from discord_openai.config.mcp import OpenAIMcpPreset
 
 
 class TestExtractToolInfo:
@@ -136,3 +137,66 @@ class TestExtractToolInfo:
 
         assert "shell" in result["tool_types"]
         assert result["citations"] == []
+
+    def test_extract_tool_info_mcp_outputs(self):
+        response = MagicMock()
+        response.output = [
+            {
+                "type": "mcp_list_tools",
+                "server_label": "GitHub",
+                "tools": [{"name": "search_issues"}],
+            },
+            {
+                "type": "mcp_call",
+                "server_label": "GitHub",
+                "name": "search_issues",
+                "output": "{\"items\": []}",
+            },
+            {
+                "type": "mcp_approval_request",
+                "id": "mcpr_123",
+                "server_label": "GitHub",
+                "name": "create_issue",
+                "arguments": "{\"title\":\"Bug\"}",
+            },
+        ]
+
+        result = extract_tool_info(response)
+
+        assert "mcp" in result["tool_types"]
+        assert result["mcp_list_tools"][0]["server_label"] == "GitHub"
+        assert result["mcp_calls"][0]["name"] == "search_issues"
+        assert result["pending_mcp_approval"] == {
+            "approval_request_id": "mcpr_123",
+            "server_label": "GitHub",
+            "tool_name": "create_issue",
+            "arguments": "{\"title\":\"Bug\"}",
+        }
+
+
+class TestResolveSelectedTools:
+    def test_resolve_selected_tools_includes_mcp_presets(self):
+        preset = OpenAIMcpPreset(
+            name="github",
+            kind="remote_mcp",
+            server_label="GitHub",
+            server_url="https://example.com/mcp",
+        )
+
+        with (
+            patch(
+                "discord_openai.cogs.openai.tooling.resolve_mcp_presets",
+                return_value=([preset], None),
+            ),
+            patch(
+                "discord_openai.cogs.openai.tooling.build_mcp_tool",
+                return_value={"type": "mcp", "server_label": "GitHub"},
+            ),
+        ):
+            tools, error = resolve_selected_tools(["web_search"], "gpt-5.4", ["github"])
+
+        assert error is None
+        assert tools == [
+            {"type": "web_search"},
+            {"type": "mcp", "server_label": "GitHub"},
+        ]

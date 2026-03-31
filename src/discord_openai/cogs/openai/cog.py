@@ -28,6 +28,8 @@ from .speech import run_stt_command, run_tts_command
 from .state import (
     cleanup_conversation,
     create_button_view,
+    create_mcp_approval_view,
+    prune_runtime_state,
     stop_conversation,
     strip_previous_view,
     track_and_append_cost,
@@ -58,14 +60,20 @@ class OpenAICog(commands.Cog):
     async def _strip_previous_view(self, user) -> None:
         await strip_previous_view(self, user)
 
-    async def _cleanup_conversation(self, user) -> None:
-        await cleanup_conversation(self, user)
+    async def _cleanup_conversation(self, user, conversation_id: int | None = None) -> None:
+        await cleanup_conversation(self, user, conversation_id)
 
     async def _stop_conversation(self, conversation_id: int, user) -> None:
         await stop_conversation(self, conversation_id, user)
 
+    async def _prune_runtime_state(self) -> None:
+        await prune_runtime_state(self)
+
     def _create_button_view(self, user, conversation_id: int, tools=None):
         return create_button_view(self, user, conversation_id, tools)
+
+    def _create_mcp_approval_view(self, user, conversation_id: int):
+        return create_mcp_approval_view(self, user, conversation_id)
 
     def _handle_tools_changed(
         self, selected_values: list[str], conversation
@@ -115,12 +123,30 @@ class OpenAICog(commands.Cog):
         track_and_append_cost(self, embeds, user_id, model, response, tool_info, command)
 
     def resolve_selected_tools(
-        self, selected_tool_names: list[str], model: str
+        self,
+        selected_tool_names: list[str],
+        model: str,
+        mcp_preset_names: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], str | None]:
-        return resolve_selected_tools(selected_tool_names, model)
+        return resolve_selected_tools(selected_tool_names, model, mcp_preset_names)
 
     async def handle_new_message_in_conversation(self, message, conversation):
         await handle_conversation_message(self, message, conversation)
+
+    async def regenerate_conversation_response(self, interaction, conversation):
+        from .chat import regenerate_conversation_response
+
+        await regenerate_conversation_response(self, interaction, conversation)
+
+    async def handle_mcp_approval(self, interaction, conversation):
+        from .chat import handle_mcp_approval_action
+
+        await handle_mcp_approval_action(self, interaction, conversation, approve=True)
+
+    async def handle_mcp_denial(self, interaction, conversation):
+        from .chat import handle_mcp_approval_action
+
+        await handle_mcp_approval_action(self, interaction, conversation, approve=False)
 
     async def keep_typing(self, channel):
         await keep_typing_loop(channel)
@@ -286,6 +312,12 @@ class OpenAICog(commands.Cog):
         required=False,
         type=bool,
     )
+    @option(
+        "mcp",
+        description="Optional comma-separated MCP preset names to enable for this conversation.",
+        required=False,
+        type=str,
+    )
     async def chat(
         self,
         ctx: ApplicationContext,
@@ -303,6 +335,7 @@ class OpenAICog(commands.Cog):
         code_interpreter: bool = False,
         file_search: bool = False,
         shell: bool = False,
+        mcp: str | None = None,
     ):
         await run_chat_command(
             self,
@@ -321,6 +354,7 @@ class OpenAICog(commands.Cog):
             code_interpreter,
             file_search,
             shell,
+            mcp,
         )
 
     @openai.command(

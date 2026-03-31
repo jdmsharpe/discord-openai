@@ -1,5 +1,7 @@
 import hashlib
 import tempfile
+from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -46,6 +48,22 @@ class UsageInfo(TypedDict):
     output_tokens: int
     cached_tokens: int
     reasoning_tokens: int
+
+
+class PendingMcpApproval(TypedDict):
+    approval_request_id: str
+    request_response_id: str
+    server_label: str
+    tool_name: str
+    arguments: str
+    intro_title: str | None
+    intro_description: str | None
+    attachment_url: str | None
+    input_tokens: int
+    output_tokens: int
+    cached_tokens: int
+    reasoning_tokens: int
+    tool_call_counts: dict[str, int]
 
 
 def extract_usage(response: Any) -> UsageInfo:
@@ -214,20 +232,6 @@ def calculate_video_cost(model: str, seconds: int) -> float:
 
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
 DEEP_RESEARCH_MODELS = ["o3-deep-research", "o4-mini-deep-research"]
-TOOL_WEB_SEARCH = {"type": "web_search"}
-TOOL_CODE_INTERPRETER = {"type": "code_interpreter", "container": {"type": "auto"}}
-TOOL_FILE_SEARCH = {
-    "type": "file_search",
-    "max_num_results": 5,
-    "ranking_options": {"ranker": "auto", "score_threshold": 0.3},
-}
-TOOL_SHELL = {"type": "shell", "environment": {"type": "container_auto"}}
-AVAILABLE_TOOLS = {
-    "web_search": TOOL_WEB_SEARCH,
-    "code_interpreter": TOOL_CODE_INTERPRETER,
-    "file_search": TOOL_FILE_SEARCH,
-    "shell": TOOL_SHELL,
-}
 
 # Server-side compaction: automatically compress context when it exceeds this
 # token threshold, preventing context-window overflow in long conversations.
@@ -305,11 +309,18 @@ class ResponseParameters:
         reasoning: dict | None = None,
         verbosity: str | None = None,
         tools: list[dict] | None = None,
+        tool_names: list[str] | None = None,
+        mcp_preset_names: list[str] | None = None,
         # Discord-specific fields (not sent to API)
         conversation_starter: Any | None = None,
+        conversation_starter_id: int | None = None,
         conversation_id: int | None = None,
         channel_id: int | None = None,
         paused: bool = False,
+        pending_mcp_approval: PendingMcpApproval | None = None,
+        last_user_input: Any = None,
+        last_user_message_id: int | None = None,
+        updated_at: datetime | None = None,
         # For regeneration support
         response_id_history: list[str] | None = None,
         # OpenAI safety identifier (hashed user ID for abuse detection)
@@ -322,6 +333,7 @@ class ResponseParameters:
         self.previous_response_id = previous_response_id
 
         # Handle model-specific reasoning and temperature/top_p restrictions.
+        self.reasoning = reasoning
         if model in REASONING_MODELS:
             # o-series: reasoning required, temperature/top_p not supported.
             self.temperature = None
@@ -344,22 +356,44 @@ class ResponseParameters:
             else:
                 self.temperature = temperature
                 self.top_p = top_p
-            self.reasoning = reasoning
         self.verbosity = verbosity
         self.tools = [tool.copy() for tool in tools] if tools is not None else []
+        self.tool_names = list(tool_names) if tool_names is not None else [
+            tool.get("type")
+            for tool in self.tools
+            if isinstance(tool, dict) and isinstance(tool.get("type"), str)
+        ]
+        self.mcp_preset_names = list(mcp_preset_names) if mcp_preset_names is not None else []
 
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
 
         # Discord-specific fields
         self.conversation_starter = conversation_starter
+        self.conversation_starter_id = conversation_starter_id
+        if self.conversation_starter_id is None and conversation_starter is not None:
+            self.conversation_starter_id = getattr(conversation_starter, "id", None)
         self.conversation_id = conversation_id
         self.channel_id = channel_id
         self.paused = paused
+        self.pending_mcp_approval = pending_mcp_approval
+        self.last_user_input = deepcopy(last_user_input) if last_user_input is not None else None
+        self.last_user_message_id = last_user_message_id
+        self.updated_at = updated_at if updated_at is not None else datetime.now(timezone.utc)
 
         # Response ID history for regeneration
         self.response_id_history = response_id_history if response_id_history is not None else []
         self.safety_identifier = safety_identifier
+
+    def touch(self) -> None:
+        """Update the in-memory activity timestamp for this conversation."""
+        self.updated_at = datetime.now(timezone.utc)
+
+    def set_last_user_input(self, input_content: Any, message_id: int | None = None) -> None:
+        """Store the latest normalized user input for deterministic regeneration."""
+        self.last_user_input = deepcopy(input_content)
+        self.last_user_message_id = message_id
+        self.touch()
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API calls (excludes Discord-specific fields)."""

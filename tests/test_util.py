@@ -4,6 +4,12 @@ import httpx
 import pytest
 from openai import APIError
 
+from discord_openai.cogs.openai.tooling import (
+    TOOL_CODE_INTERPRETER,
+    TOOL_FILE_SEARCH,
+    TOOL_SHELL,
+    TOOL_WEB_SEARCH,
+)
 from discord_openai.util import (
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
@@ -17,10 +23,6 @@ from discord_openai.util import (
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
     STT_PRICING_PER_MINUTE,
-    TOOL_CODE_INTERPRETER,
-    TOOL_FILE_SEARCH,
-    TOOL_SHELL,
-    TOOL_WEB_SEARCH,
     TTS_PRICING_PER_CHAR,
     VIDEO_PRICING_PER_SECOND,
     ImageGenerationParameters,
@@ -205,6 +207,23 @@ class TestResponseParameters:
             channel_id=789012,
             paused=True,
             response_id_history=["resp_1", "resp_2"],
+            tool_names=["web_search"],
+            mcp_preset_names=["github"],
+            pending_mcp_approval={
+                "approval_request_id": "mcpr_1",
+                "request_response_id": "resp_pending",
+                "server_label": "GitHub",
+                "tool_name": "create_issue",
+                "arguments": "{}",
+                "intro_title": None,
+                "intro_description": None,
+                "attachment_url": None,
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "cached_tokens": 0,
+                "reasoning_tokens": 0,
+                "tool_call_counts": {},
+            },
         )
         result = params.to_dict()
         assert "conversation_starter" not in result
@@ -212,6 +231,22 @@ class TestResponseParameters:
         assert "channel_id" not in result
         assert "paused" not in result
         assert "response_id_history" not in result
+        assert "tool_names" not in result
+        assert "mcp_preset_names" not in result
+        assert "pending_mcp_approval" not in result
+
+    def test_response_parameters_store_mcp_fields(self):
+        params = ResponseParameters(
+            model="gpt-5.4",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            tools=[{"type": "web_search"}],
+            tool_names=["web_search"],
+            mcp_preset_names=["github", "gmail"],
+        )
+
+        assert params.tool_names == ["web_search"]
+        assert params.mcp_preset_names == ["github", "gmail"]
+        assert params.pending_mcp_approval is None
 
     def test_input_string_format(self):
         """Test that input can be a simple string."""
