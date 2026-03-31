@@ -1,2 +1,2 @@
-# Normalize line endings: LF in the repo, OS-native on checkout.
-* text=auto
+# Normalize all text files to LF on commit
+* text=auto eol=lf
