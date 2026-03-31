@@ -41,7 +41,7 @@ src/
         └── views.py
 ```
 
-Top-level `button_view.py`, `util.py`, and `config/` remain repo-local implementation details and are not part of the installed public API.
+Only `src/bot.py` remains at the repo root; code imports should target `discord_openai...`.
 
 ## Testing And Patch Targets
 

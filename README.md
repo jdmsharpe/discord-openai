@@ -165,7 +165,7 @@ from discord_openai import OpenAICog
 bot.add_cog(OpenAICog(bot=bot))
 ```
 
-Top-level `bot.py`, `button_view.py`, `util.py`, and `config` are repo-local implementation details and are not the installed public API surface.
+Only `src/bot.py` remains at the repository root as a thin launcher; package code should be imported from `discord_openai`.
 
 ## Development
 
