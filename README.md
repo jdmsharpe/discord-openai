@@ -160,9 +160,9 @@ All commands are grouped under the `/openai` slash command group.
 To compose this repo into a larger bot, import the namespaced package:
 
 ```python
-from discord_openai import OpenAIAPI
+from discord_openai import OpenAICog
 
-bot.add_cog(OpenAIAPI(bot=bot))
+bot.add_cog(OpenAICog(bot=bot))
 ```
 
 The legacy top-level `openai_api` module remains as a temporary compatibility shim and emits a `DeprecationWarning`.

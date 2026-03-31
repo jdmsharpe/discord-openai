@@ -7,5 +7,6 @@ def test_openai_api_shim_warns_and_reexports():
         warnings.simplefilter("always")
         module = importlib.import_module("openai_api")
 
-    assert module.OpenAIAPI.__name__ == "OpenAIAPI"
+    assert module.OpenAICog.__name__ == "OpenAICog"
+    assert not hasattr(module, "OpenAIAPI")
     assert any(item.category is DeprecationWarning for item in caught)

@@ -4,43 +4,43 @@ from unittest.mock import MagicMock, patch
 import pytest
 from discord import Bot, Colour, Embed, Intents
 
-from discord_openai import OpenAIAPI
+from discord_openai import OpenAICog
 from discord_openai.cogs.openai.embeds import (
     append_flat_pricing_embed,
     append_pricing_embed,
     append_response_embeds,
     append_sources_embed,
     append_thinking_embeds,
-    extract_summary_text,
 )
 from discord_openai.cogs.openai.embeds import (
     error_embed as _error_embed,
 )
+from discord_openai.cogs.openai.responses import extract_summary_text
 from discord_openai.cogs.openai.tooling import extract_tool_info
 
 
-class TestOpenAIAPI:
+class TestOpenAICog:
     @pytest.fixture(autouse=True)
     def setup(self):
-        # Setting up the bot with the OpenAIAPI cog
+        # Setting up the bot with the OpenAICog cog
         intents = Intents.default()
         intents.presences = False
         intents.members = True
         intents.message_content = True
         self.bot: Any = Bot(intents=intents)
-        self.bot.add_cog(OpenAIAPI(bot=self.bot))
+        self.bot.add_cog(OpenAICog(bot=self.bot))
         self.bot.owner_id = 1234567890
 
     async def test_resolve_selected_tools_file_search_requires_vector_store(self):
-        cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
-        with patch("discord_openai.cogs.openai.cog.OPENAI_VECTOR_STORE_IDS", []):
+        cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
+        with patch("discord_openai.cogs.openai.tooling.OPENAI_VECTOR_STORE_IDS", []):
             tools, error = cog.resolve_selected_tools(["file_search"], "gpt-5.2")
         assert tools == []
         assert "OPENAI_VECTOR_STORE_IDS" in error
 
     async def test_resolve_selected_tools_file_search_success(self):
-        cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
-        with patch("discord_openai.cogs.openai.cog.OPENAI_VECTOR_STORE_IDS", ["vs_123"]):
+        cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
+        with patch("discord_openai.cogs.openai.tooling.OPENAI_VECTOR_STORE_IDS", ["vs_123"]):
             tools, error = cog.resolve_selected_tools(["file_search"], "gpt-5.2")
         assert error is None
         assert tools[0]["type"] == "file_search"
@@ -48,7 +48,7 @@ class TestOpenAIAPI:
         assert tools[0]["max_num_results"] == 5
 
     async def test_resolve_selected_tools_shell_model_guard(self):
-        cog = cast(OpenAIAPI, self.bot.cogs["OpenAIAPI"])
+        cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
         tools, error = cog.resolve_selected_tools(["shell"], "gpt-4.1")
         assert tools == []
         assert "GPT-5" in error
