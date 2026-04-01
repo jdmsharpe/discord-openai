@@ -1,3 +1,8 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .cogs.openai.cog import OpenAICog
+
 __all__ = ["OpenAICog"]
 
 

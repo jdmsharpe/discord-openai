@@ -14,7 +14,7 @@
   ```
 
 - `BOT_TOKEN` and `OPENAI_API_KEY` are read at module import time without raising. Call `validate_required_config()` before connecting so missing or blank vars produce a clear error rather than a silent downstream API failure.
-- `discord_openai` and `discord_openai.cogs.openai` both use lazy `__getattr__` exports so helper imports do not eagerly pull in Discord-heavy modules.
+- `discord_openai` and `discord_openai.cogs.openai` both use lazy `__getattr__` exports so helper imports do not eagerly pull in Discord-heavy modules. Type-only imports keep `pyright src/` aware of those public exports.
 
 ## Package Layout
 
@@ -77,6 +77,8 @@ ruff format src/ tests/
 pyright src/
 pytest -q
 ```
+
+- The repo pre-commit hook prefers a repo-local `.venv` Ruff binary when available and falls back to `PATH`.
 
 ## Provider Notes
 

@@ -219,6 +219,7 @@ Only `src/bot.py` remains at the repository root as a thin launcher; package cod
 Tests use pytest with pytest-asyncio (`asyncio_mode = "auto"`). All tests are mocked — no real API calls. CI runs the suite on Python 3.10, 3.11, 3.12, and 3.13.
 The suite is organized around the refactored package layout, with focused files such as `tests/test_openai_cog.py`, `tests/test_openai_embeds.py`, `tests/test_openai_responses.py`, `tests/test_openai_tooling.py`, `tests/test_openai_mcp_config.py`, `tests/test_openai_chat.py`, `tests/test_openai_state.py`, `tests/test_config_auth.py`, and `tests/test_lazy_imports.py`.
 `tests/test_package_import.py` is the package import smoke test, and `tests/test_lazy_imports.py` covers the lazy package exports used by `discord_openai` and `discord_openai.cogs.openai`.
+The lazy package exports are paired with type-only imports so `pyright src/` can validate public namespaced imports without eagerly importing the full cog modules at runtime.
 Import from `discord_openai` directly; legacy top-level shim modules are no longer part of the supported workflow.
 
 ```bash
@@ -242,3 +243,4 @@ pyright src/
 ```
 
 After cloning, run `git config core.hooksPath .githooks` to enable the pre-commit hook.
+The pre-commit hook prefers a repo-local `.venv` Ruff binary when available and falls back to `PATH`.

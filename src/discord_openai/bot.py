@@ -4,7 +4,7 @@ import logging
 
 from discord import Bot, Intents
 
-from . import OpenAICog
+from .cogs.openai.cog import OpenAICog
 from .config import BOT_TOKEN
 from .config.auth import validate_required_config
 

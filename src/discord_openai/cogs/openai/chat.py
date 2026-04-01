@@ -37,6 +37,13 @@ def _merge_tool_call_counts(*counts: dict[str, int]) -> dict[str, int]:
     return merged
 
 
+def _require_conversation_id(conversation: ResponseParameters) -> int:
+    conversation_id = conversation.conversation_id
+    if conversation_id is None:
+        raise RuntimeError("Conversation ID is required for interactive view state.")
+    return conversation_id
+
+
 def _build_intro_embeds(
     title: str | None,
     description: str | None,
@@ -182,7 +189,8 @@ async def _send_conversation_reply(
     embeds: list[Embed],
     view,
 ) -> Any:
-    await cog._strip_previous_view(conversation.conversation_id)
+    conversation_id = _require_conversation_id(conversation)
+    await cog._strip_previous_view(conversation_id)
 
     if embeds:
         reply_msg = await send_reply(embeds=embeds, view=view)
@@ -193,7 +201,7 @@ async def _send_conversation_reply(
             view=view,
         )
 
-    remember_view_state(cog, user_id, conversation.conversation_id, view, reply_msg)
+    remember_view_state(cog, user_id, conversation_id, view, reply_msg)
     return reply_msg
 
 
@@ -208,6 +216,7 @@ async def _run_followup_response(
     message_id: int | None = None,
 ) -> None:
     typing_task = asyncio.create_task(keep_typing(channel))
+    conversation_id = _require_conversation_id(conversation)
 
     try:
         tools, tool_error = _resolve_conversation_tools(cog, conversation)
@@ -255,7 +264,7 @@ async def _run_followup_response(
                         color=Colour.blue(),
                     )
                 )
-            reply_view = cog._create_mcp_approval_view(user_id, conversation.conversation_id)
+            reply_view = cog._create_mcp_approval_view(user_id, conversation_id)
             await _send_conversation_reply(
                 cog,
                 user_id=user_id,
@@ -280,7 +289,7 @@ async def _run_followup_response(
             append_sources_embed(embeds, tool_info["citations"], tool_info["file_citations"])
         cog._track_and_append_cost(embeds, user_id, conversation.model, response, tool_info)
 
-        reply_view = cog._create_button_view(user_id, conversation.conversation_id, tools)
+        reply_view = cog._create_button_view(user_id, conversation_id, tools)
         await _send_conversation_reply(
             cog,
             user_id=user_id,
@@ -403,6 +412,7 @@ async def handle_mcp_approval_action(
 
     typing_task = asyncio.create_task(keep_typing(channel))
     try:
+        conversation_id = _require_conversation_id(conversation)
         approval_input = [
             {
                 "type": "mcp_approval_response",
@@ -463,12 +473,10 @@ async def handle_mcp_approval_action(
                 )
             approval_view = cog._create_mcp_approval_view(
                 user_id,
-                conversation.conversation_id,
+                conversation_id,
             )
             await interaction.message.edit(embeds=embeds, view=approval_view)
-            remember_view_state(
-                cog, user_id, conversation.conversation_id, approval_view, interaction.message
-            )
+            remember_view_state(cog, user_id, conversation_id, approval_view, interaction.message)
             await interaction.followup.send(
                 "Another MCP approval is required before this conversation can continue.",
                 ephemeral=True,
@@ -507,13 +515,11 @@ async def handle_mcp_approval_action(
 
         reply_view = cog._create_button_view(
             user_id,
-            conversation.conversation_id,
+            conversation_id,
             tools,
         )
         await interaction.message.edit(embeds=embeds, view=reply_view)
-        remember_view_state(
-            cog, user_id, conversation.conversation_id, reply_view, interaction.message
-        )
+        remember_view_state(cog, user_id, conversation_id, reply_view, interaction.message)
         await interaction.followup.send(
             "MCP request approved." if approve else "MCP request denied.",
             ephemeral=True,

@@ -3,7 +3,6 @@ import sys
 
 import pytest
 
-
 MODULE_NAME = "discord_openai.config.auth"
 
 
