@@ -7,9 +7,13 @@
 
   ```python
   from discord_openai import OpenAICog
+  from discord_openai.config.auth import validate_required_config
 
+  validate_required_config()  # raises if BOT_TOKEN or OPENAI_API_KEY are missing
   bot.add_cog(OpenAICog(bot=bot))
   ```
+
+- `BOT_TOKEN` and `OPENAI_API_KEY` are read via `os.getenv()` at module import time (never raise). Call `validate_required_config()` before connecting so missing vars produce a clear error rather than a silent `None`-typed API failure.
 
 ## Package Layout
 
@@ -48,8 +52,10 @@ Only `src/bot.py` remains at the repo root; code imports should target `discord_
 ## Testing And Patch Targets
 
 - `pytest` runs with `pythonpath = ["src"]`.
+- `tests/conftest.py` provides an autouse fixture that sets dummy `BOT_TOKEN` and `OPENAI_API_KEY` env vars so the package can be imported without real credentials in CI.
 - The test suite is organized into module-aligned files such as `tests/test_openai_cog.py`, `tests/test_openai_embeds.py`, `tests/test_openai_responses.py`, and `tests/test_openai_tooling.py`.
 - MCP coverage lives primarily in `tests/test_openai_mcp_config.py` and `tests/test_openai_chat.py`.
+- Runtime state pruning is covered in `tests/test_openai_state.py`.
 - `tests/test_package_import.py` is the package import smoke test.
 - New tests and patches should target real owners under `discord_openai...`.
 - Examples:
