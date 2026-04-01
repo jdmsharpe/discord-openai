@@ -11,7 +11,8 @@ from discord import (
 )
 from discord.ui import Button, Select, View, button
 
-from .tooling import get_tool_select_max_values, get_tool_select_options, is_known_tool
+from .tool_registry import get_tool_select_options
+from .tooling import is_known_tool
 
 
 async def _send_interaction_error(interaction: Interaction, context: str, error: Exception) -> None:
@@ -54,14 +55,14 @@ class ButtonView(View):
             if isinstance(tool_type, str):
                 selected_tool_types.add(tool_type)
 
+        options = [
+            SelectOption(**option) for option in get_tool_select_options(selected_tool_types)
+        ]
         tool_select = Select(
             placeholder="Tools",
-            options=[
-                SelectOption(**option)
-                for option in get_tool_select_options(selected_tool_types)
-            ],
+            options=options,
             min_values=0,
-            max_values=get_tool_select_max_values(),
+            max_values=len(options),
             row=1,
         )
 

@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+from discord_openai.cogs.openai.tool_registry import TOOL_REGISTRY, get_tool_select_options
 from discord_openai.cogs.openai.tooling import extract_tool_info, resolve_selected_tools
 from discord_openai.config.mcp import OpenAIMcpPreset
 
@@ -150,14 +151,14 @@ class TestExtractToolInfo:
                 "type": "mcp_call",
                 "server_label": "GitHub",
                 "name": "search_issues",
-                "output": "{\"items\": []}",
+                "output": '{"items": []}',
             },
             {
                 "type": "mcp_approval_request",
                 "id": "mcpr_123",
                 "server_label": "GitHub",
                 "name": "create_issue",
-                "arguments": "{\"title\":\"Bug\"}",
+                "arguments": '{"title":"Bug"}',
             },
         ]
 
@@ -170,7 +171,7 @@ class TestExtractToolInfo:
             "approval_request_id": "mcpr_123",
             "server_label": "GitHub",
             "tool_name": "create_issue",
-            "arguments": "{\"title\":\"Bug\"}",
+            "arguments": '{"title":"Bug"}',
         }
 
 
@@ -200,3 +201,19 @@ class TestResolveSelectedTools:
             {"type": "web_search"},
             {"type": "mcp", "server_label": "GitHub"},
         ]
+
+
+class TestToolRegistrySync:
+    def test_tool_select_options_match_registry_keys(self):
+        option_values = [option["value"] for option in get_tool_select_options()]
+        assert option_values == list(TOOL_REGISTRY.keys())
+
+    def test_resolve_selected_tools_uses_registry_entries(self):
+        with patch(
+            "discord_openai.cogs.openai.tool_registry.OPENAI_VECTOR_STORE_IDS",
+            ["vs_123"],
+        ):
+            tools, error = resolve_selected_tools(list(TOOL_REGISTRY.keys()), "gpt-5.4")
+
+        assert error is None
+        assert [tool["type"] for tool in tools] == list(TOOL_REGISTRY.keys())

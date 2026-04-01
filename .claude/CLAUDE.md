@@ -37,6 +37,7 @@ src/
         ├── responses.py
         ├── speech.py
         ├── state.py
+        ├── tool_registry.py
         ├── tooling.py
         ├── video.py
         └── views.py
@@ -52,7 +53,8 @@ Only `src/bot.py` remains at the repo root; code imports should target `discord_
 - `tests/test_package_import.py` is the package import smoke test.
 - New tests and patches should target real owners under `discord_openai...`.
 - Examples:
-  - `discord_openai.cogs.openai.tooling.OPENAI_VECTOR_STORE_IDS`
+  - `discord_openai.cogs.openai.tool_registry.TOOL_REGISTRY`
+  - `discord_openai.cogs.openai.tool_registry.get_tool_select_options`
   - `discord_openai.cogs.openai.embeds.append_pricing_embed`
   - `discord_openai.cogs.openai.tooling.extract_tool_info`
   - `discord_openai.config.mcp.OPENAI_MCP_PRESETS`

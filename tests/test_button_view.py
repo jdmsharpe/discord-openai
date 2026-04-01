@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from discord.ui import Button, Select
 
+from discord_openai.cogs.openai.tool_registry import TOOL_REGISTRY
 from discord_openai.cogs.openai.tooling import (
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
@@ -43,7 +44,7 @@ class TestButtonView:
         selects = [component for component in view.children if isinstance(component, Select)]
         assert len(selects) == 1
         assert selects[0].min_values == 0
-        assert selects[0].max_values == 4
+        assert selects[0].max_values == len(TOOL_REGISTRY)
 
     @pytest.mark.asyncio
     async def test_tool_select_initial_defaults(self):
@@ -55,7 +56,9 @@ class TestButtonView:
                 TOOL_SHELL,
             ]
         )
-        tool_select = next(component for component in view.children if isinstance(component, Select))
+        tool_select = next(
+            component for component in view.children if isinstance(component, Select)
+        )
         option_defaults = {option.value: option.default for option in tool_select.options}
         assert option_defaults["web_search"] is True
         assert option_defaults["code_interpreter"] is True
@@ -71,7 +74,9 @@ class TestButtonView:
             get_conversation=MagicMock(return_value=conversation),
             on_tools_changed=on_tools_changed,
         )
-        tool_select = next(component for component in view.children if isinstance(component, Select))
+        tool_select = next(
+            component for component in view.children if isinstance(component, Select)
+        )
 
         selected = MagicMock()
         selected.values = ["web_search", "code_interpreter"]
