@@ -189,6 +189,7 @@ Each preset is keyed by name and supports this schema:
 - (Recommended) Create a virtual environment
 - Install the dependencies with `pip install -r requirements.txt`
 - Copy `.env.example` to `.env` and fill in your values. Optional settings are included as commented examples in the template:
+  - The bot now fails fast at startup if required environment variables are missing or blank (`BOT_TOKEN`, `OPENAI_API_KEY`).
   - `BOT_TOKEN`: Your Discord bot token
   - `GUILD_IDS`: Comma-separated list of Discord server IDs to deploy the bot on
   - `OPENAI_API_KEY`: Your OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
