@@ -20,14 +20,14 @@ class TestOpenAICog:
 
     async def test_resolve_selected_tools_file_search_requires_vector_store(self):
         cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
-        with patch("discord_openai.cogs.openai.tooling.OPENAI_VECTOR_STORE_IDS", []):
+        with patch("discord_openai.cogs.openai.tool_registry.OPENAI_VECTOR_STORE_IDS", []):
             tools, error = cog.resolve_selected_tools(["file_search"], "gpt-5.2")
         assert tools == []
         assert "OPENAI_VECTOR_STORE_IDS" in error
 
     async def test_resolve_selected_tools_file_search_success(self):
         cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
-        with patch("discord_openai.cogs.openai.tooling.OPENAI_VECTOR_STORE_IDS", ["vs_123"]):
+        with patch("discord_openai.cogs.openai.tool_registry.OPENAI_VECTOR_STORE_IDS", ["vs_123"]):
             tools, error = cog.resolve_selected_tools(["file_search"], "gpt-5.2")
         assert error is None
         assert tools[0]["type"] == "file_search"

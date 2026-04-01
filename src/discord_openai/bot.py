@@ -6,6 +6,7 @@ from discord import Bot, Intents
 
 from . import OpenAICog
 from .config import BOT_TOKEN
+from .config.auth import validate_required_config
 
 
 def build_bot() -> Bot:
@@ -24,6 +25,7 @@ def main() -> None:
         level=logging.DEBUG,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+    validate_required_config()
     bot = build_bot()
     bot.run(BOT_TOKEN)
 

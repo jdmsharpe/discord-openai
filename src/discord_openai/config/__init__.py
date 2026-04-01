@@ -4,6 +4,7 @@ from .auth import (
     OPENAI_API_KEY,
     OPENAI_VECTOR_STORE_IDS,
     SHOW_COST_EMBEDS,
+    validate_required_config,
 )
 from .mcp import (
     APPROVAL_ALWAYS,
@@ -32,4 +33,5 @@ __all__ = [
     "load_openai_mcp_presets",
     "parse_mcp_preset_names",
     "resolve_mcp_presets",
+    "validate_required_config",
 ]
