@@ -121,6 +121,64 @@ class TestRunChatCommand:
         assert cog.views[123] is approval_view
         assert cog.last_view_messages[123] is reply_message
 
+    @pytest.mark.asyncio
+    async def test_chat_command_renders_zero_numeric_params(self):
+        reply_message = MagicMock()
+        reply_view = MagicMock()
+        response = _make_response(response_id="resp_done", output=[], output_text="Done")
+
+        cog = SimpleNamespace(
+            conversation_histories={},
+            views={},
+            last_view_messages={},
+            daily_costs={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(
+                responses=SimpleNamespace(create=AsyncMock(return_value=response))
+            ),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+            _create_mcp_approval_view=MagicMock(),
+            _create_button_view=MagicMock(return_value=reply_view),
+            _track_and_append_cost=MagicMock(),
+        )
+
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(return_value=reply_message),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="Render zero values",
+            persona="You are helpful.",
+            model="gpt-5.4",
+            attachment=None,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
+            temperature=0.0,
+            top_p=0.0,
+            reasoning_effort=None,
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+        )
+
+        embeds = ctx.send_followup.await_args.kwargs["embeds"]
+        intro_description = embeds[0].description
+        assert "**Frequency Penalty:** 0.0" in intro_description
+        assert "**Presence Penalty:** 0.0" in intro_description
+        assert "**Temperature:** 0.0" in intro_description
+        assert "**Nucleus Sampling:** 0.0" in intro_description
+
 
 class TestHandleOnMessage:
     @pytest.mark.asyncio
