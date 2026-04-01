@@ -132,20 +132,14 @@ bot.add_cog(OpenAICog(bot=bot))
 ```
 
 ## Discord Bot Setup
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Create a new application and add a bot.
-3. Enable **Server Members Intent** and **Message Content Intent** under Privileged Gateway Intents.
-4. Set the **Bot Permissions Integer** to `397821737984`.
-
-<div align="center">
-
-![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/87e33ec0-e496-4835-9526-4eaa1e980f7f)
-![image](https://github.com/jdmsharpe/discord-openai-bot/assets/55511821/b0e2d96a-769b-471c-91ad-ef2f2dc54f13)
-
-</div>
-
-5. Generate your OAuth2 URL using the scopes `bot` and `applications.commands`.
-6. Use the generated URL to invite the bot to your server.
+1. Go to the Discord Developer Portal.
+2. Create a new application and add a bot in the "Bot" section.
+3. Enable Server Members Intent and Message Content Intent under Privileged Gateway Intents.
+4. Copy the bot token and add it to your .env file.
+5. Go to OAuth2 > URL Generator.
+6. Select scopes: bot, applications.commands.
+7. Select permissions: Send Messages, Read Message History, Use Slash Commands, Embed Links, Attach Files.
+8. Use the generated URL to invite the bot to your server.
 
 ## Usage & Demo
 Start a chat via `/openai chat`, write follow-up messages directly in the channel, and utilize interactive UI elements for approvals, regeneration, and tools.
