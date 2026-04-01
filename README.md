@@ -195,7 +195,7 @@ Each preset is keyed by name and supports this schema:
   - `OPENAI_VECTOR_STORE_IDS`: Comma-separated vector store IDs used by `/openai chat` file search tool (Optional)
   - `OPENAI_MCP_PRESETS_JSON`: Inline JSON object of named MCP presets for `/openai chat mcp` (Optional)
   - `OPENAI_MCP_PRESETS_PATH`: Path to a JSON file containing named MCP presets for `/openai chat mcp`; additive with `OPENAI_MCP_PRESETS_JSON`, and preset names must be unique across both sources (Optional)
-  - `SHOW_COST_EMBEDS`: Show cost/token usage embeds on chat responses — `true` (default) or `false` (Optional)
+  - `SHOW_COST_EMBEDS`: Show cost/token usage embeds on chat responses — `true` by default; `true`, `1`, or `yes` enable it (Optional)
 - `BOT_TOKEN` and `OPENAI_API_KEY` are required; the bot exits at startup with a clear error if either is missing or blank.
 - Run the bot with `python src/bot.py`
   - `src/bot.py` remains a thin repo-local launcher that delegates to `discord_openai.bot.main`
@@ -217,8 +217,8 @@ Only `src/bot.py` remains at the repository root as a thin launcher; package cod
 ### Testing
 
 Tests use pytest with pytest-asyncio (`asyncio_mode = "auto"`). All tests are mocked — no real API calls. CI runs the suite on Python 3.10, 3.11, 3.12, and 3.13.
-The suite is organized around the refactored package layout, with focused files such as `tests/test_openai_cog.py`, `tests/test_openai_embeds.py`, `tests/test_openai_responses.py`, `tests/test_openai_tooling.py`, `tests/test_openai_mcp_config.py`, and `tests/test_openai_chat.py`.
-`tests/test_package_import.py` is the package import smoke test.
+The suite is organized around the refactored package layout, with focused files such as `tests/test_openai_cog.py`, `tests/test_openai_embeds.py`, `tests/test_openai_responses.py`, `tests/test_openai_tooling.py`, `tests/test_openai_mcp_config.py`, `tests/test_openai_chat.py`, `tests/test_openai_state.py`, `tests/test_config_auth.py`, and `tests/test_lazy_imports.py`.
+`tests/test_package_import.py` is the package import smoke test, and `tests/test_lazy_imports.py` covers the lazy package exports used by `discord_openai` and `discord_openai.cogs.openai`.
 Import from `discord_openai` directly; legacy top-level shim modules are no longer part of the supported workflow.
 
 ```bash
