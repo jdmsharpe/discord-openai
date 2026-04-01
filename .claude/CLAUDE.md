@@ -1,5 +1,15 @@
 # Discord OpenAI Bot - Developer Reference
 
+## Quick Start
+
+```bash
+cp .env.example .env          # fill in BOT_TOKEN and OPENAI_API_KEY at minimum
+pip install -r requirements.txt
+python src/bot.py              # or: docker compose up
+```
+
+- `GUILD_IDS`: comma-separated Discord server IDs; omit for global slash-command registration (takes ~1 h to propagate) or set for instant per-guild registration.
+
 ## Supported Entry Points
 
 - Launcher: `python src/bot.py` remains supported and delegates to `discord_openai.bot.main`.
@@ -37,7 +47,7 @@ src/
         ├── cog.py
         ├── embeds.py
         ├── image.py
-        ├── models.py
+        ├── models.py           # Re-export shim for util.py parameter types
         ├── research.py
         ├── responses.py
         ├── speech.py
@@ -58,6 +68,8 @@ Only `src/bot.py` remains at the repo root; code imports should target `discord_
 - MCP coverage lives primarily in `tests/test_openai_mcp_config.py` and `tests/test_openai_chat.py`.
 - Runtime state pruning is covered in `tests/test_openai_state.py`.
 - `tests/test_package_import.py` is the package import smoke test.
+- `tests/test_util.py` covers `ResponseParameters`, cost helpers, and error formatting.
+- `tests/test_button_view.py` covers the button-based Discord UI components.
 - New tests and patches should target real owners under `discord_openai...`.
 - Examples:
   - `discord_openai.cogs.openai.tool_registry.TOOL_REGISTRY`
@@ -84,6 +96,7 @@ pytest -q
 
 - `resolve_selected_tools()` in `discord_openai.cogs.openai.tooling` remains the canonical tool-resolution path for chat and research.
 - `file_search` requires `OPENAI_VECTOR_STORE_IDS`.
+- `gpt-5`, `gpt-5-mini`, and `gpt-5-nano` (`GPT5_NO_TEMP_MODELS`) never accept `temperature` or `top_p`; `ResponseParameters.__init__` silently drops them.
 - `shell` remains limited to GPT-5 series models.
 - `ResponseParameters.to_dict()` in `discord_openai.util` remains the canonical request-construction path.
 - Named MCP presets are loaded from `OPENAI_MCP_PRESETS_JSON` and `OPENAI_MCP_PRESETS_PATH`; when both are set they merge additively, and duplicate preset names are rejected.
