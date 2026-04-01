@@ -158,7 +158,9 @@ def _build_pending_mcp_approval(
         "intro_description": (
             existing_pending["intro_description"] if existing_pending else intro_description
         ),
-        "attachment_url": existing_pending["attachment_url"] if existing_pending else attachment_url,
+        "attachment_url": existing_pending["attachment_url"]
+        if existing_pending
+        else attachment_url,
         "input_tokens": (existing_pending["input_tokens"] if existing_pending else 0)
         + usage["input_tokens"],
         "output_tokens": (existing_pending["output_tokens"] if existing_pending else 0)
@@ -324,6 +326,12 @@ async def handle_new_message_in_conversation(
             exc_info=True,
         )
         await cog._cleanup_conversation(message.author.id, conversation.conversation_id)
+        removed_conversation = cog.conversation_histories.pop(conversation.conversation_id, None)
+        if removed_conversation is not None:
+            cog.logger.info(
+                "Cleanup removed stale conversation id %s after follow-up failure.",
+                conversation.conversation_id,
+            )
         await message.reply(embed=error_embed(description))
 
 
@@ -368,7 +376,9 @@ async def handle_mcp_approval_action(
     user_id = user.id
     pending = conversation.pending_mcp_approval
     if pending is None:
-        await interaction.followup.send("No pending MCP approval request was found.", ephemeral=True)
+        await interaction.followup.send(
+            "No pending MCP approval request was found.", ephemeral=True
+        )
         return
 
     if interaction.message is None:

@@ -189,7 +189,6 @@ Each preset is keyed by name and supports this schema:
 - (Recommended) Create a virtual environment
 - Install the dependencies with `pip install -r requirements.txt`
 - Copy `.env.example` to `.env` and fill in your values. Optional settings are included as commented examples in the template:
-  - The bot now fails fast at startup if required environment variables are missing or blank (`BOT_TOKEN`, `OPENAI_API_KEY`).
   - `BOT_TOKEN`: Your Discord bot token
   - `GUILD_IDS`: Comma-separated list of Discord server IDs to deploy the bot on
   - `OPENAI_API_KEY`: Your OpenAI API key (available at [OpenAI API Platform](https://platform.openai.com/api-keys))
@@ -197,6 +196,7 @@ Each preset is keyed by name and supports this schema:
   - `OPENAI_MCP_PRESETS_JSON`: Inline JSON object of named MCP presets for `/openai chat mcp` (Optional)
   - `OPENAI_MCP_PRESETS_PATH`: Path to a JSON file containing named MCP presets for `/openai chat mcp`; additive with `OPENAI_MCP_PRESETS_JSON`, and preset names must be unique across both sources (Optional)
   - `SHOW_COST_EMBEDS`: Show cost/token usage embeds on chat responses — `true` (default) or `false` (Optional)
+- `BOT_TOKEN` and `OPENAI_API_KEY` are required; the bot exits at startup with a clear error if either is missing or blank.
 - Run the bot with `python src/bot.py`
   - `src/bot.py` remains a thin repo-local launcher that delegates to `discord_openai.bot.main`
 

@@ -5,6 +5,7 @@ import pytest
 
 from discord_openai.cogs.openai.chat import (
     handle_mcp_approval_action,
+    handle_new_message_in_conversation,
     handle_on_message,
     run_chat_command,
 )
@@ -54,7 +55,7 @@ class TestRunChatCommand:
                     "id": "mcpr_1",
                     "server_label": "GitHub",
                     "name": "create_issue",
-                    "arguments": "{\"title\":\"Bug\"}",
+                    "arguments": '{"title":"Bug"}',
                 }
             ],
         )
@@ -65,9 +66,14 @@ class TestRunChatCommand:
             last_view_messages={},
             daily_costs={},
             logger=MagicMock(),
-            openai_client=SimpleNamespace(responses=SimpleNamespace(create=AsyncMock(return_value=response))),
+            openai_client=SimpleNamespace(
+                responses=SimpleNamespace(create=AsyncMock(return_value=response))
+            ),
             resolve_selected_tools=MagicMock(
-                return_value=([{"type": "web_search"}, {"type": "mcp", "server_label": "GitHub"}], None)
+                return_value=(
+                    [{"type": "web_search"}, {"type": "mcp", "server_label": "GitHub"}],
+                    None,
+                )
             ),
             _prune_runtime_state=AsyncMock(),
             _cleanup_conversation=AsyncMock(),
@@ -158,6 +164,43 @@ class TestHandleOnMessage:
         message.reply.assert_awaited_once()
 
 
+class TestHandleNewMessageInConversation:
+    @pytest.mark.asyncio
+    async def test_followup_failure_removes_stale_conversation_history(self):
+        conversation = ResponseParameters(
+            model="gpt-5.4",
+            input=[],
+            conversation_starter_id=123,
+            channel_id=456,
+            conversation_id=789,
+        )
+        message = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel=SimpleNamespace(),
+            content="hi",
+            attachments=[],
+            id=111,
+            reply=AsyncMock(),
+        )
+        cog = SimpleNamespace(
+            logger=MagicMock(),
+            conversation_histories={789: conversation},
+            openai_client=SimpleNamespace(
+                responses=SimpleNamespace(create=AsyncMock(side_effect=RuntimeError("boom")))
+            ),
+            resolve_selected_tools=MagicMock(return_value=([{"type": "web_search"}], None)),
+            _cleanup_conversation=AsyncMock(),
+        )
+
+        with patch("discord_openai.cogs.openai.chat.keep_typing", new=AsyncMock()):
+            await handle_new_message_in_conversation(cog, message, conversation)
+
+        assert 789 not in cog.conversation_histories
+        cog._cleanup_conversation.assert_awaited_once_with(123, 789)
+        message.reply.assert_awaited_once()
+        assert "Cleanup removed stale conversation id" in cog.logger.info.call_args.args[0]
+
+
 class TestHandleMcpApprovalAction:
     @pytest.mark.asyncio
     async def test_approval_updates_response_chain_and_edits_message(self):
@@ -174,7 +217,7 @@ class TestHandleMcpApprovalAction:
                 "request_response_id": "resp_pending",
                 "server_label": "GitHub",
                 "tool_name": "create_issue",
-                "arguments": "{\"title\":\"Bug\"}",
+                "arguments": '{"title":"Bug"}',
                 "intro_title": "Conversation Started",
                 "intro_description": "**Prompt:** hi",
                 "attachment_url": None,
@@ -189,7 +232,9 @@ class TestHandleMcpApprovalAction:
             response_id="resp_final",
             output=[],
             output_text="Created the issue.",
-            usage=_make_usage(input_tokens=20, output_tokens=10, cached_tokens=2, reasoning_tokens=1),
+            usage=_make_usage(
+                input_tokens=20, output_tokens=10, cached_tokens=2, reasoning_tokens=1
+            ),
         )
         reply_view = MagicMock()
         message = MagicMock()
@@ -203,7 +248,10 @@ class TestHandleMcpApprovalAction:
                 responses=SimpleNamespace(create=AsyncMock(return_value=final_response))
             ),
             resolve_selected_tools=MagicMock(
-                return_value=([{"type": "web_search"}, {"type": "mcp", "server_label": "GitHub"}], None)
+                return_value=(
+                    [{"type": "web_search"}, {"type": "mcp", "server_label": "GitHub"}],
+                    None,
+                )
             ),
             _track_daily_cost=MagicMock(return_value=2.34),
             _create_button_view=MagicMock(return_value=reply_view),
