@@ -118,8 +118,8 @@ class TestRunChatCommand:
         assert conversation.mcp_preset_names == ["github"]
         ctx.send_followup.assert_awaited_once()
         assert ctx.send_followup.await_args.kwargs["view"] is approval_view
-        assert cog.views[123] is approval_view
-        assert cog.last_view_messages[123] is reply_message
+        assert cog.views[789][1] is approval_view
+        assert cog.last_view_messages[789][1] is reply_message
 
     @pytest.mark.asyncio
     async def test_chat_command_renders_zero_numeric_params(self):
@@ -340,5 +340,5 @@ class TestHandleMcpApprovalAction:
         assert conversation.pending_mcp_approval is None
         message.edit.assert_awaited_once()
         assert message.edit.await_args.kwargs["view"] is reply_view
-        assert cog.views[123] is reply_view
-        assert cog.last_view_messages[123] is message
+        assert cog.views[42][1] is reply_view
+        assert cog.last_view_messages[42][1] is message

@@ -7,7 +7,7 @@ from discord import (
     Embed,
 )
 from discord.commands import OptionChoice, SlashCommandGroup, option
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from ...config.auth import GUILD_IDS
 from .chat import (
@@ -57,8 +57,12 @@ class OpenAICog(commands.Cog):
         self.last_view_messages = {}
         self.daily_costs = {}
 
-    async def _strip_previous_view(self, user) -> None:
-        await strip_previous_view(self, user)
+    def cog_unload(self):
+        if self._runtime_cleanup_task.is_running():
+            self._runtime_cleanup_task.cancel()
+
+    async def _strip_previous_view(self, conversation_id: int) -> None:
+        await strip_previous_view(self, conversation_id)
 
     async def _cleanup_conversation(self, user, conversation_id: int | None = None) -> None:
         await cleanup_conversation(self, user, conversation_id)
@@ -151,6 +155,14 @@ class OpenAICog(commands.Cog):
     async def keep_typing(self, channel):
         await keep_typing_loop(channel)
 
+    @tasks.loop(minutes=15)
+    async def _runtime_cleanup_task(self) -> None:
+        await self._prune_runtime_state()
+
+    @_runtime_cleanup_task.before_loop
+    async def _before_runtime_cleanup_task(self) -> None:
+        await self.bot.wait_until_ready()
+
     # Added for debugging purposes
     @commands.Cog.listener()
     async def on_ready(self):
@@ -160,6 +172,8 @@ class OpenAICog(commands.Cog):
         """
         self.logger.info(f"Logged in as {self.bot.user} (ID: {self.bot.owner_id})")
         self.logger.info(f"Attempting to sync commands for guilds: {GUILD_IDS}")
+        if not self._runtime_cleanup_task.is_running():
+            self._runtime_cleanup_task.start()
         try:
             await self.bot.sync_commands()
             self.logger.info("Commands synchronized successfully.")

@@ -182,7 +182,7 @@ async def _send_conversation_reply(
     embeds: list[Embed],
     view,
 ) -> Any:
-    await cog._strip_previous_view(user_id)
+    await cog._strip_previous_view(conversation.conversation_id)
 
     if embeds:
         reply_msg = await send_reply(embeds=embeds, view=view)
@@ -193,7 +193,7 @@ async def _send_conversation_reply(
             view=view,
         )
 
-    remember_view_state(cog, user_id, view, reply_msg)
+    remember_view_state(cog, user_id, conversation.conversation_id, view, reply_msg)
     return reply_msg
 
 
@@ -466,7 +466,9 @@ async def handle_mcp_approval_action(
                 conversation.conversation_id,
             )
             await interaction.message.edit(embeds=embeds, view=approval_view)
-            remember_view_state(cog, user_id, approval_view, interaction.message)
+            remember_view_state(
+                cog, user_id, conversation.conversation_id, approval_view, interaction.message
+            )
             await interaction.followup.send(
                 "Another MCP approval is required before this conversation can continue.",
                 ephemeral=True,
@@ -509,7 +511,9 @@ async def handle_mcp_approval_action(
             tools,
         )
         await interaction.message.edit(embeds=embeds, view=reply_view)
-        remember_view_state(cog, user_id, reply_view, interaction.message)
+        remember_view_state(
+            cog, user_id, conversation.conversation_id, reply_view, interaction.message
+        )
         await interaction.followup.send(
             "MCP request approved." if approve else "MCP request denied.",
             ephemeral=True,
@@ -758,7 +762,7 @@ async def run_chat_command(
         reply_msg = await ctx.send_followup(embeds=embeds, view=reply_view)
 
         cog.conversation_histories[interaction.id] = params
-        remember_view_state(cog, author.id, reply_view, reply_msg)
+        remember_view_state(cog, author.id, interaction.id, reply_view, reply_msg)
         await cog._prune_runtime_state()
     except Exception as error:
         await cog._cleanup_conversation(author.id, interaction.id)
