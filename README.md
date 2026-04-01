@@ -132,13 +132,13 @@ bot.add_cog(OpenAICog(bot=bot))
 ```
 
 ## Discord Bot Setup
-1. Go to the Discord Developer Portal.
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
 2. Create a new application and add a bot in the "Bot" section.
-3. Enable Server Members Intent and Message Content Intent under Privileged Gateway Intents.
-4. Copy the bot token and add it to your .env file.
+3. Enable **Server Members Intent** and **Message Content Intent** under Privileged Gateway Intents.
+4. Copy the bot token and add it to your `.env` file.
 5. Go to OAuth2 > URL Generator.
-6. Select scopes: bot, applications.commands.
-7. Select permissions: Send Messages, Read Message History, Use Slash Commands, Embed Links, Attach Files.
+6. Select scopes: `bot`, `applications.commands`.
+7. Select permissions: `Send Messages`, `Read Message History`, `Use Slash Commands`, `Embed Links`, `Attach Files`.
 8. Use the generated URL to invite the bot to your server.
 
 ## Usage & Demo
