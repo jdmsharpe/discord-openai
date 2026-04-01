@@ -139,6 +139,20 @@ class TestExtractToolInfo:
         assert "shell" in result["tool_types"]
         assert result["citations"] == []
 
+    def test_extract_tool_info_unknown_tool_call_tracked(self):
+        response = MagicMock()
+        response.output = [
+            {"type": "future_tool_call"},
+            {"type": "custom_tool_call", "name": "partner_api_v2"},
+        ]
+
+        result = extract_tool_info(response)
+
+        assert "future_tool" in result["tool_types"]
+        assert "partner_api_v2" in result["tool_types"]
+        assert result["tool_call_counts"]["future_tool"] == 1
+        assert result["tool_call_counts"]["partner_api_v2"] == 1
+
     def test_extract_tool_info_mcp_outputs(self):
         response = MagicMock()
         response.output = [

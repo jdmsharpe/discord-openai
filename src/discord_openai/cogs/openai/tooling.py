@@ -14,6 +14,13 @@ from .tool_registry import (
 )
 
 CALL_LIKE_OUTPUT_TYPES = frozenset({"computer_call", "custom_tool_call", "function_call"})
+KNOWN_TOOL_CALL_OUTPUT_TYPES: dict[str, str] = {
+    "web_search_call": "web_search",
+    "code_interpreter_call": "code_interpreter",
+    "file_search_call": "file_search",
+    "shell_call": "shell",
+    "mcp_call": "mcp",
+}
 
 
 class ToolInfo(TypedDict):
@@ -91,19 +98,21 @@ def extract_tool_info(response: Any) -> ToolInfo:
         output_type = get_value(output_item, "type")
         item_name = get_value(output_item, "name")
 
-        if item_name and (
-            output_type in CALL_LIKE_OUTPUT_TYPES
-            or (isinstance(output_type, str) and output_type.endswith("_call"))
-        ):
-            return normalize_tool_name(item_name)
+        if isinstance(output_type, str) and output_type in KNOWN_TOOL_CALL_OUTPUT_TYPES:
+            return KNOWN_TOOL_CALL_OUTPUT_TYPES[output_type]
+
+        if isinstance(item_name, str):
+            normalized_item_name = normalize_tool_name(item_name)
+            if normalized_item_name and (
+                output_type in CALL_LIKE_OUTPUT_TYPES
+                or (isinstance(output_type, str) and output_type.endswith("_call"))
+            ):
+                return normalized_item_name
 
         if isinstance(output_type, str) and (
             output_type in CALL_LIKE_OUTPUT_TYPES or output_type.endswith("_call")
         ):
             return normalize_tool_name(output_type)
-
-        if isinstance(item_name, str) and item_name in TOOL_REGISTRY:
-            return item_name
 
         return None
 
