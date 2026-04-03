@@ -71,14 +71,16 @@ Check if the bot has the necessary permissions in the current channel.
    ```bash
    python -m pip install .
    ```
-4. Install development dependencies (tests, linting, type checks):
-   ```bash
-   python -m pip install -e ".[dev]"
-   ```
-5. Copy the environment example file:
+4. Copy the environment example file:
    ```bash
    cp .env.example .env
    ```
+
+### Contributor Setup
+Install development tooling for tests, linting, and type checking:
+```bash
+python -m pip install -e ".[dev]"
+```
 
 ### Configuration (`.env`)
 | Variable | Required | Description |
@@ -123,8 +125,7 @@ python src/bot.py
 
 **With Docker:**
 ```bash
-docker build -t discord-openai-bot .
-docker run -e BOT_TOKEN=<YOUR_TOKEN> -e GUILD_IDS=<YOUR_IDS> -e OPENAI_API_KEY=<YOUR_KEY> discord-openai-bot
+docker compose up -d --build
 ```
 
 **Using as a Cog:**
