@@ -170,7 +170,12 @@ class OpenAICog(commands.Cog):
         Event listener that runs when the bot is ready.
         Logs bot details and attempts to synchronize commands.
         """
-        self.logger.info(f"Logged in as {self.bot.user} (ID: {self.bot.owner_id})")
+        bot_user = self.bot.user
+        bot_user_id = bot_user.id if bot_user is not None else "unknown"
+        self.logger.info(f"Logged in as {bot_user} (ID: {bot_user_id})")
+        owner_id = getattr(self.bot, "owner_id", None)
+        if owner_id is not None:
+            self.logger.debug(f"Bot owner ID (diagnostic): {owner_id}")
         self.logger.info(f"Attempting to sync commands for guilds: {GUILD_IDS}")
         if not self._runtime_cleanup_task.is_running():
             self._runtime_cleanup_task.start()
