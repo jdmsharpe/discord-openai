@@ -5,6 +5,15 @@ import pytest
 from discord import Bot, Intents
 
 from discord_openai import OpenAICog
+from discord_openai.cogs.openai.command_options import (
+    CHAT_MODEL_CHOICES,
+    IMAGE_MODEL_CHOICES,
+    REASONING_EFFORT_CHOICES,
+    RESEARCH_MODEL_CHOICES,
+    STT_MODEL_CHOICES,
+    TTS_VOICE_CHOICES,
+    VIDEO_MODEL_CHOICES,
+)
 
 
 class TestOpenAICog:
@@ -87,3 +96,38 @@ class TestOpenAICog:
             "Logged in as None (ID: unknown)" in call.args[0]
             for call in cog.logger.info.call_args_list
         )
+
+    def test_command_defaults_are_unchanged(self):
+        assert OpenAICog.chat.callback.__defaults__ == (
+            "You are a helpful assistant.",
+            "gpt-5.4",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            False,
+            False,
+            False,
+            False,
+            None,
+        )
+        assert OpenAICog.image.callback.__defaults__ == ("gpt-image-1.5", "auto", "auto", None)
+        assert OpenAICog.tts.callback.__defaults__ == ("gpt-4o-mini-tts", "marin", "", "mp3", 1.0)
+        assert OpenAICog.stt.callback.__defaults__ == ("gpt-4o-transcribe", "transcription")
+        assert OpenAICog.video.callback.__defaults__ == ("sora-2", "1280x720", "8")
+        assert OpenAICog.research.callback.__defaults__ == ("o3-deep-research", False, False)
+
+    def test_critical_choice_values_present(self):
+        assert any(choice.value == "gpt-5.4" for choice in CHAT_MODEL_CHOICES)
+        assert any(choice.value == "gpt-image-1.5" for choice in IMAGE_MODEL_CHOICES)
+        assert any(choice.value == "marin" for choice in TTS_VOICE_CHOICES)
+        assert any(choice.value == "gpt-4o-transcribe" for choice in STT_MODEL_CHOICES)
+        assert any(choice.value == "sora-2" for choice in VIDEO_MODEL_CHOICES)
+        assert any(choice.value == "o3-deep-research" for choice in RESEARCH_MODEL_CHOICES)
+
+    def test_reasoning_effort_choice_set(self):
+        values = {choice.value for choice in REASONING_EFFORT_CHOICES}
+        assert values == {"none", "minimal", "low", "medium", "high", "xhigh"}

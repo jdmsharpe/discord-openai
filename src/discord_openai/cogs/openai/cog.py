@@ -6,7 +6,7 @@ from discord import (
     Attachment,
     Embed,
 )
-from discord.commands import OptionChoice, SlashCommandGroup, option
+from discord.commands import SlashCommandGroup, option
 from discord.ext import commands, tasks
 
 from ...config.auth import GUILD_IDS
@@ -22,6 +22,23 @@ from .chat import (
     keep_typing as keep_typing_loop,
 )
 from .client import build_openai_client
+from .command_options import (
+    CHAT_MODEL_CHOICES,
+    IMAGE_MODEL_CHOICES,
+    IMAGE_QUALITY_CHOICES,
+    IMAGE_SIZE_CHOICES,
+    REASONING_EFFORT_CHOICES,
+    RESEARCH_MODEL_CHOICES,
+    STT_ACTION_CHOICES,
+    STT_MODEL_CHOICES,
+    TTS_MODEL_CHOICES,
+    TTS_RESPONSE_FORMAT_CHOICES,
+    TTS_VOICE_CHOICES,
+    VERBOSITY_CHOICES,
+    VIDEO_MODEL_CHOICES,
+    VIDEO_SECONDS_CHOICES,
+    VIDEO_SIZE_CHOICES,
+)
 from .image import run_image_command
 from .research import run_research_command
 from .speech import run_stt_command, run_tts_command
@@ -224,33 +241,7 @@ class OpenAICog(commands.Cog):
         description="Choose from the following GPT models. (default: GPT-5.4)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="GPT-5.4 Pro", value="gpt-5.4-pro"),
-            OptionChoice(name="GPT-5.4", value="gpt-5.4"),
-            OptionChoice(name="GPT-5.4 Mini", value="gpt-5.4-mini"),
-            OptionChoice(name="GPT-5.4 Nano", value="gpt-5.4-nano"),
-            OptionChoice(name="GPT-5.3", value="gpt-5.3-chat-latest"),
-            OptionChoice(name="GPT-5.2 Pro", value="gpt-5.2-pro"),
-            OptionChoice(name="GPT-5.2", value="gpt-5.2"),
-            OptionChoice(name="GPT-5.1", value="gpt-5.1"),
-            OptionChoice(name="GPT-5 Pro", value="gpt-5-pro"),
-            OptionChoice(name="GPT-5", value="gpt-5"),
-            OptionChoice(name="GPT-5 Mini", value="gpt-5-mini"),
-            OptionChoice(name="GPT-5 Nano", value="gpt-5-nano"),
-            OptionChoice(name="GPT-4.1", value="gpt-4.1"),
-            OptionChoice(name="GPT-4.1 Mini", value="gpt-4.1-mini"),
-            OptionChoice(name="GPT-4.1 Nano", value="gpt-4.1-nano"),
-            OptionChoice(name="o4 Mini", value="o4-mini"),
-            OptionChoice(name="o3 Pro", value="o3-pro"),
-            OptionChoice(name="o3", value="o3"),
-            OptionChoice(name="o3 Mini", value="o3-mini"),
-            OptionChoice(name="o1 Pro", value="o1-pro"),
-            OptionChoice(name="o1", value="o1"),
-            OptionChoice(name="GPT-4o", value="gpt-4o"),
-            OptionChoice(name="GPT-4o Mini", value="gpt-4o-mini"),
-            OptionChoice(name="GPT-4", value="gpt-4"),
-            OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
-        ],
+        choices=CHAT_MODEL_CHOICES,
     )
     @option(
         "attachment",
@@ -287,25 +278,14 @@ class OpenAICog(commands.Cog):
         description="(Advanced) Reasoning depth. none=fastest, xhigh=deepest. (default: not set)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="None (fastest, no reasoning)", value="none"),
-            OptionChoice(name="Minimal", value="minimal"),
-            OptionChoice(name="Low", value="low"),
-            OptionChoice(name="Medium", value="medium"),
-            OptionChoice(name="High", value="high"),
-            OptionChoice(name="Extra High", value="xhigh"),
-        ],
+        choices=REASONING_EFFORT_CHOICES,
     )
     @option(
         "verbosity",
         description="(Advanced) Controls response length. low=concise, high=detailed. (default: medium)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="Low (concise)", value="low"),
-            OptionChoice(name="Medium (default)", value="medium"),
-            OptionChoice(name="High (detailed)", value="high"),
-        ],
+        choices=VERBOSITY_CHOICES,
     )
     @option(
         "web_search",
@@ -386,35 +366,21 @@ class OpenAICog(commands.Cog):
         description="Choose from the following image generation models. (default: GPT Image 1.5)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="GPT Image 1.5", value="gpt-image-1.5"),
-            OptionChoice(name="GPT Image 1", value="gpt-image-1"),
-            OptionChoice(name="GPT Image 1 Mini", value="gpt-image-1-mini"),
-        ],
+        choices=IMAGE_MODEL_CHOICES,
     )
     @option(
         "quality",
         description="Image quality. (default: auto)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="Auto", value="auto"),
-            OptionChoice(name="Low", value="low"),
-            OptionChoice(name="Medium", value="medium"),
-            OptionChoice(name="High", value="high"),
-        ],
+        choices=IMAGE_QUALITY_CHOICES,
     )
     @option(
         "size",
         description="Size of the image. (default: auto)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="Auto", value="auto"),
-            OptionChoice(name="1024x1024 (square)", value="1024x1024"),
-            OptionChoice(name="1024x1536 (portrait)", value="1024x1536"),
-            OptionChoice(name="1536x1024 (landscape)", value="1536x1024"),
-        ],
+        choices=IMAGE_SIZE_CHOICES,
     )
     @option(
         "attachment",
@@ -448,32 +414,14 @@ class OpenAICog(commands.Cog):
         description="Choose from the following TTS models. (default: GPT-4o Mini TTS)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="GPT-4o Mini TTS", value="gpt-4o-mini-tts"),
-            OptionChoice(name="TTS-1", value="tts-1"),
-            OptionChoice(name="TTS-1 HD", value="tts-1-hd"),
-        ],
+        choices=TTS_MODEL_CHOICES,
     )
     @option(
         "voice",
         description="The voice to use when generating the audio. (default: Marin)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="Marin (Only supported with GPT-4o Mini TTS)", value="marin"),
-            OptionChoice(name="Cedar (Only supported with GPT-4o Mini TTS)", value="cedar"),
-            OptionChoice(name="Alloy", value="alloy"),
-            OptionChoice(name="Ash", value="ash"),
-            OptionChoice(name="Ballad (Only supported with GPT-4o Mini TTS)", value="ballad"),
-            OptionChoice(name="Coral", value="coral"),
-            OptionChoice(name="Echo", value="echo"),
-            OptionChoice(name="Fable", value="fable"),
-            OptionChoice(name="Nova", value="nova"),
-            OptionChoice(name="Onyx", value="onyx"),
-            OptionChoice(name="Sage", value="sage"),
-            OptionChoice(name="Shimmer", value="shimmer"),
-            OptionChoice(name="Verse (Only supported with GPT-4o Mini TTS)", value="verse"),
-        ],
+        choices=TTS_VOICE_CHOICES,
     )
     @option(
         "instructions",
@@ -486,14 +434,7 @@ class OpenAICog(commands.Cog):
         description="The format of the audio file output. (default: mp3)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="MP3", value="mp3"),
-            OptionChoice(name="WAV", value="wav"),
-            OptionChoice(name="Opus", value="opus"),
-            OptionChoice(name="AAC", value="aac"),
-            OptionChoice(name="FLAC", value="flac"),
-            OptionChoice(name="PCM", value="pcm"),
-        ],
+        choices=TTS_RESPONSE_FORMAT_CHOICES,
     )
     @option(
         "speed",
@@ -528,28 +469,14 @@ class OpenAICog(commands.Cog):
         description="Model to use for speech-to-text conversion. (default: GPT-4o Transcribe)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="GPT-4o Transcribe", value="gpt-4o-transcribe"),
-            OptionChoice(name="GPT-4o Mini Transcribe", value="gpt-4o-mini-transcribe"),
-            OptionChoice(name="GPT-4o Transcribe Diarize", value="gpt-4o-transcribe-diarize"),
-            OptionChoice(name="Whisper", value="whisper-1"),
-        ],
+        choices=STT_MODEL_CHOICES,
     )
     @option(
         "action",
         description="Action to perform. (default: Transcription)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(
-                name="Transcription",
-                value="transcription",
-            ),
-            OptionChoice(
-                name="Translation (into English)",
-                value="translation",
-            ),
-        ],
+        choices=STT_ACTION_CHOICES,
     )
     async def stt(
         self,
@@ -575,37 +502,21 @@ class OpenAICog(commands.Cog):
         description="Choose Sora model for video generation. (default: Sora 2)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="Sora 2 (Fast)", value="sora-2"),
-            OptionChoice(name="Sora 2 Pro (High Quality)", value="sora-2-pro"),
-        ],
+        choices=VIDEO_MODEL_CHOICES,
     )
     @option(
         "size",
         description="Resolution of the generated video. (default: 1280x720)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="Landscape (1280x720)", value="1280x720"),
-            OptionChoice(name="Portrait (720x1280)", value="720x1280"),
-            OptionChoice(name="Wide Landscape (1792x1024)", value="1792x1024"),
-            OptionChoice(name="Tall Portrait (1024x1792)", value="1024x1792"),
-            OptionChoice(name="1080p Landscape (1920x1080, Pro only)", value="1920x1080"),
-            OptionChoice(name="1080p Portrait (1080x1920, Pro only)", value="1080x1920"),
-        ],
+        choices=VIDEO_SIZE_CHOICES,
     )
     @option(
         "seconds",
         description="Duration of the video in seconds. (default: 8)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="4 seconds", value="4"),
-            OptionChoice(name="8 seconds", value="8"),
-            OptionChoice(name="12 seconds", value="12"),
-            OptionChoice(name="16 seconds", value="16"),
-            OptionChoice(name="20 seconds", value="20"),
-        ],
+        choices=VIDEO_SECONDS_CHOICES,
     )
     async def video(
         self,
@@ -636,10 +547,7 @@ class OpenAICog(commands.Cog):
         description="Choose the deep research model. (default: o3 Deep Research)",
         required=False,
         type=str,
-        choices=[
-            OptionChoice(name="o3 Deep Research", value="o3-deep-research"),
-            OptionChoice(name="o4 Mini Deep Research", value="o4-mini-deep-research"),
-        ],
+        choices=RESEARCH_MODEL_CHOICES,
     )
     @option(
         "file_search",
