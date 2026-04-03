@@ -1,7 +1,5 @@
 """Thin launcher for the discord-openai bot."""
 
-import logging
-
 from discord import Bot, Intents
 
 from .cogs.openai.cog import OpenAICog
@@ -21,10 +19,6 @@ def build_bot() -> Bot:
 
 
 def main() -> None:
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
     validate_required_config()
     bot = build_bot()
     bot.run(BOT_TOKEN)

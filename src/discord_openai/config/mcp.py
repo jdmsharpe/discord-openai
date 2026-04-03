@@ -85,15 +85,11 @@ def _validate_preset(name: str, raw_value: object) -> OpenAIMcpPreset:
     }
     extra_keys = sorted(set(raw_value) - supported_keys)
     if extra_keys:
-        raise ValueError(
-            f"MCP preset `{name}` contains unsupported keys: {', '.join(extra_keys)}."
-        )
+        raise ValueError(f"MCP preset `{name}` contains unsupported keys: {', '.join(extra_keys)}.")
 
     kind = raw_value.get("kind")
     if kind not in {"remote_mcp", "connector"}:
-        raise ValueError(
-            f"MCP preset `{name}` `kind` must be `remote_mcp` or `connector`."
-        )
+        raise ValueError(f"MCP preset `{name}` `kind` must be `remote_mcp` or `connector`.")
 
     server_url: str | None = None
     connector_id: str | None = None
@@ -125,7 +121,9 @@ def _validate_preset(name: str, raw_value: object) -> OpenAIMcpPreset:
             f"MCP preset `{name}` `approval` must be `always`, `never`, or `selective`."
         )
 
-    never_tool_names = _validate_tool_names(raw_value.get("never_tool_names"), name, "never_tool_names")
+    never_tool_names = _validate_tool_names(
+        raw_value.get("never_tool_names"), name, "never_tool_names"
+    )
     if approval == APPROVAL_SELECTIVE and not never_tool_names:
         raise ValueError(
             f"MCP preset `{name}` with `approval=selective` requires `never_tool_names`."

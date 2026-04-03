@@ -358,11 +358,15 @@ class ResponseParameters:
                 self.top_p = top_p
         self.verbosity = verbosity
         self.tools = [tool.copy() for tool in tools] if tools is not None else []
-        self.tool_names = list(tool_names) if tool_names is not None else [
-            tool.get("type")
-            for tool in self.tools
-            if isinstance(tool, dict) and isinstance(tool.get("type"), str)
-        ]
+        self.tool_names = (
+            list(tool_names)
+            if tool_names is not None
+            else [
+                tool.get("type")
+                for tool in self.tools
+                if isinstance(tool, dict) and isinstance(tool.get("type"), str)
+            ]
+        )
         self.mcp_preset_names = list(mcp_preset_names) if mcp_preset_names is not None else []
 
         self.frequency_penalty = frequency_penalty
