@@ -67,11 +67,15 @@ Check if the bot has the necessary permissions in the current channel.
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
-3. Install dependencies:
+3. Install runtime dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-4. Copy the environment example file:
+4. Install development dependencies (tests, linting, type checks):
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+5. Copy the environment example file:
    ```bash
    cp .env.example .env
    ```
@@ -163,8 +167,10 @@ Start a chat via `/openai chat`, write follow-up messages directly in the channe
 Tests use `pytest` with `pytest-asyncio` (`asyncio_mode = "auto"`). All tests are mocked (no real API calls).
 ```bash
 # Run tests locally
-.venv/Scripts/python.exe -m pytest -q    # Windows
-.venv/bin/python -m pytest -q            # Unix
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt  # Windows
+.venv/Scripts/python.exe -m pytest -q                              # Windows
+.venv/bin/python -m pip install -r requirements-dev.txt            # Unix
+.venv/bin/python -m pytest -q                                      # Unix
 
 # Run tests in Docker
 docker build --build-arg PYTHON_VERSION=3.13 -f Dockerfile.test -t discord-openai-test . 
