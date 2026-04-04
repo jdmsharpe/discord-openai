@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
 
 ## Overview
-This is a Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, speech-to-text capabilities, autonomous research, and video generation—all accessible via modern slash commands grouped neatly under the `/openai` namespace.
+A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, speech-to-text capabilities, autonomous research, and video generation—all accessible via modern slash commands grouped neatly under the `/openai` namespace.
 
 ## Features
 - **Conversational AI:** Engage in interactive, multi-turn conversations with a wide variety of OpenAI models (GPT-5 series, o-series, GPT-4o, etc.). Maintains full context for follow-up replies in the same channel.
