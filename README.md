@@ -7,11 +7,13 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
 
 ## Overview
+
 A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, speech-to-text capabilities, autonomous research, and video generation—all accessible via modern slash commands grouped neatly under the `/openai` namespace.
 
 ## Features
+
 - **Conversational AI:** Engage in interactive, multi-turn conversations with a wide variety of OpenAI models (GPT-5 series, o-series, GPT-4o, etc.). Maintains full context for follow-up replies in the same channel.
-- **Multimodal Input:** Attach images, PDFs, documents, spreadsheets, and code files. 
+- **Multimodal Input:** Attach images, PDFs, documents, spreadsheets, and code files.
 - **Reasoning Display:** Model thinking processes (for o-series and reasoning-effort models) are displayed in spoilered "Thinking" embeds.
 - **Built-in Tools:** Supports `web_search`, `code_interpreter`, `file_search` (with citation embeds), and `shell` (GPT-5 series only).
 - **Remote MCP & Connectors:** Enable trusted remote MCP servers and OpenAI connectors via named presets with optional tool allow-lists and approval policies. Features a seamless Discord UI approval loop for actions.
@@ -26,77 +28,102 @@ A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings toge
 ## Commands
 
 ### `/openai chat`
+
 Start an interactive thread with an OpenAI model.
-* **Models:** GPT-5 series, GPT-4 series, o-series (o1, o3, o4-mini, etc.), GPT-3.5 Turbo.
-* **Tuning Options:** Adjust frequency penalty, presence penalty, temperature, `top_p`, and `seed`.
-* **Tools:** `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), `shell`.
-* **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors.
+
+- **Models:** GPT-5 series, GPT-4 series, o-series (o1, o3, o4-mini, etc.), GPT-3.5 Turbo.
+- **Tuning Options:** Adjust frequency penalty, presence penalty, temperature, `top_p`, and `seed`.
+- **Tools:** `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), `shell`.
+- **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors.
 
 ### `/openai image`
+
 Create images using GPT Image models (`gpt-image-1.5`, `gpt-image-1`, `gpt-image-1-mini`).
-* Features quality presets (low, medium, high, auto) and multiple sizes (portrait, landscape, square).
+
+- Features quality presets (low, medium, high, auto) and multiple sizes (portrait, landscape, square).
 
 ### `/openai video`
+
 Generate videos from text prompts using OpenAI's Sora models (`sora-2`, `sora-2-pro`).
-* Features customizable size options (up to 1080p for Pro) and duration (4–20 seconds).
+
+- Features customizable size options (up to 1080p for Pro) and duration (4–20 seconds).
 
 ### `/openai research`
+
 Run a deep research task using `o3-deep-research` or `o4-mini-deep-research`.
-* Autonomously searches the web and synthesizes cited reports. Optionally enable `file_search` or `code_interpreter` to enhance analysis.
+
+- Autonomously searches the web and synthesizes cited reports. Optionally enable `file_search` or `code_interpreter` to enhance analysis.
 
 ### `/openai tts`
+
 Generate lifelike audio from text using OpenAI's TTS stack.
-* Select from 13 voices, multiple output formats (MP3, WAV, Opus, AAC, FLAC, PCM), and adjust playback speed.
+
+- Select from 13 voices, multiple output formats (MP3, WAV, Opus, AAC, FLAC, PCM), and adjust playback speed.
 
 ### `/openai stt`
+
 Transcribe or translate uploaded audio (up to 25 MB).
-* Supports `gpt-4o-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts.
+
+- Supports `gpt-4o-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts.
 
 ### `/openai check_permissions`
+
 Check if the bot has the necessary permissions in the current channel.
 
 ## Setup & Installation
 
 ### Prerequisites
+
 - Python 3.10+
 - Discord Bot Token
 - OpenAI API Key
 
 ### Installation
+
 1. Clone the repository and navigate to the project directory.
 2. Create and activate a virtual environment:
+
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
+
 3. Install the package and its runtime dependencies:
+
    ```bash
    python -m pip install .
    ```
+
 4. Copy the environment example file:
+
    ```bash
    cp .env.example .env
    ```
 
 ### Contributor Setup
+
 Install development tooling for tests, linting, and type checking:
+
 ```bash
 python -m pip install -e ".[dev]"
 ```
 
 ### Configuration (`.env`)
+
 | Variable | Required | Description |
 | --- | --- | --- |
 | `BOT_TOKEN` | **Yes** | Your Discord bot token |
 | `GUILD_IDS` | **Yes** | Comma-separated Discord server IDs |
 | `OPENAI_API_KEY` | **Yes** | Your OpenAI API key |
-| `OPENAI_VECTOR_STORE_IDS`| No | Comma-separated vector store IDs for `/openai chat` file search |
+| `OPENAI_VECTOR_STORE_IDS` | No | Comma-separated vector store IDs for `/openai chat` file search |
 | `SHOW_COST_EMBEDS` | No | Show cost/token usage embeds (Default: `true`) |
-| `OPENAI_MCP_PRESETS_JSON`| No | Inline JSON object of named MCP presets |
-| `OPENAI_MCP_PRESETS_PATH`| No | Path to a JSON file containing named MCP presets |
+| `OPENAI_MCP_PRESETS_JSON` | No | Inline JSON object of named MCP presets |
+| `OPENAI_MCP_PRESETS_PATH` | No | Path to a JSON file containing named MCP presets |
 
 #### MCP Setup
+
 Configure trusted MCP presets via JSON. Example schema:
+
 ```json
 {
   "github": {
@@ -119,19 +146,24 @@ Configure trusted MCP presets via JSON. Example schema:
 ```
 
 ### Running the Bot
+
 **Locally:**
+
 ```bash
 python src/bot.py
 ```
+
 *(Note: `src/bot.py` is a thin launcher that delegates to `discord_openai.bot.main`)*
 
 **With Docker:**
+
 ```bash
 docker compose up -d --build
 ```
 
 **Using as a Cog:**
 To compose this repo into a larger bot:
+
 ```python
 from discord_openai import OpenAICog
 
@@ -139,6 +171,7 @@ bot.add_cog(OpenAICog(bot=bot))
 ```
 
 ## Discord Bot Setup
+
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
 2. Create a new application and add a bot in the "Bot" section.
 3. Enable **Server Members Intent** and **Message Content Intent** under Privileged Gateway Intents.
@@ -149,6 +182,7 @@ bot.add_cog(OpenAICog(bot=bot))
 8. Use the generated URL to invite the bot to your server.
 
 ## Usage & Demo
+
 Start a chat via `/openai chat`, write follow-up messages directly in the channel, and utilize interactive UI elements for approvals, regeneration, and tools.
 
 <div align="center">
@@ -167,7 +201,9 @@ Start a chat via `/openai chat`, write follow-up messages directly in the channe
 ## Development
 
 ### Testing
+
 Tests use `pytest` with `pytest-asyncio` (`asyncio_mode = "auto"`). All tests are mocked (no real API calls).
+
 ```bash
 # Install developer tooling if you have not already
 python -m pip install -e ".[dev]"
@@ -184,9 +220,11 @@ docker run --rm discord-openai-test sh -lc 'ruff check src tests && ruff format 
 ```
 
 ### Linting & Type Checking
+
 ```bash
 ruff check src tests
 ruff format --check src tests
 pyright
 ```
+
 *Run `git config core.hooksPath .githooks` after cloning to enable the pre-commit hook.*
