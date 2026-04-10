@@ -37,6 +37,20 @@ def _make_approval_view(*, get_conversation=None, on_approve=None, on_deny=None)
     )
 
 
+def test_button_view_init_without_running_event_loop():
+    view = _make_button_view()
+    selects = [component for component in view.children if isinstance(component, Select)]
+    assert len(selects) == 1
+    assert selects[0].min_values == 0
+    assert selects[0].max_values == len(TOOL_REGISTRY)
+
+
+def test_mcp_approval_view_init_without_running_event_loop():
+    view = _make_approval_view()
+    buttons = [component for component in view.children if isinstance(component, Button)]
+    assert len(buttons) == 3
+
+
 class TestButtonView:
     @pytest.mark.asyncio
     async def test_tool_select_exists(self):

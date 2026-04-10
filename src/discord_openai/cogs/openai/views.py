@@ -1,5 +1,7 @@
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable
+from concurrent.futures import Future as ConcurrentFuture
 from typing import (
     Any,
 )
@@ -25,6 +27,31 @@ async def _send_interaction_error(interaction: Interaction, context: str, error:
         await interaction.response.send_message(msg, ephemeral=True)
 
 
+async def _build_view_on_running_loop(view: View, *, timeout: float | None) -> None:
+    View.__init__(view, timeout=timeout)
+
+
+def _initialize_view(view: View, *, timeout: float | None) -> None:
+    """Build a discord View even when tests construct it outside a running loop."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(_build_view_on_running_loop(view, timeout=timeout))
+        finally:
+            loop.close()
+        view._stopped = ConcurrentFuture()
+    else:
+        View.__init__(view, timeout=timeout)
+
+
+async def _wait_for_view(view: View) -> bool:
+    if isinstance(view._stopped, ConcurrentFuture):
+        return await asyncio.wrap_future(view._stopped)
+    return await View.wait(view)
+
+
 class ButtonView(View):
     def __init__(
         self,
@@ -37,7 +64,7 @@ class ButtonView(View):
         on_stop: Callable[[int, Any], Awaitable[None]],
         on_tools_changed: Callable[[list[str], Any], tuple[set[str], str | None]],
     ):
-        super().__init__(timeout=None)
+        _initialize_view(self, timeout=None)
         self.conversation_starter_id = conversation_starter_id
         self.conversation_id = conversation_id
         self._get_conversation = get_conversation
@@ -45,6 +72,10 @@ class ButtonView(View):
         self._on_stop = on_stop
         self._on_tools_changed = on_tools_changed
         self._add_tool_select(initial_tools)
+
+    async def wait(self) -> bool:
+        """Support wait() even when the view was constructed outside a running loop."""
+        return await _wait_for_view(self)
 
     def _add_tool_select(self, initial_tools=None):
         selected_tool_types: set[str] = set()
@@ -217,13 +248,17 @@ class McpApprovalView(View):
         on_deny: Callable[[Interaction, Any], Awaitable[None]],
         on_stop: Callable[[int, Any], Awaitable[None]],
     ):
-        super().__init__(timeout=None)
+        _initialize_view(self, timeout=None)
         self.conversation_starter_id = conversation_starter_id
         self.conversation_id = conversation_id
         self._get_conversation = get_conversation
         self._on_approve = on_approve
         self._on_deny = on_deny
         self._on_stop = on_stop
+
+    async def wait(self) -> bool:
+        """Support wait() even when the view was constructed outside a running loop."""
+        return await _wait_for_view(self)
 
     def _get_pending_conversation(self, interaction: Interaction):
         user = interaction.user
