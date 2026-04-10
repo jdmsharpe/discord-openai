@@ -313,7 +313,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "mcp",
-        description="Optional comma-separated MCP preset names to enable for this conversation.",
+        description="Comma-separated MCP preset names to enable. (default: not set)",
         required=False,
         type=str,
     )
@@ -384,7 +384,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "attachment",
-        description="Image to edit (PNG, JPEG, GIF, WebP). Omit to generate a new image.",
+        description="Image to edit (PNG, JPEG, GIF, WebP). (default: not set)",
         required=False,
         type=Attachment,
     )
