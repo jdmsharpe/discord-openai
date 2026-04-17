@@ -8,7 +8,19 @@ pip install -r requirements.txt
 python src/bot.py              # or: docker compose up
 ```
 
-- `GUILD_IDS`: comma-separated Discord server IDs; omit for global slash-command registration (takes ~1 h to propagate) or set for instant per-guild registration.
+## Environment Variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `BOT_TOKEN` | Yes | Discord bot token |
+| `GUILD_IDS` | No | Comma-separated Discord server IDs; omit for global slash-command registration (~1h propagation) or set for instant per-guild registration |
+| `OPENAI_API_KEY` | Yes | OpenAI API key |
+| `OPENAI_VECTOR_STORE_IDS` | No | Comma-separated vector store IDs for `/openai chat file_search` |
+| `OPENAI_MCP_PRESETS_JSON` | No | Inline JSON of named MCP presets |
+| `OPENAI_MCP_PRESETS_PATH` | No | Path to JSON file of named MCP presets |
+| `SHOW_COST_EMBEDS` | No | Show cost embeds (`true`/`1`/`yes`, default: `true`) |
+| `OPENAI_PRICING_PATH` | No | Override the bundled `src/discord_openai/config/pricing.yaml` |
+| `LOG_FORMAT` | No | `text` (default) or `json` for structured JSON-lines output |
 
 ## Supported Entry Points
 
@@ -34,11 +46,14 @@ src/
 └── discord_openai/
     ├── __init__.py                  # Lazily re-exports OpenAICog
     ├── bot.py                       # Namespaced launcher
+    ├── logging_setup.py             # Structured logging + request-id ContextVar
     ├── util.py
     ├── config/
     │   ├── __init__.py
     │   ├── auth.py
-    │   └── mcp.py
+    │   ├── mcp.py
+    │   ├── pricing.py                # YAML loader exposing MODEL_PRICING, IMAGE_PRICING, etc.
+    │   └── pricing.yaml              # Canonical pricing data (override via OPENAI_PRICING_PATH)
     └── cogs/openai/
         ├── __init__.py
         ├── attachments.py
@@ -90,7 +105,7 @@ pyright src/
 pytest -q
 ```
 
-- The repo pre-commit hook prefers a repo-local `.venv` Ruff binary when available and falls back to `PATH`.
+- The repo pre-commit hook (`.githooks/pre-commit`) runs `ruff format` (auto-applied + re-staged), then `ruff check` (blocking), then `pyright` and `pytest --collect-only` as warning-only smoke tests. Resolves tools from `.venv/bin` or `.venv/Scripts` first, then `PATH`.
 
 ## Provider Notes
 
@@ -104,3 +119,10 @@ pytest -q
 - `authorization_env_var` names are user-defined token env vars that must be present at runtime for those presets to be available.
 - MCP state is persisted separately from built-in tool selections via `tool_names`, `mcp_preset_names`, and `pending_mcp_approval`.
 - While an approval is pending, the bot swaps to `McpApprovalView`, blocks typed follow-ups, and resumes the same response chain with `mcp_approval_response` when the owner approves or denies.
+
+## Runtime Conventions (Cross-Project)
+
+- **Pricing** is loaded from `src/discord_openai/config/pricing.yaml` by `config/pricing.py` at import time. Override via `OPENAI_PRICING_PATH` to push a vendor price change without a code release. Cross-referenced against [genai-prices/openai.yml](https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml).
+- **Retry**: the `AsyncOpenAI` client is built with `max_retries=4, timeout=300` (total 5 attempts) in `client.py`; transient 429/5xx/connection errors recover transparently via the OpenAI SDK's built-in exponential backoff.
+- **Conversation TTL**: `prune_runtime_state` in `cogs/openai/state.py` evicts conversations older than `CONVERSATION_TTL` (12h) every 15 minutes via `@tasks.loop`. Caps at `MAX_ACTIVE_CONVERSATIONS` / `MAX_VIEW_STATES`. Daily costs retained for `DAILY_COST_RETENTION_DAYS` (30).
+- **Request IDs**: `cog_before_invoke` (and `on_message`) bind a fresh 8-char hex id via `discord_openai.logging_setup.bind_request_id`. All downstream `logger.info`/`warning`/`error` calls automatically include the id. Set `LOG_FORMAT=json` for JSON-lines output.

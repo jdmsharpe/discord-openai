@@ -10,6 +10,7 @@ from discord.commands import SlashCommandGroup, option
 from discord.ext import commands, tasks
 
 from ...config.auth import GUILD_IDS
+from ...logging_setup import bind_request_id
 from .chat import (
     handle_check_permissions,
     handle_on_message,
@@ -181,6 +182,10 @@ class OpenAICog(commands.Cog):
         await self.bot.wait_until_ready()
 
     # Added for debugging purposes
+    async def cog_before_invoke(self, ctx) -> None:
+        """Bind a fresh request id on every slash-command entry into this cog."""
+        bind_request_id()
+
     @commands.Cog.listener()
     async def on_ready(self):
         """
@@ -204,6 +209,7 @@ class OpenAICog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        bind_request_id()
         await handle_on_message(self, message)
 
     @commands.Cog.listener()

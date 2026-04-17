@@ -1,0 +1,121 @@
+# OpenAI model pricing catalog.
+#
+# Canonical source: https://openai.com/api/pricing/
+# Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
+# Last-verified: 2026-04-17
+#
+# All chat-model prices are USD per million tokens. Cached input tokens are
+# billed at 50% of the regular input price. Reasoning tokens are billed
+# at the standard output price (already aggregated into output_tokens by the API).
+#
+# Override this file at runtime by setting OPENAI_PRICING_PATH to an alternate
+# YAML path — useful for pushing new pricing without a code release.
+
+models:
+  gpt-5.4-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
+  gpt-5.4:           { input_per_million: 2.50,   output_per_million: 15.00 }
+  gpt-5.4-mini:      { input_per_million: 0.75,   output_per_million: 4.50 }
+  gpt-5.4-nano:      { input_per_million: 0.20,   output_per_million: 1.25 }
+  gpt-5.3-chat-latest: { input_per_million: 2.00, output_per_million: 8.00 }
+  gpt-5.2-pro:       { input_per_million: 21.00,  output_per_million: 168.00 }
+  gpt-5.2:           { input_per_million: 1.75,   output_per_million: 14.00 }
+  gpt-5.1:           { input_per_million: 1.25,   output_per_million: 10.00 }
+  gpt-5-pro:         { input_per_million: 15.00,  output_per_million: 120.00 }
+  gpt-5:             { input_per_million: 1.25,   output_per_million: 10.00 }
+  gpt-5-mini:        { input_per_million: 0.25,   output_per_million: 2.00 }
+  gpt-5-nano:        { input_per_million: 0.05,   output_per_million: 0.40 }
+  gpt-4.1:           { input_per_million: 2.00,   output_per_million: 8.00 }
+  gpt-4.1-mini:      { input_per_million: 0.40,   output_per_million: 1.60 }
+  gpt-4.1-nano:      { input_per_million: 0.10,   output_per_million: 0.40 }
+  o4-mini:           { input_per_million: 1.10,   output_per_million: 4.40 }
+  o3-pro:            { input_per_million: 20.00,  output_per_million: 80.00 }
+  o3:                { input_per_million: 2.00,   output_per_million: 8.00 }
+  o3-deep-research:  { input_per_million: 10.00,  output_per_million: 40.00 }
+  o4-mini-deep-research: { input_per_million: 2.00, output_per_million: 8.00 }
+  o3-mini:           { input_per_million: 1.10,   output_per_million: 4.40 }
+  o1-pro:            { input_per_million: 150.00, output_per_million: 600.00 }
+  o1:                { input_per_million: 15.00,  output_per_million: 60.00 }
+  gpt-4o:            { input_per_million: 2.50,   output_per_million: 10.00 }
+  gpt-4o-mini:       { input_per_million: 0.15,   output_per_million: 0.60 }
+  gpt-4:             { input_per_million: 30.00,  output_per_million: 60.00 }
+  gpt-4-turbo:       { input_per_million: 10.00,  output_per_million: 30.00 }
+  gpt-3.5-turbo:     { input_per_million: 0.50,   output_per_million: 1.50 }
+
+tools:
+  web_search:       { per_call: 0.01 }      # $10 / 1k calls
+  file_search:      { per_call: 0.0025 }    # $2.50 / 1k calls (Responses API)
+  code_interpreter: { per_call: 0.03 }      # $0.03 / container
+  shell:            { per_call: 0.03 }      # Same billing as code_interpreter
+
+# Image-generation pricing is nested per model → quality → size.
+# "default_per_image" is used when quality or size is "auto".
+image_generation:
+  gpt-image-1.5:
+    default_per_image: 0.034
+    by_quality_size:
+      low:
+        1024x1024: 0.009
+        1024x1536: 0.013
+        1536x1024: 0.013
+      medium:
+        1024x1024: 0.034
+        1024x1536: 0.05
+        1536x1024: 0.05
+      high:
+        1024x1024: 0.133
+        1024x1536: 0.20
+        1536x1024: 0.20
+  gpt-image-1:
+    default_per_image: 0.042
+    by_quality_size:
+      low:
+        1024x1024: 0.011
+        1024x1536: 0.016
+        1536x1024: 0.016
+      medium:
+        1024x1024: 0.042
+        1024x1536: 0.063
+        1536x1024: 0.063
+      high:
+        1024x1024: 0.167
+        1024x1536: 0.25
+        1536x1024: 0.25
+  gpt-image-1-mini:
+    default_per_image: 0.011
+    by_quality_size:
+      low:
+        1024x1024: 0.005
+        1024x1536: 0.006
+        1536x1024: 0.006
+      medium:
+        1024x1024: 0.011
+        1024x1536: 0.015
+        1536x1024: 0.015
+      high:
+        1024x1024: 0.036
+        1024x1536: 0.052
+        1536x1024: 0.052
+
+text_to_speech:
+  tts-1:           { per_character: 0.000015 }  # $15 / 1M chars
+  tts-1-hd:        { per_character: 0.000030 }  # $30 / 1M chars
+  gpt-4o-mini-tts: { per_character: 0.000020 }  # ~$0.015/min at ~750 chars/min
+  gpt-4o-tts:      { per_character: 0.000020 }
+
+speech_to_text:
+  gpt-4o-transcribe:          { per_minute: 0.006 }
+  gpt-4o-transcribe-diarize:  { per_minute: 0.006 }
+  gpt-4o-mini-transcribe:     { per_minute: 0.003 }
+  whisper-1:                  { per_minute: 0.006 }
+
+video_generation:
+  sora-2:     { per_second: 0.10 }
+  sora-2-pro: { per_second: 0.20 }
+
+# Fallbacks used when calculate_*() receives an unknown model id.
+fallbacks:
+  unknown_chat_model:   { input_per_million: 2.50, output_per_million: 10.00 }
+  unknown_image_model:  { per_image: 0.034 }
+  unknown_tts_model:    { per_character: 0.000015 }
+  unknown_stt_model:    { per_minute: 0.006 }
+  unknown_video_model:  { per_second: 0.10 }

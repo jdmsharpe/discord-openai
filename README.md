@@ -119,6 +119,8 @@ python -m pip install -e ".[dev]"
 | `SHOW_COST_EMBEDS` | No | Show cost/token usage embeds (Default: `true`) |
 | `OPENAI_MCP_PRESETS_JSON` | No | Inline JSON object of named MCP presets |
 | `OPENAI_MCP_PRESETS_PATH` | No | Path to a JSON file containing named MCP presets |
+| `OPENAI_PRICING_PATH` | No | Path to a pricing YAML that overrides the bundled `src/discord_openai/config/pricing.yaml` |
+| `LOG_FORMAT` | No | `text` (default) for human-readable logs, or `json` for structured JSON-lines output with per-request IDs |
 
 #### MCP Setup
 

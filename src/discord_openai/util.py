@@ -8,39 +8,22 @@ from typing import Any, TypedDict
 import aiohttp
 from openai import APIError
 
-CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
+from discord_openai.config.pricing import (  # noqa: F401 — re-exported for callers
+    IMAGE_PRICING,
+    IMAGE_PRICING_DEFAULTS,
+    MODEL_PRICING,
+    STT_PRICING_PER_MINUTE,
+    TOOL_CALL_PRICING,
+    TTS_PRICING_PER_CHAR,
+    UNKNOWN_CHAT_MODEL_PRICING,
+    UNKNOWN_IMAGE_MODEL_PRICING,
+    UNKNOWN_STT_MODEL_PRICING,
+    UNKNOWN_TTS_MODEL_PRICING,
+    UNKNOWN_VIDEO_MODEL_PRICING,
+    VIDEO_PRICING_PER_SECOND,
+)
 
-# Per-million-token pricing: (input_cost, output_cost)
-MODEL_PRICING: dict[str, tuple[float, float]] = {
-    "gpt-5.4-pro": (3.00, 12.00),
-    "gpt-5.4": (2.00, 8.00),
-    "gpt-5.4-mini": (0.75, 4.50),
-    "gpt-5.4-nano": (0.20, 1.25),
-    "gpt-5.3-chat-latest": (2.00, 8.00),
-    "gpt-5.2-pro": (3.00, 12.00),
-    "gpt-5.2": (2.00, 8.00),
-    "gpt-5.1": (2.00, 8.00),
-    "gpt-5-pro": (5.00, 20.00),
-    "gpt-5": (2.00, 8.00),
-    "gpt-5-mini": (0.40, 1.60),
-    "gpt-5-nano": (0.10, 0.40),
-    "gpt-4.1": (2.00, 8.00),
-    "gpt-4.1-mini": (0.40, 1.60),
-    "gpt-4.1-nano": (0.10, 0.40),
-    "o4-mini": (1.10, 4.40),
-    "o3-pro": (20.00, 80.00),
-    "o3": (10.00, 40.00),
-    "o3-deep-research": (10.00, 40.00),
-    "o4-mini-deep-research": (1.10, 4.40),
-    "o3-mini": (1.10, 4.40),
-    "o1-pro": (150.00, 600.00),
-    "o1": (15.00, 60.00),
-    "gpt-4o": (2.50, 10.00),
-    "gpt-4o-mini": (0.15, 0.60),
-    "gpt-4": (30.00, 60.00),
-    "gpt-4-turbo": (10.00, 30.00),
-    "gpt-3.5-turbo": (0.50, 1.50),
-}
+CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
 
 
 class UsageInfo(TypedDict):
@@ -91,7 +74,7 @@ def calculate_cost(
     Cached input tokens are billed at 50% of the regular input price.
     Reasoning tokens are already included in output_tokens at the standard output price.
     """
-    input_price, output_price = MODEL_PRICING.get(model, (2.50, 10.00))
+    input_price, output_price = MODEL_PRICING.get(model, UNKNOWN_CHAT_MODEL_PRICING)
     non_cached = input_tokens - cached_tokens
     return (
         (non_cached / 1_000_000) * input_price
@@ -100,102 +83,28 @@ def calculate_cost(
     )
 
 
-# Per-call tool pricing (dollars per call/container)
-TOOL_CALL_PRICING: dict[str, float] = {
-    "web_search": 0.01,  # $10.00 / 1k calls
-    "file_search": 0.0025,  # $2.50 / 1k calls (Responses API)
-    "code_interpreter": 0.03,  # $0.03 / container (1 GB default)
-    "shell": 0.03,  # $0.03 / container (same billing as code_interpreter)
-}
-
-
 def calculate_tool_cost(tool_call_counts: dict[str, int]) -> float:
     """Calculate the cost in dollars for tool calls made in a response."""
     return sum(count * TOOL_CALL_PRICING.get(tool, 0.0) for tool, count in tool_call_counts.items())
 
 
-# ---------------------------------------------------------------------------
-# Image generation pricing: (model, quality, size) -> cost per image
-# ---------------------------------------------------------------------------
-IMAGE_PRICING: dict[tuple[str, str, str], float] = {
-    # GPT Image 1.5
-    ("gpt-image-1.5", "low", "1024x1024"): 0.009,
-    ("gpt-image-1.5", "low", "1024x1536"): 0.013,
-    ("gpt-image-1.5", "low", "1536x1024"): 0.013,
-    ("gpt-image-1.5", "medium", "1024x1024"): 0.034,
-    ("gpt-image-1.5", "medium", "1024x1536"): 0.05,
-    ("gpt-image-1.5", "medium", "1536x1024"): 0.05,
-    ("gpt-image-1.5", "high", "1024x1024"): 0.133,
-    ("gpt-image-1.5", "high", "1024x1536"): 0.20,
-    ("gpt-image-1.5", "high", "1536x1024"): 0.20,
-    # GPT Image 1
-    ("gpt-image-1", "low", "1024x1024"): 0.011,
-    ("gpt-image-1", "low", "1024x1536"): 0.016,
-    ("gpt-image-1", "low", "1536x1024"): 0.016,
-    ("gpt-image-1", "medium", "1024x1024"): 0.042,
-    ("gpt-image-1", "medium", "1024x1536"): 0.063,
-    ("gpt-image-1", "medium", "1536x1024"): 0.063,
-    ("gpt-image-1", "high", "1024x1024"): 0.167,
-    ("gpt-image-1", "high", "1024x1536"): 0.25,
-    ("gpt-image-1", "high", "1536x1024"): 0.25,
-    # GPT Image 1 Mini
-    ("gpt-image-1-mini", "low", "1024x1024"): 0.005,
-    ("gpt-image-1-mini", "low", "1024x1536"): 0.006,
-    ("gpt-image-1-mini", "low", "1536x1024"): 0.006,
-    ("gpt-image-1-mini", "medium", "1024x1024"): 0.011,
-    ("gpt-image-1-mini", "medium", "1024x1536"): 0.015,
-    ("gpt-image-1-mini", "medium", "1536x1024"): 0.015,
-    ("gpt-image-1-mini", "high", "1024x1024"): 0.036,
-    ("gpt-image-1-mini", "high", "1024x1536"): 0.052,
-    ("gpt-image-1-mini", "high", "1536x1024"): 0.052,
-}
-
-# Default image costs when quality or size is "auto" (medium 1024x1024 estimate)
-IMAGE_PRICING_DEFAULTS: dict[str, float] = {
-    "gpt-image-1.5": 0.034,
-    "gpt-image-1": 0.042,
-    "gpt-image-1-mini": 0.011,
-}
-
-
 def calculate_image_cost(model: str, quality: str, size: str, n: int = 1) -> float:
     """Calculate cost for image generation based on model, quality, and size."""
     if quality == "auto" or size == "auto":
-        per_image = IMAGE_PRICING_DEFAULTS.get(model, 0.034)
+        per_image = IMAGE_PRICING_DEFAULTS.get(model, UNKNOWN_IMAGE_MODEL_PRICING)
     else:
         per_image = IMAGE_PRICING.get(
             (model, quality, size),
-            IMAGE_PRICING_DEFAULTS.get(model, 0.034),
+            IMAGE_PRICING_DEFAULTS.get(model, UNKNOWN_IMAGE_MODEL_PRICING),
         )
     return per_image * n
 
 
-# ---------------------------------------------------------------------------
-# TTS pricing: per character
-# ---------------------------------------------------------------------------
-TTS_PRICING_PER_CHAR: dict[str, float] = {
-    "tts-1": 0.000015,  # $15.00 / 1M characters
-    "tts-1-hd": 0.000030,  # $30.00 / 1M characters
-    "gpt-4o-mini-tts": 0.000020,  # ~$0.015/min, ~750 chars/min
-    "gpt-4o-tts": 0.000020,
-}
-
-
 def calculate_tts_cost(model: str, num_characters: int) -> float:
     """Calculate estimated cost for TTS based on input character count."""
-    per_char = TTS_PRICING_PER_CHAR.get(model, 0.000015)
+    per_char = TTS_PRICING_PER_CHAR.get(model, UNKNOWN_TTS_MODEL_PRICING)
     return per_char * num_characters
 
-
-# ---------------------------------------------------------------------------
-# STT pricing: per minute of audio
-# ---------------------------------------------------------------------------
-STT_PRICING_PER_MINUTE: dict[str, float] = {
-    "gpt-4o-transcribe": 0.006,
-    "gpt-4o-transcribe-diarize": 0.006,
-    "gpt-4o-mini-transcribe": 0.003,
-    "whisper-1": 0.006,
-}
 
 # Rough bytes-per-second used to estimate audio duration from file size
 _AUDIO_BPS_WAV = 88_000  # mono 16-bit 44.1 kHz
@@ -211,22 +120,13 @@ def estimate_audio_duration_seconds(file_size_bytes: int, filename: str) -> floa
 
 def calculate_stt_cost(model: str, duration_seconds: float) -> float:
     """Calculate cost for STT based on estimated audio duration."""
-    per_minute = STT_PRICING_PER_MINUTE.get(model, 0.006)
+    per_minute = STT_PRICING_PER_MINUTE.get(model, UNKNOWN_STT_MODEL_PRICING)
     return per_minute * (duration_seconds / 60.0)
-
-
-# ---------------------------------------------------------------------------
-# Video generation pricing: per second of video
-# ---------------------------------------------------------------------------
-VIDEO_PRICING_PER_SECOND: dict[str, float] = {
-    "sora-2": 0.10,
-    "sora-2-pro": 0.20,
-}
 
 
 def calculate_video_cost(model: str, seconds: int) -> float:
     """Calculate cost for video generation."""
-    per_second = VIDEO_PRICING_PER_SECOND.get(model, 0.10)
+    per_second = VIDEO_PRICING_PER_SECOND.get(model, UNKNOWN_VIDEO_MODEL_PRICING)
     return per_second * seconds
 
 
