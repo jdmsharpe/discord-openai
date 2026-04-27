@@ -23,6 +23,7 @@ from .embeds import (
     append_thinking_embeds,
     error_embed,
 )
+from .embed_delivery import send_embed_batches
 from .models import PermissionAwareChannel
 from .responses import build_reasoning_config, extract_summary_text, get_response_text
 from .state import remember_view_state
@@ -193,7 +194,12 @@ async def _send_conversation_reply(
     await cog._strip_previous_view(conversation_id)
 
     if embeds:
-        reply_msg = await send_reply(embeds=embeds, view=view)
+        reply_msg = await send_embed_batches(
+            send_reply,
+            embeds=embeds,
+            view=view,
+            logger=cog.logger,
+        )
     else:
         cog.logger.warning("No embeds to send in the reply.")
         reply_msg = await send_reply(
@@ -221,7 +227,7 @@ async def _run_followup_response(
     try:
         tools, tool_error = _resolve_conversation_tools(cog, conversation)
         if tool_error:
-            await send_reply(embed=error_embed(tool_error))
+            await send_embed_batches(send_reply, embed=error_embed(tool_error), logger=cog.logger)
             return
 
         conversation.input = input_content
@@ -310,10 +316,12 @@ async def handle_new_message_in_conversation(
     cog.logger.info("Handling new message in conversation %s", conversation.conversation_id)
 
     if conversation.pending_mcp_approval is not None:
-        await message.reply(
+        await send_embed_batches(
+            message.reply,
             embed=error_embed(
                 "This conversation is waiting on an MCP approval decision. Approve, deny, or end it before sending another message."
-            )
+            ),
+            logger=cog.logger,
         )
         return
 
@@ -341,7 +349,7 @@ async def handle_new_message_in_conversation(
                 "Cleanup removed stale conversation id %s after follow-up failure.",
                 conversation.conversation_id,
             )
-        await message.reply(embed=error_embed(description))
+        await send_embed_batches(message.reply, embed=error_embed(description), logger=cog.logger)
 
 
 async def regenerate_conversation_response(cog, interaction: Interaction, conversation) -> None:
@@ -558,10 +566,12 @@ async def handle_on_message(cog, message) -> None:
                 )
                 return
             if conversation.pending_mcp_approval is not None:
-                await message.reply(
+                await send_embed_batches(
+                    message.reply,
                     embed=error_embed(
                         "This conversation is waiting on an MCP approval decision. Approve, deny, or end it before sending another message."
-                    )
+                    ),
+                    logger=cog.logger,
                 )
                 return
             await handle_new_message_in_conversation(cog, message, conversation)
@@ -619,7 +629,8 @@ async def run_chat_command(
     interaction = ctx.interaction
     channel_id = ctx.channel_id
     if author is None or interaction is None or channel_id is None:
-        await ctx.send_followup(
+        await send_embed_batches(
+            ctx.send_followup,
             embed=error_embed("This command requires a normal Discord interaction context.")
         )
         return
@@ -629,10 +640,12 @@ async def run_chat_command(
             conversation.conversation_starter_id == author.id
             and conversation.channel_id == channel_id
         ):
-            await ctx.send_followup(
+            await send_embed_batches(
+                ctx.send_followup,
                 embed=error_embed(
                     "You already have an active conversation in this channel. Please finish it before starting a new one."
-                )
+                ),
+                logger=cog.logger,
             )
             return
 
@@ -654,7 +667,7 @@ async def run_chat_command(
         mcp_preset_names,
     )
     if tool_error:
-        await ctx.send_followup(embed=error_embed(tool_error))
+        await send_embed_batches(ctx.send_followup, embed=error_embed(tool_error), logger=cog.logger)
         return
 
     params = ResponseParameters(
@@ -765,14 +778,23 @@ async def run_chat_command(
             cog._track_and_append_cost(embeds, author.id, model, response, tool_info)
             reply_view = cog._create_button_view(author.id, interaction.id, tools)
 
-        reply_msg = await ctx.send_followup(embeds=embeds, view=reply_view)
+        reply_msg = await send_embed_batches(
+            ctx.send_followup,
+            embeds=embeds,
+            view=reply_view,
+            logger=cog.logger,
+        )
 
         cog.conversation_histories[interaction.id] = params
         remember_view_state(cog, author.id, interaction.id, reply_view, reply_msg)
         await cog._prune_runtime_state()
     except Exception as error:
         await cog._cleanup_conversation(author.id, interaction.id)
-        await ctx.send_followup(embed=error_embed(format_openai_error(error)))
+        await send_embed_batches(
+            ctx.send_followup,
+            embed=error_embed(format_openai_error(error)),
+            logger=cog.logger,
+        )
 
 
 __all__ = [

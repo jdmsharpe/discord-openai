@@ -13,6 +13,7 @@ from ...util import (
     format_openai_error,
     truncate_text,
 )
+from .embed_delivery import send_embed_batches
 from .embeds import append_flat_pricing_embed, error_embed
 from .models import TextToSpeechParameters
 
@@ -73,9 +74,18 @@ async def run_tts_command(
                 f"{len(input):,} chars · {params.voice}",
             )
 
-        await ctx.send_followup(embeds=embeds, file=File(speech_file_path))
+        await send_embed_batches(
+            ctx.send_followup,
+            embeds=embeds,
+            file=File(speech_file_path),
+            logger=cog.logger,
+        )
     except Exception as e:
-        await ctx.send_followup(embed=error_embed(format_openai_error(e)))
+        await send_embed_batches(
+            ctx.send_followup,
+            embed=error_embed(format_openai_error(e)),
+            logger=cog.logger,
+        )
     finally:
         if speech_file_path and speech_file_path.exists():
             speech_file_path.unlink(missing_ok=True)
@@ -152,9 +162,18 @@ async def run_stt_command(
                 f"~{est_duration:.0f}s audio · {actual_model}",
             )
 
-        await ctx.send_followup(embeds=embeds, file=File(speech_file_path))
+        await send_embed_batches(
+            ctx.send_followup,
+            embeds=embeds,
+            file=File(speech_file_path),
+            logger=cog.logger,
+        )
     except Exception as e:
-        await ctx.send_followup(embed=error_embed(format_openai_error(e)))
+        await send_embed_batches(
+            ctx.send_followup,
+            embed=error_embed(format_openai_error(e)),
+            logger=cog.logger,
+        )
     finally:
         if speech_file_path and speech_file_path.exists():
             speech_file_path.unlink(missing_ok=True)

@@ -6,6 +6,7 @@ from discord import ApplicationContext, Colour, Embed, File
 
 from ...config.auth import SHOW_COST_EMBEDS
 from ...util import calculate_video_cost, format_openai_error, truncate_text
+from .embed_delivery import send_embed_batches
 from .embeds import append_flat_pricing_embed, error_embed
 from .models import VideoGenerationParameters
 
@@ -22,10 +23,12 @@ async def run_video_command(
     await ctx.defer()
 
     if size in ("1920x1080", "1080x1920") and model != "sora-2-pro":
-        await ctx.send_followup(
+        await send_embed_batches(
+            ctx.send_followup,
             embed=error_embed(
                 "1080p resolutions (1920x1080, 1080x1920) are only supported with Sora 2 Pro."
-            )
+            ),
+            logger=cog.logger,
         )
         return
 
@@ -85,12 +88,17 @@ async def run_video_command(
                 embeds, vid_cost, daily_cost, f"{vid_seconds}s · {video_params.size}"
             )
 
-        await ctx.send_followup(embeds=embeds, file=File(video_file_path))
+        await send_embed_batches(
+            ctx.send_followup,
+            embeds=embeds,
+            file=File(video_file_path),
+            logger=cog.logger,
+        )
         cog.logger.info("Successfully sent generated video")
     except Exception as e:
         description = format_openai_error(e)
         cog.logger.error(f"Video generation failed: {description}", exc_info=True)
-        await ctx.send_followup(embed=error_embed(description))
+        await send_embed_batches(ctx.send_followup, embed=error_embed(description), logger=cog.logger)
     finally:
         if video_file_path and video_file_path.exists():
             video_file_path.unlink(missing_ok=True)

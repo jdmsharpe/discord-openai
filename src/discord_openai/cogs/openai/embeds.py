@@ -22,11 +22,6 @@ def append_thinking_embeds(embeds: list[Embed], thinking_text: str) -> None:
 
 def append_response_embeds(embeds, response_text):
     """Append response text, chunked to respect Discord limits."""
-    used = sum(len(e.description or "") for e in embeds)
-    available = max(500, 6000 - used - 500)
-    if len(response_text) > available:
-        response_text = truncate_text(response_text, available)
-
     for index, chunk in enumerate(chunk_text(response_text), start=1):
         embeds.append(
             Embed(
@@ -63,17 +58,8 @@ def append_sources_embed(
         parts.append("**Files referenced:**\n" + "\n".join(file_lines))
 
     description = "\n\n".join(parts)
-    current_total = sum(len(embed.description or "") + len(embed.title or "") for embed in embeds)
-    remaining_chars = 6000 - current_total - len("Sources")
-    if remaining_chars < 50:
-        return
-
-    max_description_length = min(4096, remaining_chars)
-    if max_description_length <= 0:
-        return
-
-    if len(description) > max_description_length:
-        description = truncate_text(description, max_description_length - 3)
+    if len(description) > 4096:
+        description = truncate_text(description, 4093)
 
     embeds.append(Embed(title="Sources", description=description, color=Colour.blue()))
 

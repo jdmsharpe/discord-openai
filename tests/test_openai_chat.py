@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from discord import Embed
 
 from discord_openai.cogs.openai.chat import (
     handle_mcp_approval_action,
@@ -178,6 +179,68 @@ class TestRunChatCommand:
         assert "**Presence Penalty:** 0.0" in intro_description
         assert "**Temperature:** 0.0" in intro_description
         assert "**Nucleus Sampling:** 0.0" in intro_description
+
+    @pytest.mark.asyncio
+    async def test_chat_batches_long_response_with_sidecar_without_plain_text_fallback(self):
+        reply_view = MagicMock()
+        response = _make_response(
+            response_id="resp_done",
+            output=[],
+            output_text="Long response. " + ("x" * 9000),
+        )
+
+        def append_cost(embeds, *_args, **_kwargs):
+            embeds.append(Embed(description="cost sidecar"))
+
+        cog = SimpleNamespace(
+            conversation_histories={},
+            views={},
+            last_view_messages={},
+            daily_costs={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(
+                responses=SimpleNamespace(create=AsyncMock(return_value=response))
+            ),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+            _create_mcp_approval_view=MagicMock(),
+            _create_button_view=MagicMock(return_value=reply_view),
+            _track_and_append_cost=MagicMock(side_effect=append_cost),
+        )
+
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(return_value="message"),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="Long please",
+            persona="You are helpful.",
+            model="gpt-5.4",
+            attachment=None,
+            frequency_penalty=None,
+            presence_penalty=None,
+            temperature=None,
+            top_p=None,
+            reasoning_effort=None,
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+        )
+
+        assert ctx.send_followup.await_count > 1
+        assert all("embeds" in call.kwargs for call in ctx.send_followup.await_args_list)
+        assert all("content" not in call.kwargs for call in ctx.send_followup.await_args_list)
+        assert ctx.send_followup.await_args_list[-1].kwargs["view"] is reply_view
 
 
 class TestHandleOnMessage:

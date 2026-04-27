@@ -32,12 +32,12 @@ class TestAppendResponseEmbeds:
         assert embeds[0].title == "Response"
         assert embeds[1].title == "Response (Part 2)"
 
-    def test_truncates_at_discord_limit(self):
+    def test_preserves_full_response_for_delivery_batching(self):
         embeds = []
         long_response = "y" * 25000
         append_response_embeds(embeds, long_response)
         total_chars = sum(len(embed.description or "") for embed in embeds)
-        assert total_chars <= 5503
+        assert total_chars == 25000
 
     def test_no_truncation_under_limit(self):
         embeds = []
@@ -95,11 +95,16 @@ class TestAppendSourcesEmbed:
         append_sources_embed(embeds, [], [])
         assert len(embeds) == 0
 
-    def test_no_embed_when_no_space(self):
-        embeds = [Embed(title="Big", description="x" * 5950)]
+    def test_sources_preserved_for_delivery_batching(self):
+        embeds = [
+            Embed(title="Big 1", description="x" * 3500),
+            Embed(title="Big 2", description="y" * 2500),
+        ]
         file_citations = [{"filename": "report.pdf", "file_id": "file-abc"}]
         append_sources_embed(embeds, [], file_citations)
-        assert len(embeds) == 1
+        assert len(embeds) == 3
+        assert embeds[-1].title == "Sources"
+        assert "report.pdf" in embeds[-1].description
 
 
 class TestAppendPricingEmbed:

@@ -7,6 +7,7 @@ from discord import ApplicationContext, Attachment, Colour, Embed, File
 from ...config.auth import SHOW_COST_EMBEDS
 from ...util import calculate_image_cost, format_openai_error, truncate_text
 from .attachments import download_attachment, validate_image_attachment
+from .embed_delivery import send_embed_batches
 from .embeds import append_flat_pricing_embed, error_embed
 from .models import ImageGenerationParameters
 
@@ -27,7 +28,9 @@ async def run_image_command(
     mode = "Image Editing" if is_editing else "Image Generation"
     validation_error = validate_image_attachment(attachment)
     if validation_error:
-        await ctx.send_followup(embed=error_embed(validation_error))
+        await send_embed_batches(
+            ctx.send_followup, embed=error_embed(validation_error), logger=cog.logger
+        )
         return
 
     image_params = ImageGenerationParameters(
@@ -96,14 +99,19 @@ async def run_image_command(
                 f"{mode.lower()} · {effective_quality} · {effective_size} · {len(image_files)} image(s)",
             )
 
-        await ctx.send_followup(embeds=embeds, files=image_files)
+        await send_embed_batches(
+            ctx.send_followup,
+            embeds=embeds,
+            files=image_files,
+            logger=cog.logger,
+        )
         cog.logger.info(
             f"Successfully {mode.lower().replace(' ', '-')}d and sent {len(image_files)} image(s)"
         )
     except Exception as e:
         description = format_openai_error(e)
         cog.logger.error(f"{mode} failed: {description}", exc_info=True)
-        await ctx.send_followup(embed=error_embed(description))
+        await send_embed_batches(ctx.send_followup, embed=error_embed(description), logger=cog.logger)
     finally:
         if image_file_path and image_file_path.exists():
             image_file_path.unlink(missing_ok=True)

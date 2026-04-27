@@ -5,6 +5,7 @@ import time
 from discord import ApplicationContext, Colour, Embed, File
 
 from ...util import ResearchParameters, format_openai_error, hash_user_id, truncate_text
+from .embed_delivery import send_embed_batches
 from .embeds import append_sources_embed, append_thinking_embeds, error_embed
 from .responses import extract_summary_text
 from .tooling import extract_tool_info
@@ -37,7 +38,9 @@ async def run_research_command(
 
         tools, tool_error = cog.resolve_selected_tools(selected_tool_names, model)
         if tool_error:
-            await ctx.send_followup(embed=error_embed(tool_error))
+            await send_embed_batches(
+                ctx.send_followup, embed=error_embed(tool_error), logger=cog.logger
+            )
             return
 
         description = f"**Prompt:** {truncate_text(prompt, 2000)}\n"
@@ -45,8 +48,10 @@ async def run_research_command(
         description += f"**Tools:** {', '.join(selected_tool_names)}\n"
         description += "\nResearching... this may take several minutes."
 
-        status_msg = await ctx.send_followup(
-            embed=Embed(title="Deep Research", description=description, color=Colour.green())
+        status_msg = await send_embed_batches(
+            ctx.send_followup,
+            embed=Embed(title="Deep Research", description=description, color=Colour.green()),
+            logger=cog.logger,
         )
 
         api_dict = research_params.to_dict(tools)
@@ -111,8 +116,13 @@ async def run_research_command(
 
         await status_msg.edit(embed=header_embed)
         report_file = File(io.BytesIO(response_text.encode("utf-8")), filename="research_report.md")
-        await ctx.send_followup(embeds=extra_embeds if extra_embeds else [], file=report_file)
+        await send_embed_batches(
+            ctx.send_followup,
+            embeds=extra_embeds if extra_embeds else [],
+            file=report_file,
+            logger=cog.logger,
+        )
     except Exception as e:
         description = format_openai_error(e)
         cog.logger.error(f"Deep research failed: {description}", exc_info=True)
-        await ctx.send_followup(embed=error_embed(description))
+        await send_embed_batches(ctx.send_followup, embed=error_embed(description), logger=cog.logger)
