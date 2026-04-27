@@ -21,4 +21,5 @@ Thumbs.db
 # Tool/editor artifacts
 *.egg-info/
 .serena/
+.codex
 .codex/
