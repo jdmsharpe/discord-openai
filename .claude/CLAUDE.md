@@ -60,6 +60,8 @@ src/
         ├── chat.py
         ├── client.py
         ├── cog.py
+        ├── command_options.py  # OptionChoice lists for slash-command model/voice/etc. menus
+        ├── embed_delivery.py   # Discord embed batching (6000-char/10-embed message caps)
         ├── embeds.py
         ├── image.py
         ├── models.py           # Re-export shim for util.py parameter types
@@ -85,6 +87,9 @@ Only `src/bot.py` remains at the repo root; code imports should target `discord_
 - `tests/test_package_import.py` is the package import smoke test.
 - `tests/test_util.py` covers `ResponseParameters`, cost helpers, and error formatting.
 - `tests/test_button_view.py` covers the button-based Discord UI components.
+- `tests/test_config_pricing.py` covers YAML pricing load and `OPENAI_PRICING_PATH` override.
+- `tests/test_logging_setup.py` covers structured logging and request-id binding.
+- `tests/test_embed_delivery.py` covers Discord embed batching and char/count limits.
 - New tests and patches should target real owners under `discord_openai...`.
 - Examples:
   - `discord_openai.cogs.openai.tool_registry.TOOL_REGISTRY`
