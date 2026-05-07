@@ -19,7 +19,7 @@ async def run_video_command(
     size: str,
     seconds: str,
 ) -> None:
-    """Run the /openai video command."""
+    """Run the /openai-media video command."""
     await ctx.defer()
 
     if size in ("1920x1080", "1080x1920") and model != "sora-2-pro":
