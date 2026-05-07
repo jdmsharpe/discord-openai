@@ -19,7 +19,7 @@ async def run_research_command(
     file_search: bool,
     code_interpreter: bool,
 ) -> None:
-    """Run the /openai research command."""
+    """Run the /openai-tools research command."""
     await ctx.defer()
 
     research_params = ResearchParameters(

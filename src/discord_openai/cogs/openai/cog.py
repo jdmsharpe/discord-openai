@@ -63,6 +63,16 @@ from .video import run_video_command
 
 class OpenAICog(commands.Cog):
     openai = SlashCommandGroup("openai", "OpenAI commands", guild_ids=GUILD_IDS)
+    openai_media = SlashCommandGroup(
+        "openai-media",
+        "OpenAI image and video commands",
+        guild_ids=GUILD_IDS,
+    )
+    openai_tools = SlashCommandGroup(
+        "openai-tools",
+        "OpenAI speech and research commands",
+        guild_ids=GUILD_IDS,
+    )
 
     def __init__(self, bot):
         """Initialize the OpenAI cog."""
@@ -362,7 +372,7 @@ class OpenAICog(commands.Cog):
             mcp,
         )
 
-    @openai.command(
+    @openai_media.command(
         name="image",
         description="Generates or edits an image from a prompt.",
     )
@@ -405,7 +415,7 @@ class OpenAICog(commands.Cog):
     ):
         await run_image_command(self, ctx, prompt, model, quality, size, attachment)
 
-    @openai.command(
+    @openai_tools.command(
         name="tts",
         description="Generates lifelike audio from the input text.",
     )
@@ -460,7 +470,7 @@ class OpenAICog(commands.Cog):
     ):
         await run_tts_command(self, ctx, input, model, voice, instructions, response_format, speed)
 
-    @openai.command(
+    @openai_tools.command(
         name="stt",
         description="Generates text from the input audio.",
     )
@@ -493,7 +503,7 @@ class OpenAICog(commands.Cog):
     ):
         await run_stt_command(self, ctx, attachment, model, action)
 
-    @openai.command(
+    @openai_media.command(
         name="video",
         description="Generates a video based on a prompt using Sora.",
     )
@@ -535,10 +545,10 @@ class OpenAICog(commands.Cog):
         await run_video_command(self, ctx, prompt, model, size, seconds)
 
     # ------------------------------------------------------------------
-    # /openai research — Deep Research via background Responses API
+    # /openai-tools research — Deep Research via background Responses API
     # ------------------------------------------------------------------
 
-    @openai.command(
+    @openai_tools.command(
         name="research",
         description="Run a deep research task that searches, reads, and synthesizes a detailed report.",
     )

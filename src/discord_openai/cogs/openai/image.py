@@ -22,7 +22,7 @@ async def run_image_command(
     size: str | None,
     attachment: Attachment | None,
 ) -> None:
-    """Run the /openai image command."""
+    """Run the /openai-media image command."""
     await ctx.defer()
 
     is_editing = attachment is not None

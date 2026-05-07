@@ -8,7 +8,7 @@
 
 ## Overview
 
-A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, speech-to-text capabilities, autonomous research, and video generation—all accessible via modern slash commands grouped neatly under the `/openai` namespace.
+A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, speech-to-text capabilities, autonomous research, and video generation through modern slash commands.
 
 ## Features
 
@@ -36,31 +36,31 @@ Start an interactive thread with an OpenAI model.
 - **Tools:** `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), `shell`.
 - **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors.
 
-### `/openai image`
+### `/openai-media image`
 
 Create images using GPT Image models (`gpt-image-1.5`, `gpt-image-1`, `gpt-image-1-mini`).
 
 - Features quality presets (low, medium, high, auto) and multiple sizes (portrait, landscape, square).
 
-### `/openai video`
+### `/openai-media video`
 
 Generate videos from text prompts using OpenAI's Sora models (`sora-2`, `sora-2-pro`).
 
 - Features customizable size options (up to 1080p for Pro) and duration (4–20 seconds).
 
-### `/openai research`
+### `/openai-tools research`
 
 Run a deep research task using `o3-deep-research` or `o4-mini-deep-research`.
 
 - Autonomously searches the web and synthesizes cited reports. Optionally enable `file_search` or `code_interpreter` to enhance analysis.
 
-### `/openai tts`
+### `/openai-tools tts`
 
 Generate lifelike audio from text using OpenAI's TTS stack.
 
 - Select from 13 voices, multiple output formats (MP3, WAV, Opus, AAC, FLAC, PCM), and adjust playback speed.
 
-### `/openai stt`
+### `/openai-tools stt`
 
 Transcribe or translate uploaded audio (up to 25 MB).
 

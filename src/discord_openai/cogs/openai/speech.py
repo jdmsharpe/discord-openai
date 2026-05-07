@@ -29,7 +29,7 @@ async def run_tts_command(
     response_format: str,
     speed: float,
 ) -> None:
-    """Run the /openai tts command."""
+    """Run the /openai-tools tts command."""
     await ctx.defer()
 
     params = TextToSpeechParameters(input, model, voice, instructions, response_format, speed)
@@ -99,7 +99,7 @@ async def run_stt_command(
     model: str,
     action: str,
 ) -> None:
-    """Run the /openai stt command."""
+    """Run the /openai-tools stt command."""
     await ctx.defer()
 
     speech_file_path = None

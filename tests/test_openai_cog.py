@@ -1,3 +1,4 @@
+import json
 from typing import Any, cast
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
@@ -14,6 +15,28 @@ from discord_openai.cogs.openai.command_options import (
     TTS_VOICE_CHOICES,
     VIDEO_MODEL_CHOICES,
 )
+
+
+def _serialize_command_group_payload(group):
+    return {
+        "name": group.name,
+        "description": group.description,
+        "options": [
+            {
+                "name": command.name,
+                "description": command.description,
+                "options": [
+                    option.to_dict()
+                    for option in command.options
+                    if option.input_type is not None
+                ],
+                "type": 1,
+                "nsfw": False,
+            }
+            for command in group.subcommands
+        ],
+        "nsfw": False,
+    }
 
 
 class TestOpenAICog:
@@ -119,6 +142,41 @@ class TestOpenAICog:
         assert OpenAICog.stt.callback.__defaults__ == ("gpt-4o-transcribe", "transcription")
         assert OpenAICog.video.callback.__defaults__ == ("sora-2", "1280x720", "8")
         assert OpenAICog.research.callback.__defaults__ == ("o3-deep-research", False, False)
+
+    def test_registered_command_groups_fit_discord_size_limit(self):
+        """Discord rejects any single top-level command payload over 8000 bytes."""
+
+        cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
+        commands_by_name = {command.name: command for command in cog.get_commands()}
+
+        assert set(commands_by_name) == {"openai", "openai-media", "openai-tools"}
+        assert [command.name for command in commands_by_name["openai"].subcommands] == [
+            "check_permissions",
+            "chat",
+        ]
+        assert [command.name for command in commands_by_name["openai-media"].subcommands] == [
+            "image",
+            "video",
+        ]
+        assert [command.name for command in commands_by_name["openai-tools"].subcommands] == [
+            "tts",
+            "stt",
+            "research",
+        ]
+
+        payload_sizes = {
+            name: len(
+                json.dumps(
+                    _serialize_command_group_payload(command),
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            )
+            for name, command in commands_by_name.items()
+        }
+
+        assert payload_sizes["openai"] < 8000
+        assert payload_sizes["openai-media"] < 8000
+        assert payload_sizes["openai-tools"] < 8000
 
     def test_critical_choice_values_present(self):
         assert any(choice.value == "gpt-5.4" for choice in CHAT_MODEL_CHOICES)
