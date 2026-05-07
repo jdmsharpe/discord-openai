@@ -16,6 +16,7 @@ from ...util import (
     hash_user_id,
     truncate_text,
 )
+from .embed_delivery import send_embed_batches
 from .embeds import (
     append_pricing_embed,
     append_response_embeds,
@@ -23,7 +24,6 @@ from .embeds import (
     append_thinking_embeds,
     error_embed,
 )
-from .embed_delivery import send_embed_batches
 from .models import PermissionAwareChannel
 from .responses import build_reasoning_config, extract_summary_text, get_response_text
 from .state import remember_view_state
@@ -631,7 +631,7 @@ async def run_chat_command(
     if author is None or interaction is None or channel_id is None:
         await send_embed_batches(
             ctx.send_followup,
-            embed=error_embed("This command requires a normal Discord interaction context.")
+            embed=error_embed("This command requires a normal Discord interaction context."),
         )
         return
 
@@ -667,7 +667,9 @@ async def run_chat_command(
         mcp_preset_names,
     )
     if tool_error:
-        await send_embed_batches(ctx.send_followup, embed=error_embed(tool_error), logger=cog.logger)
+        await send_embed_batches(
+            ctx.send_followup, embed=error_embed(tool_error), logger=cog.logger
+        )
         return
 
     params = ResponseParameters(

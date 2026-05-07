@@ -98,7 +98,9 @@ async def run_video_command(
     except Exception as e:
         description = format_openai_error(e)
         cog.logger.error(f"Video generation failed: {description}", exc_info=True)
-        await send_embed_batches(ctx.send_followup, embed=error_embed(description), logger=cog.logger)
+        await send_embed_batches(
+            ctx.send_followup, embed=error_embed(description), logger=cog.logger
+        )
     finally:
         if video_file_path and video_file_path.exists():
             video_file_path.unlink(missing_ok=True)

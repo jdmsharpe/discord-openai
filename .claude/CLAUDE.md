@@ -4,7 +4,7 @@
 
 ```bash
 cp .env.example .env          # fill in BOT_TOKEN and OPENAI_API_KEY at minimum
-pip install -r requirements.txt
+pip install -e ".[dev]"
 python src/bot.py              # or: docker compose up
 ```
 
@@ -131,3 +131,4 @@ pytest -q
 - **Retry**: the `AsyncOpenAI` client is built with `max_retries=4, timeout=300` (total 5 attempts) in `client.py`; transient 429/5xx/connection errors recover transparently via the OpenAI SDK's built-in exponential backoff.
 - **Conversation TTL**: `prune_runtime_state` in `cogs/openai/state.py` evicts conversations older than `CONVERSATION_TTL` (12h) every 15 minutes via `@tasks.loop`. Caps at `MAX_ACTIVE_CONVERSATIONS` / `MAX_VIEW_STATES`. Daily costs retained for `DAILY_COST_RETENTION_DAYS` (30).
 - **Request IDs**: `cog_before_invoke` (and `on_message`) bind a fresh 8-char hex id via `discord_openai.logging_setup.bind_request_id`. All downstream `logger.info`/`warning`/`error` calls automatically include the id. Set `LOG_FORMAT=json` for JSON-lines output.
+- **Async file I/O**: blocking `open()` and `pathlib` methods (`read_bytes`, `write_bytes`, `unlink`, etc.) inside `async def` freeze the Discord event loop and stall every concurrent slash command. Wrap them with `asyncio.to_thread(...)` so the I/O runs on a worker thread. Enforced by `ruff` (`ASYNC230`/`ASYNC240`).

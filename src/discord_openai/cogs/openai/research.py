@@ -125,4 +125,6 @@ async def run_research_command(
     except Exception as e:
         description = format_openai_error(e)
         cog.logger.error(f"Deep research failed: {description}", exc_info=True)
-        await send_embed_batches(ctx.send_followup, embed=error_embed(description), logger=cog.logger)
+        await send_embed_batches(
+            ctx.send_followup, embed=error_embed(description), logger=cog.logger
+        )

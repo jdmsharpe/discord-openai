@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, TypeAlias
 
 from discord import Member, Message, User
@@ -31,12 +31,12 @@ def _user_state_key(user_or_id: Member | User | int) -> int:
 def _conversation_timestamp(conversation: ResponseParameters) -> datetime:
     updated_at = conversation.updated_at
     if updated_at.tzinfo is None:
-        return updated_at.replace(tzinfo=timezone.utc)
+        return updated_at.replace(tzinfo=UTC)
     return updated_at
 
 
 def _now_utc() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _extract_daily_total(value: float | tuple[float, datetime]) -> float:

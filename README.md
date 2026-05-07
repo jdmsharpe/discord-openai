@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/github/v/tag/jdmsharpe/discord-openai?sort=semver&label=version)](https://github.com/jdmsharpe/discord-openai/tags)
 [![License](https://img.shields.io/github/license/jdmsharpe/discord-openai?label=license)](./LICENSE)
 [![CI](https://github.com/jdmsharpe/discord-openai/actions/workflows/main.yml/badge.svg)](https://hub.docker.com/r/jsgreen152/discord-openai-bot)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776AB?logo=python&logoColor=white)](https://www.python.org/downloads/)
 
 ## Overview
 
@@ -74,7 +74,7 @@ Check if the bot has the necessary permissions in the current channel.
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - Discord Bot Token
 - OpenAI API Key
 
