@@ -80,8 +80,7 @@ def resolve_selected_tools(
     mcp_presets, mcp_error = resolve_mcp_presets(mcp_preset_names or [])
     if mcp_error:
         return [], mcp_error
-    for preset in mcp_presets:
-        tools.append(build_mcp_tool(preset))
+    tools.extend(build_mcp_tool(preset) for preset in mcp_presets)
 
     return tools, None
 
