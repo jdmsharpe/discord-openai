@@ -5,8 +5,14 @@
 ```bash
 cp .env.example .env          # fill in BOT_TOKEN and OPENAI_API_KEY at minimum
 pip install -e ".[dev]"
+git config core.hooksPath .githooks   # enable repo pre-commit hook
 python src/bot.py              # or: docker compose up
 ```
+
+## Gotchas
+
+- Uses **`py-cord`** (not `discord.py`). The slash-command API differs; don't mix docs between the two.
+- `GUILD_IDS` empty → commands register globally (up to 1-hour propagation delay). Set it to a test guild ID during development for instant updates.
 
 ## Environment Variables
 
