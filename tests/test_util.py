@@ -1,3 +1,4 @@
+from typing import ClassVar
 from unittest.mock import MagicMock
 
 import httpx
@@ -631,7 +632,7 @@ class TestBuildAttachmentContentBlock:
 
 
 class TestModelPricing:
-    CHAT_MODELS = [
+    CHAT_MODELS: ClassVar[list[str]] = [
         "gpt-5.4-pro",
         "gpt-5.4",
         "gpt-5.3-chat-latest",
@@ -692,9 +693,9 @@ class TestModelPricing:
 
 
 class TestImagePricing:
-    IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
-    QUALITIES = ["low", "medium", "high"]
-    SIZES = ["1024x1024", "1024x1536", "1536x1024"]
+    IMAGE_MODELS: ClassVar[list[str]] = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
+    QUALITIES: ClassVar[list[str]] = ["low", "medium", "high"]
+    SIZES: ClassVar[list[str]] = ["1024x1024", "1024x1536", "1536x1024"]
 
     def test_all_combos_have_pricing(self):
         for model in self.IMAGE_MODELS:
