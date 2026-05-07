@@ -1,14 +1,14 @@
 import hashlib
 import tempfile
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TypedDict
 
 import aiohttp
 from openai import APIError
 
-from discord_openai.config.pricing import (  # noqa: F401 — re-exported for callers
+from discord_openai.config.pricing import (
     IMAGE_PRICING,
     IMAGE_PRICING_DEFAULTS,
     MODEL_PRICING,
@@ -283,7 +283,7 @@ class ResponseParameters:
         self.pending_mcp_approval = pending_mcp_approval
         self.last_user_input = deepcopy(last_user_input) if last_user_input is not None else None
         self.last_user_message_id = last_user_message_id
-        self.updated_at = updated_at if updated_at is not None else datetime.now(timezone.utc)
+        self.updated_at = updated_at if updated_at is not None else datetime.now(UTC)
 
         # Response ID history for regeneration
         self.response_id_history = response_id_history if response_id_history is not None else []
@@ -291,7 +291,7 @@ class ResponseParameters:
 
     def touch(self) -> None:
         """Update the in-memory activity timestamp for this conversation."""
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def set_last_user_input(self, input_content: Any, message_id: int | None = None) -> None:
         """Store the latest normalized user input for deterministic regeneration."""

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import io
 from typing import Any, cast
@@ -45,15 +46,15 @@ async def run_image_command(
     try:
         if is_editing:
             image_file_path = await download_attachment(attachment.url, attachment.filename)
-            with open(image_file_path, "rb") as image_file:
-                response = await cog.openai_client.images.edit(
-                    image=image_file,
-                    prompt=prompt,
-                    model=model,
-                    n=1,
-                    quality=cast(Any, quality),
-                    size=cast(Any, size),
-                )
+            image_bytes = await asyncio.to_thread(image_file_path.read_bytes)
+            response = await cog.openai_client.images.edit(
+                image=(attachment.filename, image_bytes),
+                prompt=prompt,
+                model=model,
+                n=1,
+                quality=cast(Any, quality),
+                size=cast(Any, size),
+            )
         else:
             response = await cog.openai_client.images.generate(**image_params.to_dict())
 
@@ -111,7 +112,9 @@ async def run_image_command(
     except Exception as e:
         description = format_openai_error(e)
         cog.logger.error(f"{mode} failed: {description}", exc_info=True)
-        await send_embed_batches(ctx.send_followup, embed=error_embed(description), logger=cog.logger)
+        await send_embed_batches(
+            ctx.send_followup, embed=error_embed(description), logger=cog.logger
+        )
     finally:
         if image_file_path and image_file_path.exists():
             image_file_path.unlink(missing_ok=True)

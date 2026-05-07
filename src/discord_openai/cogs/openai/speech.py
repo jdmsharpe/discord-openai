@@ -1,3 +1,4 @@
+import asyncio
 import tempfile
 from pathlib import Path
 from typing import Any, cast
@@ -104,25 +105,26 @@ async def run_stt_command(
     speech_file_path = None
     try:
         speech_file_path = await download_attachment(attachment.url, attachment.filename)
-        with open(speech_file_path, "rb") as speech_file:
-            if action == "transcription":
-                if model == "gpt-4o-transcribe-diarize":
-                    response = await cog.openai_client.audio.transcriptions.create(
-                        model=model,
-                        file=speech_file,
-                        chunking_strategy=cast(Any, "auto"),
-                        response_format=cast(Any, "diarized_json"),
-                    )
-                else:
-                    response = await cog.openai_client.audio.transcriptions.create(
-                        model=model,
-                        file=speech_file,
-                    )
+        speech_bytes = await asyncio.to_thread(speech_file_path.read_bytes)
+        speech_file = (attachment.filename, speech_bytes)
+        if action == "transcription":
+            if model == "gpt-4o-transcribe-diarize":
+                response = await cog.openai_client.audio.transcriptions.create(
+                    model=model,
+                    file=speech_file,
+                    chunking_strategy=cast(Any, "auto"),
+                    response_format=cast(Any, "diarized_json"),
+                )
             else:
-                response = await cog.openai_client.audio.translations.create(
-                    model="whisper-1",
+                response = await cog.openai_client.audio.transcriptions.create(
+                    model=model,
                     file=speech_file,
                 )
+        else:
+            response = await cog.openai_client.audio.translations.create(
+                model="whisper-1",
+                file=speech_file,
+            )
 
         segments = getattr(response, "segments", None)
         if model == "gpt-4o-transcribe-diarize" and segments:

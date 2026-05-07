@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -10,7 +10,7 @@ from discord_openai.util import ResponseParameters
 
 @pytest.mark.asyncio
 async def test_prune_runtime_state_removes_stale_entries_and_preserves_active_entries():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stale_conversation = ResponseParameters(
         model="gpt-5.4",
         input=[],
