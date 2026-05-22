@@ -31,7 +31,7 @@ A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings toge
 
 Start an interactive thread with an OpenAI model.
 
-- **Models:** GPT-5 series, GPT-4 series, o-series (o1, o3, o4-mini, etc.), GPT-3.5 Turbo.
+- **Models:** GPT-5 series, GPT-4 series (GPT-4.1, GPT-4o, GPT-4 Turbo, etc.), o-series (o1, o3, o4-mini, etc.).
 - **Tuning Options:** Adjust frequency penalty, presence penalty, temperature, `top_p`, and `seed`.
 - **Tools:** `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), `shell`.
 - **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors.
