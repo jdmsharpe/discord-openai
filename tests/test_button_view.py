@@ -109,6 +109,28 @@ class TestButtonView:
         on_tools_changed.assert_called_once_with(["web_search", "code_interpreter"], conversation)
         interaction.response.send_message.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_tool_select_callback_handles_none_values(self):
+        # py-cord 2.8 may surface Select.values as None; the guard must treat it as empty.
+        conversation = SimpleNamespace()
+        on_tools_changed = MagicMock(return_value=(set(), None))
+        view = _make_button_view(
+            get_conversation=MagicMock(return_value=conversation),
+            on_tools_changed=on_tools_changed,
+        )
+
+        selected = MagicMock()
+        selected.values = None
+
+        interaction = MagicMock()
+        interaction.user.id = 123
+        interaction.response.send_message = AsyncMock()
+
+        await view.tool_select_callback(interaction, selected)
+
+        on_tools_changed.assert_called_once_with([], conversation)
+        interaction.response.send_message.assert_awaited_once()
+
 
 class TestMcpApprovalView:
     @pytest.mark.asyncio
