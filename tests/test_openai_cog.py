@@ -123,7 +123,7 @@ class TestOpenAICog:
     def test_command_defaults_are_unchanged(self):
         assert OpenAICog.chat.callback.__defaults__ == (
             "You are a helpful assistant.",
-            "gpt-5.4",
+            "gpt-5.5",
             None,
             None,
             None,
