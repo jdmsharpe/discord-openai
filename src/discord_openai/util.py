@@ -198,7 +198,7 @@ class ResponseParameters:
 
     def __init__(
         self,
-        model: str = "gpt-5.4",
+        model: str = "gpt-5.5",
         instructions: str = "You are a helpful assistant.",
         input: Any = None,  # Can be string or list of content items
         previous_response_id: str | None = None,
@@ -247,7 +247,7 @@ class ResponseParameters:
             self.top_p = None
             self.reasoning = reasoning
         else:
-            # GPT-5.4/5.2/5.1/5-pro, GPT-4.x, etc.
+            # GPT-5.5/5.4/5.2/5.1/5-pro, GPT-4.x, etc.
             # temperature/top_p are not supported when reasoning effort is not "none".
             effort = reasoning.get("effort") if reasoning else None
             if effort and effort != REASONING_EFFORT_NONE:

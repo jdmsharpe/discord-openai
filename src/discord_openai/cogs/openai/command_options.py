@@ -1,6 +1,8 @@
 from discord.commands import OptionChoice
 
 CHAT_MODEL_CHOICES = [
+    OptionChoice(name="GPT-5.5 Pro", value="gpt-5.5-pro"),
+    OptionChoice(name="GPT-5.5", value="gpt-5.5"),
     OptionChoice(name="GPT-5.4 Pro", value="gpt-5.4-pro"),
     OptionChoice(name="GPT-5.4", value="gpt-5.4"),
     OptionChoice(name="GPT-5.4 Mini", value="gpt-5.4-mini"),

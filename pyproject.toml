@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "discord-openai"
-version = "1.3.0"
+version = "1.4.0"
 description = "Discord bot to enable OpenAI API interactions"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,9 +13,9 @@ authors = [
   { name = "John Magnus-Sharpe" },
 ]
 dependencies = [
-  "aiohttp~=3.13",
+  "aiohttp~=3.14",
   "httpx~=0.28",
-  "openai~=2.38",
+  "openai~=2.41",
   "py-cord~=2.8",
   "python-dotenv~=1.2",
   "PyYAML~=6.0",
@@ -24,7 +24,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest~=9.0",
-  "pytest-asyncio~=1.3",
+  "pytest-asyncio~=1.4",
   "ruff~=0.15",
   "pyright~=1.1",
 ]

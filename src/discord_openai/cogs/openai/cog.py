@@ -338,7 +338,7 @@ class OpenAICog(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-5.4",
+        model: str = "gpt-5.5",
         attachment: Attachment | None = None,
         frequency_penalty: float | None = None,
         presence_penalty: float | None = None,
