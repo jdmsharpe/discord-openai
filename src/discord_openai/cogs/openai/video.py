@@ -1,6 +1,5 @@
 import asyncio
-import tempfile
-from pathlib import Path
+from io import BytesIO
 
 from discord import ApplicationContext, Colour, Embed, File
 
@@ -39,7 +38,6 @@ async def run_video_command(
         seconds=seconds,
     )
 
-    video_file_path = None
     try:
         cog.logger.info(f"Starting video generation with model {model}")
         video = await cog.openai_client.videos.create(**video_params.to_dict())
@@ -64,8 +62,6 @@ async def run_video_command(
 
         content = await cog.openai_client.videos.download_content(video.id)
         video_bytes = await content.aread()
-        video_file_path = Path(tempfile.gettempdir()) / f"video_{video.id}.mp4"
-        video_file_path.write_bytes(video_bytes)
 
         description = f"**Prompt:** {truncate_text(video_params.prompt, 2000)}\n"
         description += f"**Model:** {video_params.model}\n"
@@ -91,7 +87,7 @@ async def run_video_command(
         await send_embed_batches(
             ctx.send_followup,
             embeds=embeds,
-            file=File(video_file_path),
+            file=File(BytesIO(video_bytes), filename=f"video_{video.id}.mp4"),
             logger=cog.logger,
         )
         cog.logger.info("Successfully sent generated video")
@@ -101,6 +97,3 @@ async def run_video_command(
         await send_embed_batches(
             ctx.send_followup, embed=error_embed(description), logger=cog.logger
         )
-    finally:
-        if video_file_path and video_file_path.exists():
-            video_file_path.unlink(missing_ok=True)
