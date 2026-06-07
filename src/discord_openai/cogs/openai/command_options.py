@@ -26,8 +26,6 @@ CHAT_MODEL_CHOICES = [
     OptionChoice(name="o1", value="o1"),
     OptionChoice(name="GPT-4o", value="gpt-4o"),
     OptionChoice(name="GPT-4o Mini", value="gpt-4o-mini"),
-    OptionChoice(name="GPT-4", value="gpt-4"),
-    OptionChoice(name="GPT-4 Turbo", value="gpt-4-turbo"),
 ]
 
 REASONING_EFFORT_CHOICES = [
