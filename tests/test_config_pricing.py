@@ -25,11 +25,14 @@ class TestPricingLoader:
 
     def test_bundled_yaml_flattens_image_pricing(self):
         pricing = _reload_pricing()
+        assert pricing.IMAGE_PRICING[("gpt-image-2", "low", "1024x1024")] == 0.006
+        assert pricing.IMAGE_PRICING[("gpt-image-2", "high", "1024x1024")] == 0.211
         assert pricing.IMAGE_PRICING[("gpt-image-1.5", "low", "1024x1024")] == 0.009
         assert pricing.IMAGE_PRICING[("gpt-image-1", "high", "1536x1024")] == 0.25
 
     def test_bundled_yaml_loads_image_defaults(self):
         pricing = _reload_pricing()
+        assert pricing.IMAGE_PRICING_DEFAULTS["gpt-image-2"] == 0.053
         assert pricing.IMAGE_PRICING_DEFAULTS["gpt-image-1.5"] == 0.034
 
     def test_bundled_yaml_loads_tts_stt_video(self):

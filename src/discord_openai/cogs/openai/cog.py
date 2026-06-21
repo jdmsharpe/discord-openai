@@ -408,7 +408,7 @@ class OpenAICog(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "gpt-image-1.5",
+        model: str = "gpt-image-2",
         quality: str | None = "auto",
         size: str | None = "auto",
         attachment: Attachment | None = None,

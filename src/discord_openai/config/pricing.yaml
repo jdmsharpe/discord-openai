@@ -52,6 +52,21 @@ tools:
 # Image-generation pricing is nested per model → quality → size.
 # "default_per_image" is used when quality or size is "auto".
 image_generation:
+  gpt-image-2:
+    default_per_image: 0.053
+    by_quality_size:
+      low:
+        1024x1024: 0.006
+        1024x1536: 0.005
+        1536x1024: 0.005
+      medium:
+        1024x1024: 0.053
+        1024x1536: 0.041
+        1536x1024: 0.041
+      high:
+        1024x1024: 0.211
+        1024x1536: 0.165
+        1536x1024: 0.165
   gpt-image-1.5:
     default_per_image: 0.034
     by_quality_size:

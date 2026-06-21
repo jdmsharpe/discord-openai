@@ -341,7 +341,7 @@ class ImageGenerationParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "gpt-image-1.5",
+        model: str = "gpt-image-2",
         n: int = 1,
         quality: str | None = "auto",
         size: str | None = "auto",
