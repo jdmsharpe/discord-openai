@@ -131,7 +131,7 @@ def calculate_video_cost(model: str, seconds: int) -> float:
 
 
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
-DEEP_RESEARCH_MODELS = ["o3-deep-research", "o4-mini-deep-research"]
+DEEP_RESEARCH_MODELS = ["gpt-5.5", "gpt-5.5-pro"]
 
 # Server-side compaction: automatically compress context when it exceeds this
 # token threshold, preventing context-window overflow in long conversations.
@@ -396,7 +396,7 @@ class ResearchParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "o3-deep-research",
+        model: str = "gpt-5.5",
         file_search: bool = False,
         code_interpreter: bool = False,
     ):

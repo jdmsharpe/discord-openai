@@ -123,6 +123,6 @@ VIDEO_SECONDS_CHOICES = [
 ]
 
 RESEARCH_MODEL_CHOICES = [
-    OptionChoice(name="o3 Deep Research", value="o3-deep-research"),
-    OptionChoice(name="o4 Mini Deep Research", value="o4-mini-deep-research"),
+    OptionChoice(name="GPT-5.5", value="gpt-5.5"),
+    OptionChoice(name="GPT-5.5 Pro", value="gpt-5.5-pro"),
 ]

@@ -581,7 +581,7 @@ class OpenAICog(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "o3-deep-research",
+        model: str = "gpt-5.5",
         file_search: bool = False,
         code_interpreter: bool = False,
     ):

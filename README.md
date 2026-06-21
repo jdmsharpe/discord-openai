@@ -50,7 +50,7 @@ Generate videos from text prompts using OpenAI's Sora models (`sora-2`, `sora-2-
 
 ### `/openai-tools research`
 
-Run a deep research task using `o3-deep-research` or `o4-mini-deep-research`.
+Run a deep research task using `gpt-5.5` or `gpt-5.5-pro`.
 
 - Autonomously searches the web and synthesizes cited reports. Optionally enable `file_search` or `code_interpreter` to enhance analysis.
 

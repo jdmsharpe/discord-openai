@@ -141,7 +141,7 @@ class TestOpenAICog:
         assert OpenAICog.tts.callback.__defaults__ == ("gpt-4o-mini-tts", "marin", "", "mp3", 1.0)
         assert OpenAICog.stt.callback.__defaults__ == ("gpt-4o-transcribe", "transcription")
         assert OpenAICog.video.callback.__defaults__ == ("sora-2", "1280x720", "8")
-        assert OpenAICog.research.callback.__defaults__ == ("o3-deep-research", False, False)
+        assert OpenAICog.research.callback.__defaults__ == ("gpt-5.5", False, False)
 
     def test_registered_command_groups_fit_discord_size_limit(self):
         """Discord rejects any single top-level command payload over 8000 bytes."""
@@ -184,7 +184,7 @@ class TestOpenAICog:
         assert any(choice.value == "marin" for choice in TTS_VOICE_CHOICES)
         assert any(choice.value == "gpt-4o-transcribe" for choice in STT_MODEL_CHOICES)
         assert any(choice.value == "sora-2" for choice in VIDEO_MODEL_CHOICES)
-        assert any(choice.value == "o3-deep-research" for choice in RESEARCH_MODEL_CHOICES)
+        assert any(choice.value == "gpt-5.5" for choice in RESEARCH_MODEL_CHOICES)
 
     def test_reasoning_effort_choice_set(self):
         values = {choice.value for choice in REASONING_EFFORT_CHOICES}
