@@ -13,7 +13,7 @@ python src/bot.py              # or: docker compose up
 
 - Uses **`py-cord`** (not `discord.py`). The slash-command API differs; don't mix docs between the two.
 - `GUILD_IDS` empty → commands register globally (up to 1-hour propagation delay). Set it to a test guild ID during development for instant updates.
-- **Slash-command options cap at 25 static `choices`.** Discord rejects any option with >25 entries (error `50035`), and py-cord's startup sync is one all-or-nothing bulk `PUT` — so a single over-limit list (most likely a model menu in `command_options.py`) aborts command registration for **every** cog inside `on_connect`, surfacing only as `Ignoring exception in on_connect`. `CHAT_MODEL_CHOICES` sits at the 25 ceiling, so adding a new model means dropping an old one. To escape the cap permanently, switch that option from `choices=` to an `autocomplete=` callback (no length limit).
+- **Slash-command options cap at 25 static `choices`.** Discord rejects any option with >25 entries (error `50035`), and py-cord's startup sync is one all-or-nothing bulk `PUT` — so a single over-limit list (most likely a model menu in `command_options.py`) aborts command registration for **every** cog inside `on_connect`, surfacing only as `Ignoring exception in on_connect`. `CHAT_MODEL_CHOICES` currently sits at 18 of 25 (deprecated models were pruned in v1.5.0 to pre-clear room for GPT-5.6), so there is headroom for now; when it next approaches 25, drop a deprecated model or — to escape the cap permanently — switch that option from `choices=` to an `autocomplete=` callback (no length limit).
 
 ## Environment Variables
 
