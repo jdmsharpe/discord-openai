@@ -470,7 +470,7 @@ class TestResearchParameters:
     def test_defaults(self):
         params = ResearchParameters(prompt="Test research")
         assert params.prompt == "Test research"
-        assert params.model == "o3-deep-research"
+        assert params.model == "gpt-5.5"
         assert params.file_search is False
         assert params.code_interpreter is False
 
@@ -478,7 +478,7 @@ class TestResearchParameters:
         params = ResearchParameters(prompt="What is quantum computing?")
         tools = [TOOL_WEB_SEARCH]
         result = params.to_dict(tools)
-        assert result["model"] == "o3-deep-research"
+        assert result["model"] == "gpt-5.5"
         assert result["input"] == "What is quantum computing?"
         assert result["tools"] == [TOOL_WEB_SEARCH]
         assert result["background"] is True
@@ -486,19 +486,19 @@ class TestResearchParameters:
     def test_to_dict_with_multiple_tools(self):
         params = ResearchParameters(
             prompt="Analyze market data",
-            model="o4-mini-deep-research",
+            model="gpt-5.5-pro",
             file_search=True,
             code_interpreter=True,
         )
         tools = [TOOL_WEB_SEARCH, TOOL_FILE_SEARCH, TOOL_CODE_INTERPRETER]
         result = params.to_dict(tools)
-        assert result["model"] == "o4-mini-deep-research"
+        assert result["model"] == "gpt-5.5-pro"
         assert len(result["tools"]) == 3
         assert result["background"] is True
 
     def test_deep_research_models_constant(self):
-        assert "o3-deep-research" in DEEP_RESEARCH_MODELS
-        assert "o4-mini-deep-research" in DEEP_RESEARCH_MODELS
+        assert "gpt-5.5" in DEEP_RESEARCH_MODELS
+        assert "gpt-5.5-pro" in DEEP_RESEARCH_MODELS
 
     def test_deep_research_models_have_pricing(self):
         for model in DEEP_RESEARCH_MODELS:
@@ -643,11 +643,11 @@ class TestModelPricing:
         "gpt-5",
         "gpt-5-mini",
         "gpt-5-nano",
+        "gpt-5.5-pro",
+        "gpt-5.5",
         "gpt-4.1",
         "gpt-4.1-mini",
         "gpt-4.1-nano",
-        "o3-deep-research",
-        "o4-mini-deep-research",
         "o4-mini",
         "o3-pro",
         "o3",
