@@ -7,7 +7,6 @@ CHAT_MODEL_CHOICES = [
     OptionChoice(name="GPT-5.4", value="gpt-5.4"),
     OptionChoice(name="GPT-5.4 Mini", value="gpt-5.4-mini"),
     OptionChoice(name="GPT-5.4 Nano", value="gpt-5.4-nano"),
-    OptionChoice(name="GPT-5.3", value="gpt-5.3-chat-latest"),
     OptionChoice(name="GPT-5.2 Pro", value="gpt-5.2-pro"),
     OptionChoice(name="GPT-5.2", value="gpt-5.2"),
     OptionChoice(name="GPT-5.1", value="gpt-5.1"),
@@ -17,14 +16,8 @@ CHAT_MODEL_CHOICES = [
     OptionChoice(name="GPT-5 Nano", value="gpt-5-nano"),
     OptionChoice(name="GPT-4.1", value="gpt-4.1"),
     OptionChoice(name="GPT-4.1 Mini", value="gpt-4.1-mini"),
-    OptionChoice(name="GPT-4.1 Nano", value="gpt-4.1-nano"),
-    OptionChoice(name="o4 Mini", value="o4-mini"),
     OptionChoice(name="o3 Pro", value="o3-pro"),
     OptionChoice(name="o3", value="o3"),
-    OptionChoice(name="o3 Mini", value="o3-mini"),
-    OptionChoice(name="o1 Pro", value="o1-pro"),
-    OptionChoice(name="o1", value="o1"),
-    OptionChoice(name="GPT-4o", value="gpt-4o"),
     OptionChoice(name="GPT-4o Mini", value="gpt-4o-mini"),
 ]
 
@@ -44,6 +37,7 @@ VERBOSITY_CHOICES = [
 ]
 
 IMAGE_MODEL_CHOICES = [
+    OptionChoice(name="GPT Image 2", value="gpt-image-2"),
     OptionChoice(name="GPT Image 1.5", value="gpt-image-1.5"),
     OptionChoice(name="GPT Image 1", value="gpt-image-1"),
     OptionChoice(name="GPT Image 1 Mini", value="gpt-image-1-mini"),

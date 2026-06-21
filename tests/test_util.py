@@ -346,7 +346,7 @@ class TestImageGenerationParameters:
     def test_defaults(self):
         params = ImageGenerationParameters(prompt="Test prompt")
         result = params.to_dict()
-        assert result["model"] == "gpt-image-1.5"
+        assert result["model"] == "gpt-image-2"
         assert result["quality"] == "auto"
         assert result["size"] == "auto"
         assert result["n"] == 1
@@ -693,7 +693,12 @@ class TestModelPricing:
 
 
 class TestImagePricing:
-    IMAGE_MODELS: ClassVar[list[str]] = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
+    IMAGE_MODELS: ClassVar[list[str]] = [
+        "gpt-image-2",
+        "gpt-image-1.5",
+        "gpt-image-1",
+        "gpt-image-1-mini",
+    ]
     QUALITIES: ClassVar[list[str]] = ["low", "medium", "high"]
     SIZES: ClassVar[list[str]] = ["1024x1024", "1024x1536", "1536x1024"]
 

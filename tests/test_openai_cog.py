@@ -137,7 +137,7 @@ class TestOpenAICog:
             False,
             None,
         )
-        assert OpenAICog.image.callback.__defaults__ == ("gpt-image-1.5", "auto", "auto", None)
+        assert OpenAICog.image.callback.__defaults__ == ("gpt-image-2", "auto", "auto", None)
         assert OpenAICog.tts.callback.__defaults__ == ("gpt-4o-mini-tts", "marin", "", "mp3", 1.0)
         assert OpenAICog.stt.callback.__defaults__ == ("gpt-4o-transcribe", "transcription")
         assert OpenAICog.video.callback.__defaults__ == ("sora-2", "1280x720", "8")
