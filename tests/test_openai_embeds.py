@@ -3,6 +3,7 @@ from discord import Colour, Embed
 from discord_openai.cogs.openai.embeds import (
     append_flat_pricing_embed,
     append_pricing_embed,
+    append_research_sources_embed,
     append_response_embeds,
     append_sources_embed,
     append_thinking_embeds,
@@ -105,6 +106,47 @@ class TestAppendSourcesEmbed:
         assert len(embeds) == 3
         assert embeds[-1].title == "Sources"
         assert "report.pdf" in embeds[-1].description
+
+
+class TestAppendResearchSourcesEmbed:
+    def test_web_citations_grouped_and_numbered(self):
+        embeds = []
+        citations = [{"title": "Example", "url": "https://example.com"}]
+        append_research_sources_embed(embeds, citations)
+        assert len(embeds) == 1
+        assert embeds[0].title == "Sources"
+        assert "**Web sources**" in embeds[0].description
+        assert "1. [Example](https://example.com)" in embeds[0].description
+
+    def test_file_citations_use_documents_heading(self):
+        embeds = []
+        file_citations = [{"filename": "report.pdf", "file_id": "file-abc"}]
+        append_research_sources_embed(embeds, [], file_citations)
+        assert len(embeds) == 1
+        assert "**Documents**" in embeds[0].description
+        assert "1. report.pdf" in embeds[0].description
+
+    def test_web_and_file_citations_combined(self):
+        embeds = []
+        citations = [{"title": "Web Source", "url": "https://example.com"}]
+        file_citations = [{"filename": "data.csv", "file_id": "file-123"}]
+        append_research_sources_embed(embeds, citations, file_citations)
+        assert len(embeds) == 1
+        assert "**Web sources**" in embeds[0].description
+        assert "**Documents**" in embeds[0].description
+
+    def test_caps_at_eight_with_overflow_indicator(self):
+        embeds = []
+        citations = [{"title": f"T{i}", "url": f"https://e/{i}"} for i in range(10)]
+        append_research_sources_embed(embeds, citations)
+        assert "8. [T7](https://e/7)" in embeds[0].description
+        assert "9. " not in embeds[0].description
+        assert "_…and 2 more_" in embeds[0].description
+
+    def test_no_citations(self):
+        embeds = []
+        append_research_sources_embed(embeds, [], [])
+        assert len(embeds) == 0
 
 
 class TestAppendPricingEmbed:
