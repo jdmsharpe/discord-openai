@@ -64,6 +64,43 @@ def append_sources_embed(
     embeds.append(Embed(title="Sources", description=description, color=Colour.blue()))
 
 
+def append_research_sources_embed(
+    embeds: list[Embed],
+    citations: list[dict[str, str]],
+    file_citations: list[dict[str, str]] | None = None,
+) -> None:
+    """Append a grouped 'Sources' embed for deep research, matching the Gemini bot.
+
+    Mirrors discord-gemini's research citations layout: a ``**Web sources**`` group and
+    a ``**Documents**`` group, each numbered and capped at 8 entries with an
+    ``_…and N more_`` overflow line. Kept separate from the chat ``append_sources_embed``
+    so the chat flow's source format is unaffected.
+    """
+    if not citations and not file_citations:
+        return
+
+    sections: list[str] = []
+    if citations:
+        numbered = [
+            f"{index}. [{citation['title']}]({citation['url']})"
+            for index, citation in enumerate(citations[:8], start=1)
+        ]
+        if len(citations) > 8:
+            numbered.append(f"_…and {len(citations) - 8} more_")
+        sections.append("**Web sources**\n" + "\n".join(numbered))
+    if file_citations:
+        numbered = [
+            f"{index}. {citation['filename']}"
+            for index, citation in enumerate(file_citations[:8], start=1)
+        ]
+        if len(file_citations) > 8:
+            numbered.append(f"_…and {len(file_citations) - 8} more_")
+        sections.append("**Documents**\n" + "\n".join(numbered))
+
+    description = truncate_text("\n\n".join(sections), 4000)
+    embeds.append(Embed(title="Sources", description=description, color=Colour.blue()))
+
+
 def append_pricing_embed(
     embeds: list[Embed],
     model: str,
@@ -116,6 +153,7 @@ def error_embed(description: str) -> Embed:
 __all__ = [
     "append_flat_pricing_embed",
     "append_pricing_embed",
+    "append_research_sources_embed",
     "append_response_embeds",
     "append_sources_embed",
     "append_thinking_embeds",

@@ -6,7 +6,7 @@ from discord import ApplicationContext, Colour, Embed, File
 
 from ...util import ResearchParameters, format_openai_error, hash_user_id, truncate_text
 from .embed_delivery import send_embed_batches
-from .embeds import append_sources_embed, append_thinking_embeds, error_embed
+from .embeds import append_research_sources_embed, append_thinking_embeds, error_embed
 from .responses import extract_summary_text
 from .tooling import extract_tool_info
 
@@ -104,7 +104,9 @@ async def run_research_command(
         extra_embeds = []
         append_thinking_embeds(extra_embeds, extract_summary_text(response))
         if tool_info["citations"] or tool_info["file_citations"]:
-            append_sources_embed(extra_embeds, tool_info["citations"], tool_info["file_citations"])
+            append_research_sources_embed(
+                extra_embeds, tool_info["citations"], tool_info["file_citations"]
+            )
         cog._track_and_append_cost(
             extra_embeds,
             ctx.author.id,
