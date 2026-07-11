@@ -4,9 +4,9 @@
 
 ```bash
 cp .env.example .env          # fill in BOT_TOKEN and OPENAI_API_KEY at minimum
-pip install -e ".[dev]"
+uv sync --extra dev           # creates .venv from uv.lock (no pip inside — use `uv pip` if needed)
 git config core.hooksPath .githooks   # enable repo pre-commit hook
-python src/bot.py              # or: docker compose up
+uv run python src/bot.py       # or: docker compose up
 ```
 
 ## Gotchas
