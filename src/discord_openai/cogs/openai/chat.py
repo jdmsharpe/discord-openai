@@ -610,8 +610,6 @@ async def run_chat_command(
     persona: str,
     model: str,
     attachment: Attachment | None,
-    frequency_penalty: float | None,
-    presence_penalty: float | None,
     temperature: float | None,
     top_p: float | None,
     reasoning_effort: str | None,
@@ -676,8 +674,6 @@ async def run_chat_command(
         model=model,
         instructions=persona,
         input=input_content,
-        frequency_penalty=frequency_penalty,
-        presence_penalty=presence_penalty,
         temperature=temperature,
         top_p=top_p,
         reasoning=build_reasoning_config(model, reasoning_effort),
@@ -704,10 +700,6 @@ async def run_chat_command(
             description += f"**Tools:** {', '.join(active_tool_labels)}\n"
         if params.mcp_preset_names:
             description += f"**MCP Presets:** {', '.join(params.mcp_preset_names)}\n"
-        if params.frequency_penalty is not None:
-            description += f"**Frequency Penalty:** {params.frequency_penalty}\n"
-        if params.presence_penalty is not None:
-            description += f"**Presence Penalty:** {params.presence_penalty}\n"
         if params.temperature is not None:
             description += f"**Temperature:** {params.temperature}\n"
         if params.top_p is not None:

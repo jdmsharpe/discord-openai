@@ -2,18 +2,23 @@
 #
 # Canonical source: https://openai.com/api/pricing/
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-06-05
+# Last-verified: 2026-07-13
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
-# billed at 50% of the regular input price. Reasoning tokens are billed
-# at the standard output price (already aggregated into output_tokens by the API).
+# billed at cached_input_per_million when present; models without that field
+# fall back to 50% of the regular input price (correct for the gpt-4o
+# generation, NOT for gpt-5.5+ where the discount is 90%). Reasoning tokens are
+# billed at the standard output price (already aggregated into output_tokens by the API).
 #
 # Override this file at runtime by setting OPENAI_PRICING_PATH to an alternate
 # YAML path — useful for pushing new pricing without a code release.
 
 models:
+  gpt-5.6-sol:       { input_per_million: 5.00,   output_per_million: 30.00,  cached_input_per_million: 0.50 }
+  gpt-5.6-terra:     { input_per_million: 2.50,   output_per_million: 15.00,  cached_input_per_million: 0.25 }
+  gpt-5.6-luna:      { input_per_million: 1.00,   output_per_million: 6.00,   cached_input_per_million: 0.10 }
   gpt-5.5-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
-  gpt-5.5:           { input_per_million: 5.00,   output_per_million: 30.00 }
+  gpt-5.5:           { input_per_million: 5.00,   output_per_million: 30.00,  cached_input_per_million: 0.50 }
   gpt-5.4-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
   gpt-5.4:           { input_per_million: 2.50,   output_per_million: 15.00 }
   gpt-5.4-mini:      { input_per_million: 0.75,   output_per_million: 4.50 }

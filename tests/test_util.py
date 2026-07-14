@@ -57,8 +57,6 @@ class TestResponseParameters:
             model="gpt-5.2",
             instructions="You are a helpful assistant.",
             input=[{"type": INPUT_TEXT_TYPE, "text": "Hello!"}],
-            frequency_penalty=0.5,
-            presence_penalty=0.3,
             temperature=0.8,
             top_p=0.9,
         )
@@ -66,12 +64,17 @@ class TestResponseParameters:
         assert result["model"] == "gpt-5.2"
         assert result["instructions"] == "You are a helpful assistant."
         assert result["input"] == [{"type": INPUT_TEXT_TYPE, "text": "Hello!"}]
-        assert result["frequency_penalty"] == 0.5
-        assert result["presence_penalty"] == 0.3
         assert result["temperature"] == 0.8
         assert result["top_p"] == 0.9
         assert "reasoning" not in result
         assert "previous_response_id" not in result
+
+    def test_default_model_is_gpt_56_sol(self):
+        """Guard the promoted default: gpt-5.6-sol, priced, and menu-selectable."""
+        params = ResponseParameters()
+        assert params.model == "gpt-5.6-sol"
+        assert params.to_dict()["model"] == "gpt-5.6-sol"
+        assert "gpt-5.6-sol" in MODEL_PRICING
 
     def test_reasoning_model_behavior(self):
         """Test that reasoning models use reasoning parameter instead of temperature/top_p."""
@@ -633,6 +636,9 @@ class TestBuildAttachmentContentBlock:
 
 class TestModelPricing:
     CHAT_MODELS: ClassVar[list[str]] = [
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
         "gpt-5.4-pro",
         "gpt-5.4",
         "gpt-5.3-chat-latest",
@@ -690,6 +696,16 @@ class TestModelPricing:
         cost = calculate_cost("gpt-4.1-nano", 100, 50)
         expected = (100 / 1_000_000) * 0.10 + (50 / 1_000_000) * 0.40
         assert cost == pytest.approx(expected)
+
+    def test_calculate_cost_cached_explicit_rate(self):
+        """gpt-5.6 bills cached input at its declared rate (10%), not the 50% fallback."""
+        cost = calculate_cost("gpt-5.6-sol", 1_000_000, 0, cached_tokens=1_000_000)
+        assert cost == pytest.approx(0.50)
+
+    def test_calculate_cost_cached_fallback_rate(self):
+        """Models without cached_input_per_million keep the historical 50% rule."""
+        cost = calculate_cost("gpt-4o", 1_000_000, 0, cached_tokens=1_000_000)
+        assert cost == pytest.approx(1.25)  # 50% of 2.50
 
 
 class TestImagePricing:

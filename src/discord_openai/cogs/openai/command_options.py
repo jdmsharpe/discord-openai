@@ -1,6 +1,9 @@
 from discord.commands import OptionChoice
 
 CHAT_MODEL_CHOICES = [
+    OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
+    OptionChoice(name="GPT-5.6 Terra", value="gpt-5.6-terra"),
+    OptionChoice(name="GPT-5.6 Luna", value="gpt-5.6-luna"),
     OptionChoice(name="GPT-5.5 Pro", value="gpt-5.5-pro"),
     OptionChoice(name="GPT-5.5", value="gpt-5.5"),
     OptionChoice(name="GPT-5.4 Pro", value="gpt-5.4-pro"),
@@ -23,11 +26,12 @@ CHAT_MODEL_CHOICES = [
 
 REASONING_EFFORT_CHOICES = [
     OptionChoice(name="None (fastest, no reasoning)", value="none"),
-    OptionChoice(name="Minimal", value="minimal"),
+    OptionChoice(name="Minimal (not supported by GPT-5.6)", value="minimal"),
     OptionChoice(name="Low", value="low"),
     OptionChoice(name="Medium", value="medium"),
     OptionChoice(name="High", value="high"),
     OptionChoice(name="Extra High", value="xhigh"),
+    OptionChoice(name="Max (deepest, GPT-5.6 only)", value="max"),
 ]
 
 VERBOSITY_CHOICES = [

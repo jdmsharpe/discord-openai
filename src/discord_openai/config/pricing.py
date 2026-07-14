@@ -55,6 +55,14 @@ MODEL_PRICING: dict[str, tuple[float, float]] = {
     for model_id, cfg in _MODELS.items()
 }
 
+# Explicit cached-input rates; models absent here are billed at 50% of the
+# regular input price (the pre-gpt-5.5 discount).
+CACHED_INPUT_PRICING: dict[str, float] = {
+    model_id: float(cfg["cached_input_per_million"])
+    for model_id, cfg in _MODELS.items()
+    if "cached_input_per_million" in cfg
+}
+
 TOOL_CALL_PRICING: dict[str, float] = {
     tool_id: float(cfg["per_call"]) for tool_id, cfg in _TOOLS.items()
 }
@@ -96,6 +104,7 @@ UNKNOWN_VIDEO_MODEL_PRICING: float = _fallback("unknown_video_model", "per_secon
 
 
 __all__ = [
+    "CACHED_INPUT_PRICING",
     "IMAGE_PRICING",
     "IMAGE_PRICING_DEFAULTS",
     "MODEL_PRICING",

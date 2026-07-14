@@ -254,7 +254,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models. (default: GPT-5.4)",
+        description="Choose from the following GPT models. (default: GPT-5.6 Sol)",
         required=False,
         type=str,
         choices=CHAT_MODEL_CHOICES,
@@ -264,18 +264,6 @@ class OpenAICog(commands.Cog):
         description="Attach an image, PDF, document, spreadsheet, or code file. (default: not set)",
         required=False,
         type=Attachment,
-    )
-    @option(
-        "frequency_penalty",
-        description="(Advanced) Controls how much the model should repeat itself. (default: not set)",
-        required=False,
-        type=float,
-    )
-    @option(
-        "presence_penalty",
-        description="(Advanced) Controls how much the model should talk about the prompt. (default: not set)",
-        required=False,
-        type=float,
     )
     @option(
         "temperature",
@@ -291,7 +279,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "reasoning_effort",
-        description="(Advanced) Reasoning depth. none=fastest, xhigh=deepest. (default: not set)",
+        description="(Advanced) Reasoning depth. none=fastest, max=deepest (GPT-5.6 only). (default: not set)",
         required=False,
         type=str,
         choices=REASONING_EFFORT_CHOICES,
@@ -338,10 +326,8 @@ class OpenAICog(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-5.5",
+        model: str = "gpt-5.6-sol",
         attachment: Attachment | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
         temperature: float | None = None,
         top_p: float | None = None,
         reasoning_effort: str | None = None,
@@ -359,8 +345,6 @@ class OpenAICog(commands.Cog):
             persona,
             model,
             attachment,
-            frequency_penalty,
-            presence_penalty,
             temperature,
             top_p,
             reasoning_effort,

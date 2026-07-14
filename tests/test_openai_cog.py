@@ -121,9 +121,7 @@ class TestOpenAICog:
     def test_command_defaults_are_unchanged(self):
         assert OpenAICog.chat.callback.__defaults__ == (
             "You are a helpful assistant.",
-            "gpt-5.5",
-            None,
-            None,
+            "gpt-5.6-sol",
             None,
             None,
             None,
@@ -177,6 +175,7 @@ class TestOpenAICog:
         assert payload_sizes["openai-tools"] < 8000
 
     def test_critical_choice_values_present(self):
+        assert any(choice.value == "gpt-5.6-sol" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.4" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-1.5" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "marin" for choice in TTS_VOICE_CHOICES)
@@ -186,4 +185,4 @@ class TestOpenAICog:
 
     def test_reasoning_effort_choice_set(self):
         values = {choice.value for choice in REASONING_EFFORT_CHOICES}
-        assert values == {"none", "minimal", "low", "medium", "high", "xhigh"}
+        assert values == {"none", "minimal", "low", "medium", "high", "xhigh", "max"}

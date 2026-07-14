@@ -13,7 +13,7 @@ uv run python src/bot.py       # or: docker compose up
 
 - Uses **`py-cord`** (not `discord.py`). The slash-command API differs; don't mix docs between the two.
 - `GUILD_IDS` empty → commands register globally (up to 1-hour propagation delay). Set it to a test guild ID during development for instant updates.
-- **Slash-command options cap at 25 static `choices`.** Discord rejects any option with >25 entries (error `50035`), and py-cord's startup sync is one all-or-nothing bulk `PUT` — so a single over-limit list (most likely a model menu in `command_options.py`) aborts command registration for **every** cog inside `on_connect`, surfacing only as `Ignoring exception in on_connect`. `CHAT_MODEL_CHOICES` currently sits at 18 of 25 (deprecated models were pruned in v1.5.0 to pre-clear room for GPT-5.6), so there is headroom for now; when it next approaches 25, drop a deprecated model or — to escape the cap permanently — switch that option from `choices=` to an `autocomplete=` callback (no length limit).
+- **Slash-command options cap at 25 static `choices`.** Discord rejects any option with >25 entries (error `50035`), and py-cord's startup sync is one all-or-nothing bulk `PUT` — so a single over-limit list (most likely a model menu in `command_options.py`) aborts command registration for **every** cog inside `on_connect`, surfacing only as `Ignoring exception in on_connect`. `CHAT_MODEL_CHOICES` currently sits at 21 of 25 (GPT-5.6 Sol/Terra/Luna added in v1.6.0 into room pre-cleared by the v1.5.0 prune), so there is limited headroom; when it next approaches 25, drop a deprecated model or — to escape the cap permanently — switch that option from `choices=` to an `autocomplete=` callback (no length limit).
 
 ## Environment Variables
 
@@ -124,6 +124,8 @@ pytest -q
 - `resolve_selected_tools()` in `discord_openai.cogs.openai.tooling` remains the canonical tool-resolution path for chat and research.
 - `file_search` requires `OPENAI_VECTOR_STORE_IDS`.
 - `gpt-5`, `gpt-5-mini`, and `gpt-5-nano` (`GPT5_NO_TEMP_MODELS`) never accept `temperature` or `top_p`; `ResponseParameters.__init__` silently drops them.
+- GPT-5.6 (Sol/Terra/Luna, default `gpt-5.6-sol`) accepts reasoning efforts `none`/`low`/`medium`/`high`/`xhigh`/`max` but **rejects `minimal`** with a 400 (live-probed 2026-07-13); the effort menu labels annotate both restrictions. Cached input bills at 10% for gpt-5.5+/5.6 via per-model `cached_input_per_million` in pricing.yaml (50%-of-input fallback for older models).
+- The Responses API has no `frequency_penalty`/`presence_penalty` parameters (SDK raises `TypeError` client-side); those slash options were removed in v1.6.0 after being dead-broken since the Responses migration.
 - `shell` remains limited to GPT-5 series models.
 - `ResponseParameters.to_dict()` in `discord_openai.util` remains the canonical request-construction path.
 - Named MCP presets are loaded from `OPENAI_MCP_PRESETS_JSON` and `OPENAI_MCP_PRESETS_PATH`; when both are set they merge additively, and duplicate preset names are rejected.

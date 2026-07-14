@@ -9,6 +9,7 @@ import aiohttp
 from openai import APIError
 
 from discord_openai.config.pricing import (
+    CACHED_INPUT_PRICING,
     IMAGE_PRICING,
     IMAGE_PRICING_DEFAULTS,
     MODEL_PRICING,
@@ -71,14 +72,16 @@ def calculate_cost(
 ) -> float:
     """Calculate the cost in dollars for a given model and token usage.
 
-    Cached input tokens are billed at 50% of the regular input price.
+    Cached input tokens are billed at the model's cached_input_per_million rate
+    when pricing.yaml declares one, else at 50% of the regular input price.
     Reasoning tokens are already included in output_tokens at the standard output price.
     """
     input_price, output_price = MODEL_PRICING.get(model, UNKNOWN_CHAT_MODEL_PRICING)
+    cached_price = CACHED_INPUT_PRICING.get(model, input_price * 0.5)
     non_cached = input_tokens - cached_tokens
     return (
         (non_cached / 1_000_000) * input_price
-        + (cached_tokens / 1_000_000) * (input_price * 0.5)
+        + (cached_tokens / 1_000_000) * cached_price
         + (output_tokens / 1_000_000) * output_price
     )
 
@@ -175,6 +178,7 @@ REASONING_EFFORT_LOW = "low"
 REASONING_EFFORT_MEDIUM = "medium"
 REASONING_EFFORT_HIGH = "high"
 REASONING_EFFORT_XHIGH = "xhigh"
+REASONING_EFFORT_MAX = "max"  # GPT-5.6 family only; 5.6 also rejects "minimal"
 
 # GPT-5 base models that never support temperature/top_p
 GPT5_NO_TEMP_MODELS = frozenset({"gpt-5", "gpt-5-mini", "gpt-5-nano"})
@@ -198,12 +202,10 @@ class ResponseParameters:
 
     def __init__(
         self,
-        model: str = "gpt-5.5",
+        model: str = "gpt-5.6-sol",
         instructions: str = "You are a helpful assistant.",
         input: Any = None,  # Can be string or list of content items
         previous_response_id: str | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
         temperature: float | None = None,
         top_p: float | None = None,
         reasoning: dict | None = None,
@@ -247,7 +249,7 @@ class ResponseParameters:
             self.top_p = None
             self.reasoning = reasoning
         else:
-            # GPT-5.5/5.4/5.2/5.1/5-pro, GPT-4.x, etc.
+            # GPT-5.6/5.5/5.4/5.2/5.1/5-pro, GPT-4.x, etc.
             # temperature/top_p are not supported when reasoning effort is not "none".
             effort = reasoning.get("effort") if reasoning else None
             if effort and effort != REASONING_EFFORT_NONE:
@@ -268,9 +270,6 @@ class ResponseParameters:
             ]
         )
         self.mcp_preset_names = list(mcp_preset_names) if mcp_preset_names is not None else []
-
-        self.frequency_penalty = frequency_penalty
-        self.presence_penalty = presence_penalty
 
         # Discord-specific fields
         self.conversation_starter = conversation_starter
@@ -311,10 +310,6 @@ class ResponseParameters:
             payload["input"] = self.input
         if self.previous_response_id:
             payload["previous_response_id"] = self.previous_response_id
-        if self.frequency_penalty is not None:
-            payload["frequency_penalty"] = self.frequency_penalty
-        if self.presence_penalty is not None:
-            payload["presence_penalty"] = self.presence_penalty
         if self.temperature is not None:
             payload["temperature"] = self.temperature
         if self.top_p is not None:

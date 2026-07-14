@@ -98,8 +98,6 @@ class TestRunChatCommand:
             persona="You are helpful.",
             model="gpt-5.4",
             attachment=None,
-            frequency_penalty=None,
-            presence_penalty=None,
             temperature=None,
             top_p=None,
             reasoning_effort=None,
@@ -160,8 +158,6 @@ class TestRunChatCommand:
             persona="You are helpful.",
             model="gpt-5.4",
             attachment=None,
-            frequency_penalty=0.0,
-            presence_penalty=0.0,
             temperature=0.0,
             top_p=0.0,
             reasoning_effort=None,
@@ -175,8 +171,6 @@ class TestRunChatCommand:
 
         embeds = ctx.send_followup.await_args.kwargs["embeds"]
         intro_description = embeds[0].description
-        assert "**Frequency Penalty:** 0.0" in intro_description
-        assert "**Presence Penalty:** 0.0" in intro_description
         assert "**Temperature:** 0.0" in intro_description
         assert "**Nucleus Sampling:** 0.0" in intro_description
 
@@ -224,8 +218,6 @@ class TestRunChatCommand:
             persona="You are helpful.",
             model="gpt-5.4",
             attachment=None,
-            frequency_penalty=None,
-            presence_penalty=None,
             temperature=None,
             top_p=None,
             reasoning_effort=None,
