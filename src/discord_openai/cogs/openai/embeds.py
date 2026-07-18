@@ -1,6 +1,28 @@
 from discord import Colour, Embed
 
-from ...util import calculate_cost, calculate_tool_cost, chunk_text, truncate_text
+from ...util import calculate_cost, calculate_tool_cost, chunk_text
+
+
+def _fit_markdown_sections(
+    sections: list[tuple[str | None, list[str]]],
+    max_length: int = 4000,
+) -> str:
+    """Fit complete Markdown entries without slicing through links."""
+
+    rendered_sections: list[str] = []
+    for heading, entries in sections:
+        accepted: list[str] = []
+        for entry in entries:
+            body = "\n".join([*accepted, entry])
+            rendered = f"{heading}\n{body}" if heading else body
+            candidate = "\n\n".join([*rendered_sections, rendered])
+            if len(candidate) > max_length:
+                break
+            accepted.append(entry)
+        if accepted:
+            body = "\n".join(accepted)
+            rendered_sections.append(f"{heading}\n{body}" if heading else body)
+    return "\n\n".join(rendered_sections)
 
 
 def append_thinking_embeds(embeds: list[Embed], thinking_text: str) -> None:
@@ -41,25 +63,25 @@ def append_sources_embed(
     if not citations and not file_citations:
         return
 
-    parts: list[str] = []
+    sections: list[tuple[str | None, list[str]]] = []
 
     if citations:
         web_lines = [
             f"{index}. [{citation['title']}]({citation['url']})"
             for index, citation in enumerate(citations[:20], start=1)
         ]
-        parts.append("\n".join(web_lines))
+        sections.append((None, web_lines))
 
     if file_citations:
         file_lines = [
             f"{index}. {citation['filename']}"
             for index, citation in enumerate(file_citations[:20], start=1)
         ]
-        parts.append("**Files referenced:**\n" + "\n".join(file_lines))
+        sections.append(("**Files referenced:**", file_lines))
 
-    description = "\n\n".join(parts)
-    if len(description) > 4096:
-        description = truncate_text(description, 4093)
+    description = _fit_markdown_sections(sections)
+    if not description:
+        return
 
     embeds.append(Embed(title="Sources", description=description, color=Colour.blue()))
 
@@ -79,7 +101,7 @@ def append_research_sources_embed(
     if not citations and not file_citations:
         return
 
-    sections: list[str] = []
+    sections: list[tuple[str | None, list[str]]] = []
     if citations:
         numbered = [
             f"{index}. [{citation['title']}]({citation['url']})"
@@ -87,7 +109,7 @@ def append_research_sources_embed(
         ]
         if len(citations) > 8:
             numbered.append(f"_…and {len(citations) - 8} more_")
-        sections.append("**Web sources**\n" + "\n".join(numbered))
+        sections.append(("**Web sources**", numbered))
     if file_citations:
         numbered = [
             f"{index}. {citation['filename']}"
@@ -95,9 +117,11 @@ def append_research_sources_embed(
         ]
         if len(file_citations) > 8:
             numbered.append(f"_…and {len(file_citations) - 8} more_")
-        sections.append("**Documents**\n" + "\n".join(numbered))
+        sections.append(("**Documents**", numbered))
 
-    description = truncate_text("\n\n".join(sections), 4000)
+    description = _fit_markdown_sections(sections)
+    if not description:
+        return
     embeds.append(Embed(title="Sources", description=description, color=Colour.blue()))
 
 

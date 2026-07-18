@@ -107,6 +107,22 @@ class TestAppendSourcesEmbed:
         assert embeds[-1].title == "Sources"
         assert "report.pdf" in embeds[-1].description
 
+    def test_long_web_links_are_kept_complete_or_omitted(self):
+        first_url = "https://example.com/" + "a" * 3500
+        second_url = "https://example.org/" + "b" * 1000
+        embeds = []
+        append_sources_embed(
+            embeds,
+            [
+                {"title": "First", "url": first_url},
+                {"title": "Second", "url": second_url},
+            ],
+        )
+
+        assert f"[First]({first_url})" in embeds[0].description
+        assert second_url not in embeds[0].description
+        assert len(embeds[0].description) <= 4000
+
 
 class TestAppendResearchSourcesEmbed:
     def test_web_citations_grouped_and_numbered(self):
@@ -147,6 +163,22 @@ class TestAppendResearchSourcesEmbed:
         embeds = []
         append_research_sources_embed(embeds, [], [])
         assert len(embeds) == 0
+
+    def test_long_research_links_are_kept_complete_or_omitted(self):
+        first_url = "https://example.com/" + "a" * 3500
+        second_url = "https://example.org/" + "b" * 1000
+        embeds = []
+        append_research_sources_embed(
+            embeds,
+            [
+                {"title": "First", "url": first_url},
+                {"title": "Second", "url": second_url},
+            ],
+        )
+
+        assert f"[First]({first_url})" in embeds[0].description
+        assert second_url not in embeds[0].description
+        assert len(embeds[0].description) <= 4000
 
 
 class TestAppendPricingEmbed:
