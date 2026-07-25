@@ -39,8 +39,18 @@ class TestPricingLoader:
         pricing = _reload_pricing()
         assert pricing.TTS_PRICING_PER_CHAR["tts-1"] == 0.000015
         assert pricing.STT_PRICING_PER_MINUTE["whisper-1"] == 0.006
-        assert pricing.VIDEO_PRICING_PER_SECOND["sora-2"] == 0.10
-        assert pricing.VIDEO_PRICING_PER_SECOND["sora-2-pro"] == 0.20
+        assert pricing.VIDEO_PRICING_PER_SECOND["sora-2"] == {
+            "default": 0.10,
+            "720p": 0.10,
+            "1024p": 0.10,
+            "1080p": 0.10,
+        }
+        assert pricing.VIDEO_PRICING_PER_SECOND["sora-2-pro"] == {
+            "default": 0.30,
+            "720p": 0.30,
+            "1024p": 0.50,
+            "1080p": 0.70,
+        }
 
     def test_fallback_constants_loaded(self):
         pricing = _reload_pricing()
@@ -76,7 +86,7 @@ class TestPricingLoader:
                     per_minute: 0.02
                 video_generation:
                   fake-video:
-                    per_second: 0.5
+                    per_second_by_resolution: { default: 0.5, 1080p: 0.9 }
                 fallbacks:
                   unknown_chat_model: { input_per_million: 42.0, output_per_million: 100.0 }
                   unknown_image_model: { per_image: 0.5 }
@@ -95,4 +105,5 @@ class TestPricingLoader:
         assert pricing.IMAGE_PRICING[("fake-image", "high", "1024x1024")] == 1.23
         assert pricing.IMAGE_PRICING_DEFAULTS == {"fake-image": 0.99}
         assert pricing.UNKNOWN_CHAT_MODEL_PRICING == (42.0, 100.0)
+        assert pricing.VIDEO_PRICING_PER_SECOND == {"fake-video": {"default": 0.5, "1080p": 0.9}}
         assert pricing.UNKNOWN_VIDEO_MODEL_PRICING == 1.0

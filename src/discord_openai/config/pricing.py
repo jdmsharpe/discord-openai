@@ -83,8 +83,14 @@ STT_PRICING_PER_MINUTE: dict[str, float] = {
     model_id: float(cfg["per_minute"]) for model_id, cfg in _STT.items()
 }
 
-VIDEO_PRICING_PER_SECOND: dict[str, float] = {
-    model_id: float(cfg["per_second"]) for model_id, cfg in _VIDEO.items()
+# Per-second video rates nested per model → resolution tier ("720p", "1024p",
+# "1080p"), with "default" used when the caller has no size to map.
+VIDEO_PRICING_PER_SECOND: dict[str, dict[str, float]] = {
+    model_id: {
+        resolution: float(price)
+        for resolution, price in (cfg.get("per_second_by_resolution") or {}).items()
+    }
+    for model_id, cfg in _VIDEO.items()
 }
 
 

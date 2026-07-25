@@ -128,9 +128,17 @@ speech_to_text:
   gpt-4o-mini-transcribe:     { per_minute: 0.003 }
   whisper-1:                  { per_minute: 0.006 }
 
+# Video pricing is per second of generated output, tiered by resolution.
+# "default" is the rate charged when no size reaches the cost helper (the API
+# default is 1280x720). sora-2 is flat across every size it supports; only
+# sora-2-pro is tiered, and 1080p is Pro-only.
+# Video rows re-verified against OpenAI's pricing page 2026-07-24
+# (sora-2-pro is tiered by resolution; sora-2 is flat).
 video_generation:
-  sora-2:     { per_second: 0.10 }
-  sora-2-pro: { per_second: 0.20 }
+  sora-2:
+    per_second_by_resolution: { default: 0.10, 720p: 0.10, 1024p: 0.10, 1080p: 0.10 }
+  sora-2-pro:
+    per_second_by_resolution: { default: 0.30, 720p: 0.30, 1024p: 0.50, 1080p: 0.70 }
 
 # Fallbacks used when calculate_*() receives an unknown model id.
 fallbacks:

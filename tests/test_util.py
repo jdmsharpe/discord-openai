@@ -5,6 +5,7 @@ import httpx
 import pytest
 from openai import APIError
 
+from discord_openai.cogs.openai.command_options import VIDEO_SIZE_CHOICES
 from discord_openai.cogs.openai.tooling import (
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
@@ -26,6 +27,7 @@ from discord_openai.util import (
     STT_PRICING_PER_MINUTE,
     TTS_PRICING_PER_CHAR,
     VIDEO_PRICING_PER_SECOND,
+    VIDEO_SIZE_RESOLUTIONS,
     ImageGenerationParameters,
     ResearchParameters,
     ResponseParameters,
@@ -813,16 +815,65 @@ class TestSttPricing:
 
 class TestVideoPricing:
     def test_all_models_have_pricing(self):
-        for model in ["sora-2", "sora-2-pro"]:
-            assert model in VIDEO_PRICING_PER_SECOND
+        """Derived from the menu, not a hardcoded list.
 
-    def test_calculate_sora_2(self):
-        cost = calculate_video_cost("sora-2", 8)
+        The size guard below iterates VIDEO_SIZE_CHOICES; keeping the model
+        guard symmetric means a new video model added to the menu without a
+        pricing row fails here instead of silently billing the fail-open
+        UNKNOWN_VIDEO_MODEL_PRICING rate — the same defect class as the
+        flat-rate sora-2-pro under-billing this release fixes.
+        """
+        from discord_openai.cogs.openai.command_options import VIDEO_MODEL_CHOICES
+
+        for choice in VIDEO_MODEL_CHOICES:
+            assert choice.value in VIDEO_PRICING_PER_SECOND
+
+    @pytest.mark.parametrize(
+        "size",
+        ["1280x720", "720x1280", "1792x1024", "1024x1792", "1920x1080", "1080x1920"],
+    )
+    def test_calculate_sora_2_is_flat_across_resolutions(self, size):
+        # sora-2 is $0.10/sec at every size; only Pro is tiered.
+        cost = calculate_video_cost("sora-2", 8, size)
         assert cost == pytest.approx(0.80)
 
-    def test_calculate_sora_2_pro(self):
-        cost = calculate_video_cost("sora-2-pro", 20)
-        assert cost == pytest.approx(4.00)
+    @pytest.mark.parametrize(
+        "size,per_second",
+        [
+            ("1280x720", 0.30),
+            ("720x1280", 0.30),
+            ("1792x1024", 0.50),
+            ("1024x1792", 0.50),
+            ("1920x1080", 0.70),
+            ("1080x1920", 0.70),
+        ],
+    )
+    def test_calculate_sora_2_pro_tiers(self, size, per_second):
+        cost = calculate_video_cost("sora-2-pro", 20, size)
+        assert cost == pytest.approx(20 * per_second)
+
+    def test_worst_case_pro_1080p_is_not_under_reported(self):
+        # 20s of 1080p Pro is the most expensive request the slash command can
+        # place: $14.00, not the $4.00 the old flat $0.20/sec rate reported.
+        assert calculate_video_cost("sora-2-pro", 20, "1920x1080") == pytest.approx(14.00)
+
+    def test_omitted_size_uses_default_rate(self):
+        assert calculate_video_cost("sora-2", 8) == pytest.approx(0.80)
+        assert calculate_video_cost("sora-2-pro", 8) == pytest.approx(2.40)
+
+    def test_unknown_size_fails_safe_to_priciest_tier(self):
+        # An unpriced size must over-report, never silently under-bill.
+        assert calculate_video_cost("sora-2-pro", 10, "3840x2160") == pytest.approx(7.00)
+        assert calculate_video_cost("sora-2", 10, "3840x2160") == pytest.approx(1.00)
+
+    def test_every_size_choice_is_priced(self):
+        # Guard: a size offered by the slash command but missing from the tier
+        # map would bill at the fail-safe rate instead of its real price.
+        for choice in VIDEO_SIZE_CHOICES:
+            assert choice.value in VIDEO_SIZE_RESOLUTIONS
+            resolution = VIDEO_SIZE_RESOLUTIONS[choice.value]
+            for model in ["sora-2", "sora-2-pro"]:
+                assert resolution in VIDEO_PRICING_PER_SECOND[model]
 
     def test_calculate_unknown_model(self):
         cost = calculate_video_cost("unknown-video", 10)

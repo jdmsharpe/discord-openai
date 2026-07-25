@@ -71,7 +71,7 @@ async def run_video_command(
         embed = Embed(title="Video Generation", description=description, color=Colour.blue())
         embeds = [embed]
         vid_seconds = int(video_params.seconds)
-        vid_cost = calculate_video_cost(model, vid_seconds)
+        vid_cost = calculate_video_cost(model, vid_seconds, video_params.size)
         daily_cost = cog._track_daily_cost_direct(
             ctx.author.id,
             "video",

@@ -127,9 +127,30 @@ def calculate_stt_cost(model: str, duration_seconds: float) -> float:
     return per_minute * (duration_seconds / 60.0)
 
 
-def calculate_video_cost(model: str, seconds: int) -> float:
-    """Calculate cost for video generation."""
-    per_second = VIDEO_PRICING_PER_SECOND.get(model, UNKNOWN_VIDEO_MODEL_PRICING)
+# Sora bills per second at a resolution tier; both orientations of a resolution
+# bill the same. Keys mirror VIDEO_SIZE_CHOICES in command_options.py.
+VIDEO_SIZE_RESOLUTIONS: dict[str, str] = {
+    "1280x720": "720p",
+    "720x1280": "720p",
+    "1792x1024": "1024p",
+    "1024x1792": "1024p",
+    "1920x1080": "1080p",
+    "1080x1920": "1080p",
+}
+
+
+def calculate_video_cost(model: str, seconds: int, size: str | None = None) -> float:
+    """Calculate cost for video generation at the requested resolution."""
+    by_resolution = VIDEO_PRICING_PER_SECOND.get(model)
+    if not by_resolution:
+        return UNKNOWN_VIDEO_MODEL_PRICING * seconds
+    if size is None:
+        per_second = by_resolution.get("default", max(by_resolution.values()))
+    else:
+        # An unmapped size bills at the model's most expensive tier so a newly
+        # added resolution over-reports instead of silently under-billing.
+        resolution = VIDEO_SIZE_RESOLUTIONS.get(size, "")
+        per_second = by_resolution.get(resolution, max(by_resolution.values()))
     return per_second * seconds
 
 
