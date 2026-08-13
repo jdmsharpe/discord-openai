@@ -706,9 +706,13 @@ class TestModelPricing:
         assert cost == pytest.approx(0.50)
 
     def test_calculate_cost_cached_fallback_rate(self):
-        """Models without cached_input_per_million keep the historical 50% rule."""
-        cost = calculate_cost("gpt-4o", 1_000_000, 0, cached_tokens=1_000_000)
-        assert cost == pytest.approx(1.25)  # 50% of 2.50
+        """Models with no published cached rate keep the historical 50% rule.
+
+        Must use a model in NO_PUBLISHED_CACHED_RATE — anything that declares a
+        rate exercises the lookup, not the fallback.
+        """
+        cost = calculate_cost("gpt-4", 1_000_000, 0, cached_tokens=1_000_000)
+        assert cost == pytest.approx(15.00)  # 50% of 30.00
 
     # OpenAI's published cached-input discount varies by generation, so the 50%
     # fallback in calculate_cost() is wrong for most of the catalog. Anything not
@@ -723,6 +727,7 @@ class TestModelPricing:
         "gpt-5.4": 0.10,
         "gpt-5.4-mini": 0.10,
         "gpt-5.4-nano": 0.10,
+        "gpt-5.3-chat-latest": 0.10,  # retired 2026-08-10; row kept for historical costing
         "gpt-5.2": 0.10,
         "gpt-5.1": 0.10,
         "gpt-5": 0.10,
@@ -754,7 +759,6 @@ class TestModelPricing:
         "gpt-4",
         "gpt-4-turbo",
         "gpt-3.5-turbo",
-        "gpt-5.3-chat-latest",  # retired 2026-08-10; row kept for historical costing
     }
 
     def test_declared_cached_rates_match_published(self):
