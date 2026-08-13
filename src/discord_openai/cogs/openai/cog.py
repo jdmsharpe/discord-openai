@@ -466,7 +466,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "model",
-        description="Model to use for speech-to-text conversion. (default: GPT-4o Transcribe)",
+        description="Model to use for speech-to-text conversion. (default: GPT Transcribe)",
         required=False,
         type=str,
         choices=STT_MODEL_CHOICES,
@@ -482,7 +482,7 @@ class OpenAICog(commands.Cog):
         self,
         ctx: ApplicationContext,
         attachment: Attachment,
-        model: str = "gpt-4o-transcribe",
+        model: str = "gpt-transcribe",
         action: str = "transcription",
     ):
         await run_stt_command(self, ctx, attachment, model, action)

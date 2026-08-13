@@ -93,6 +93,7 @@ TTS_RESPONSE_FORMAT_CHOICES = [
 ]
 
 STT_MODEL_CHOICES = [
+    OptionChoice(name="GPT Transcribe", value="gpt-transcribe"),
     OptionChoice(name="GPT-4o Transcribe", value="gpt-4o-transcribe"),
     OptionChoice(name="GPT-4o Mini Transcribe", value="gpt-4o-mini-transcribe"),
     OptionChoice(name="GPT-4o Transcribe Diarize", value="gpt-4o-transcribe-diarize"),

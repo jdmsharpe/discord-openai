@@ -1,7 +1,7 @@
 from typing import ClassVar
 from unittest.mock import MagicMock
 
-import httpx
+import httpx2
 import pytest
 from openai import APIError
 
@@ -13,6 +13,7 @@ from discord_openai.cogs.openai.tooling import (
     TOOL_WEB_SEARCH,
 )
 from discord_openai.util import (
+    CACHED_INPUT_PRICING,
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
     IMAGE_PRICING,
@@ -709,6 +710,73 @@ class TestModelPricing:
         cost = calculate_cost("gpt-4o", 1_000_000, 0, cached_tokens=1_000_000)
         assert cost == pytest.approx(1.25)  # 50% of 2.50
 
+    # OpenAI's published cached-input discount varies by generation, so the 50%
+    # fallback in calculate_cost() is wrong for most of the catalog. Anything not
+    # listed here MUST declare cached_input_per_million in pricing.yaml. Verified
+    # against the official pricing page 2026-08-12.
+    CACHED_DISCOUNT_BY_MODEL: ClassVar[dict[str, float]] = {
+        # gpt-5 family and newer: 90% off
+        "gpt-5.6-sol": 0.10,
+        "gpt-5.6-terra": 0.10,
+        "gpt-5.6-luna": 0.10,
+        "gpt-5.5": 0.10,
+        "gpt-5.4": 0.10,
+        "gpt-5.4-mini": 0.10,
+        "gpt-5.4-nano": 0.10,
+        "gpt-5.2": 0.10,
+        "gpt-5.1": 0.10,
+        "gpt-5": 0.10,
+        "gpt-5-mini": 0.10,
+        "gpt-5-nano": 0.10,
+        # gpt-4.1 / o3 / o4-mini generation: 75% off
+        "gpt-4.1": 0.25,
+        "gpt-4.1-mini": 0.25,
+        "gpt-4.1-nano": 0.25,
+        "o3": 0.25,
+        "o4-mini": 0.25,
+        # gpt-4o / o1 / o3-mini generation: 50% off
+        "o3-mini": 0.50,
+        "o1": 0.50,
+        "gpt-4o": 0.50,
+        "gpt-4o-mini": 0.50,
+    }
+
+    # Models that genuinely publish no cached price (Pro tiers and legacy ids),
+    # plus retired ids retained only so historical conversations still cost
+    # correctly. These are the ONLY models allowed to reach the 50% fallback.
+    NO_PUBLISHED_CACHED_RATE: ClassVar[set[str]] = {
+        "gpt-5.5-pro",
+        "gpt-5.4-pro",
+        "gpt-5.2-pro",
+        "gpt-5-pro",
+        "o3-pro",
+        "o1-pro",
+        "gpt-4",
+        "gpt-4-turbo",
+        "gpt-3.5-turbo",
+        "gpt-5.3-chat-latest",  # retired 2026-08-10; row kept for historical costing
+    }
+
+    def test_declared_cached_rates_match_published(self):
+        for model, discount in self.CACHED_DISCOUNT_BY_MODEL.items():
+            assert model in CACHED_INPUT_PRICING, (
+                f"{model} is missing cached_input_per_million; the 50% fallback misbills it"
+            )
+            input_price = MODEL_PRICING[model][0]
+            assert CACHED_INPUT_PRICING[model] == pytest.approx(input_price * discount), (
+                f"{model} cached rate should be {discount:.0%} of ${input_price}/M input"
+            )
+
+    def test_every_model_declares_or_is_exempt(self):
+        """No model may silently rely on the 50% fallback without being vetted."""
+        unaccounted = (
+            set(MODEL_PRICING) - set(self.CACHED_DISCOUNT_BY_MODEL) - self.NO_PUBLISHED_CACHED_RATE
+        )
+        assert not unaccounted, (
+            f"{sorted(unaccounted)} neither declare a cached rate nor are listed as "
+            "having none published — check the pricing page and update pricing.yaml"
+        )
+
 
 class TestImagePricing:
     IMAGE_MODELS: ClassVar[list[str]] = [
@@ -778,6 +846,7 @@ class TestTtsPricing:
 class TestSttPricing:
     def test_all_models_have_pricing(self):
         for model in [
+            "gpt-transcribe",
             "gpt-4o-transcribe",
             "gpt-4o-transcribe-diarize",
             "gpt-4o-mini-transcribe",
@@ -884,7 +953,7 @@ class TestFormatOpenAIError:
     def test_format_openai_error_api_error(self):
         class DummyStatusError(APIError):
             def __init__(self, response_body):
-                request = httpx.Request("POST", "https://api.example.com/test")
+                request = httpx2.Request("POST", "https://api.example.com/test")
                 super().__init__("Error code: 400", request, body=response_body)
                 self.status_code = 400
 

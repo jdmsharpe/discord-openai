@@ -2,13 +2,22 @@
 #
 # Canonical source: https://openai.com/api/pricing/
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-07-13
+# Last-verified: 2026-08-12
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
-# billed at cached_input_per_million when present; models without that field
-# fall back to 50% of the regular input price (correct for the gpt-4o
-# generation, NOT for gpt-5.5+ where the discount is 90%). Reasoning tokens are
-# billed at the standard output price (already aggregated into output_tokens by the API).
+# billed at cached_input_per_million when present, else at 50% of input.
+#
+# THE 50% FALLBACK IS A LAST RESORT, NOT A RULE. OpenAI's published cached
+# discount varies by generation — 90% off for the gpt-5 family, 75% off for
+# gpt-4.1/o3/o4-mini, 50% off for the gpt-4o/o1/o3-mini generation — so any
+# single fallback is wrong for most of the catalog. Every model with a
+# published cached rate MUST declare it here; relying on the fallback has
+# silently overbilled cached input twice (5x on gpt-5, 2x on gpt-4.1/o3).
+# `test_declared_cached_rates_match_published` enforces this: a model missing
+# the field must be listed in NO_PUBLISHED_CACHED_RATE, which is limited to the
+# Pro tiers and legacy ids that genuinely publish no cached price.
+# Reasoning tokens are billed at the standard output price (already aggregated
+# into output_tokens by the API).
 #
 # Override this file at runtime by setting OPENAI_PRICING_PATH to an alternate
 # YAML path — useful for pushing new pricing without a code release.
@@ -20,28 +29,28 @@ models:
   gpt-5.5-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
   gpt-5.5:           { input_per_million: 5.00,   output_per_million: 30.00,  cached_input_per_million: 0.50 }
   gpt-5.4-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
-  gpt-5.4:           { input_per_million: 2.50,   output_per_million: 15.00 }
-  gpt-5.4-mini:      { input_per_million: 0.75,   output_per_million: 4.50 }
-  gpt-5.4-nano:      { input_per_million: 0.20,   output_per_million: 1.25 }
+  gpt-5.4:           { input_per_million: 2.50,   output_per_million: 15.00,  cached_input_per_million: 0.25 }
+  gpt-5.4-mini:      { input_per_million: 0.75,   output_per_million: 4.50,   cached_input_per_million: 0.075 }
+  gpt-5.4-nano:      { input_per_million: 0.20,   output_per_million: 1.25,   cached_input_per_million: 0.02 }
   gpt-5.3-chat-latest: { input_per_million: 2.00, output_per_million: 8.00 }
   gpt-5.2-pro:       { input_per_million: 21.00,  output_per_million: 168.00 }
-  gpt-5.2:           { input_per_million: 1.75,   output_per_million: 14.00 }
-  gpt-5.1:           { input_per_million: 1.25,   output_per_million: 10.00 }
+  gpt-5.2:           { input_per_million: 1.75,   output_per_million: 14.00,  cached_input_per_million: 0.175 }
+  gpt-5.1:           { input_per_million: 1.25,   output_per_million: 10.00,  cached_input_per_million: 0.125 }
   gpt-5-pro:         { input_per_million: 15.00,  output_per_million: 120.00 }
-  gpt-5:             { input_per_million: 1.25,   output_per_million: 10.00 }
-  gpt-5-mini:        { input_per_million: 0.25,   output_per_million: 2.00 }
-  gpt-5-nano:        { input_per_million: 0.05,   output_per_million: 0.40 }
-  gpt-4.1:           { input_per_million: 2.00,   output_per_million: 8.00 }
-  gpt-4.1-mini:      { input_per_million: 0.40,   output_per_million: 1.60 }
-  gpt-4.1-nano:      { input_per_million: 0.10,   output_per_million: 0.40 }
-  o4-mini:           { input_per_million: 1.10,   output_per_million: 4.40 }
+  gpt-5:             { input_per_million: 1.25,   output_per_million: 10.00,  cached_input_per_million: 0.125 }
+  gpt-5-mini:        { input_per_million: 0.25,   output_per_million: 2.00,   cached_input_per_million: 0.025 }
+  gpt-5-nano:        { input_per_million: 0.05,   output_per_million: 0.40,   cached_input_per_million: 0.005 }
+  gpt-4.1:           { input_per_million: 2.00,   output_per_million: 8.00,   cached_input_per_million: 0.50 }
+  gpt-4.1-mini:      { input_per_million: 0.40,   output_per_million: 1.60,   cached_input_per_million: 0.10 }
+  gpt-4.1-nano:      { input_per_million: 0.10,   output_per_million: 0.40,   cached_input_per_million: 0.025 }
+  o4-mini:           { input_per_million: 1.10,   output_per_million: 4.40,   cached_input_per_million: 0.275 }
   o3-pro:            { input_per_million: 20.00,  output_per_million: 80.00 }
-  o3:                { input_per_million: 2.00,   output_per_million: 8.00 }
-  o3-mini:           { input_per_million: 1.10,   output_per_million: 4.40 }
+  o3:                { input_per_million: 2.00,   output_per_million: 8.00,   cached_input_per_million: 0.50 }
+  o3-mini:           { input_per_million: 1.10,   output_per_million: 4.40,   cached_input_per_million: 0.55 }
   o1-pro:            { input_per_million: 150.00, output_per_million: 600.00 }
-  o1:                { input_per_million: 15.00,  output_per_million: 60.00 }
-  gpt-4o:            { input_per_million: 2.50,   output_per_million: 10.00 }
-  gpt-4o-mini:       { input_per_million: 0.15,   output_per_million: 0.60 }
+  o1:                { input_per_million: 15.00,  output_per_million: 60.00,  cached_input_per_million: 7.50 }
+  gpt-4o:            { input_per_million: 2.50,   output_per_million: 10.00,  cached_input_per_million: 1.25 }
+  gpt-4o-mini:       { input_per_million: 0.15,   output_per_million: 0.60,   cached_input_per_million: 0.075 }
   gpt-4:             { input_per_million: 30.00,  output_per_million: 60.00 }
   gpt-4-turbo:       { input_per_million: 10.00,  output_per_million: 30.00 }
   gpt-3.5-turbo:     { input_per_million: 0.50,   output_per_million: 1.50 }
@@ -123,6 +132,7 @@ text_to_speech:
   gpt-4o-tts:      { per_character: 0.000020 }
 
 speech_to_text:
+  gpt-transcribe:             { per_minute: 0.0045 }
   gpt-4o-transcribe:          { per_minute: 0.006 }
   gpt-4o-transcribe-diarize:  { per_minute: 0.006 }
   gpt-4o-mini-transcribe:     { per_minute: 0.003 }
