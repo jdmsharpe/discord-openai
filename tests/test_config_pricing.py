@@ -18,6 +18,21 @@ class TestPricingLoader:
         assert pricing.MODEL_PRICING["gpt-5"] == (1.25, 10.0)
         assert pricing.MODEL_PRICING["gpt-4o"] == (2.5, 10.0)
 
+    def test_gpt_5_6_family_rates_are_pinned(self):
+        """Pin the default family's absolute rates.
+
+        ``test_declared_cached_rates_match_published`` only checks the cached rate as a
+        RATIO of input, so a row scaled uniformly stays a perfect 10% and passes — which
+        is how terra and luna went unnoticed while overbilling 25% and 5x.
+        """
+        pricing = _reload_pricing()
+        assert pricing.MODEL_PRICING["gpt-5.6-sol"] == (5.00, 30.00)
+        assert pricing.MODEL_PRICING["gpt-5.6-terra"] == (2.00, 12.00)
+        assert pricing.MODEL_PRICING["gpt-5.6-luna"] == (0.20, 1.20)
+        assert pricing.CACHED_INPUT_PRICING["gpt-5.6-sol"] == 0.50
+        assert pricing.CACHED_INPUT_PRICING["gpt-5.6-terra"] == 0.20
+        assert pricing.CACHED_INPUT_PRICING["gpt-5.6-luna"] == 0.02
+
     def test_bundled_yaml_loads_tool_pricing(self):
         pricing = _reload_pricing()
         assert pricing.TOOL_CALL_PRICING["web_search"] == 0.01

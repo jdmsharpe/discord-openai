@@ -717,7 +717,7 @@ class TestModelPricing:
     # OpenAI's published cached-input discount varies by generation, so the 50%
     # fallback in calculate_cost() is wrong for most of the catalog. Anything not
     # listed here MUST declare cached_input_per_million in pricing.yaml. Verified
-    # against the official pricing page 2026-08-12.
+    # against the official pricing page 2026-08-18.
     CACHED_DISCOUNT_BY_MODEL: ClassVar[dict[str, float]] = {
         # gpt-5 family and newer: 90% off
         "gpt-5.6-sol": 0.10,
