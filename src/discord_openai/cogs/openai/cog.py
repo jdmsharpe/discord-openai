@@ -363,7 +363,7 @@ class OpenAICog(commands.Cog):
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
         "model",
-        description="Choose from the following image generation models. (default: GPT Image 1.5)",
+        description="Choose from the following image generation models. (default: GPT Image 2)",
         required=False,
         type=str,
         choices=IMAGE_MODEL_CHOICES,
@@ -544,7 +544,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "model",
-        description="Choose the deep research model. (default: o3 Deep Research)",
+        description="Choose the deep research model. (default: GPT-5.5)",
         required=False,
         type=str,
         choices=RESEARCH_MODEL_CHOICES,
