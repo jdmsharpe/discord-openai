@@ -12,7 +12,7 @@ uv run python src/bot.py       # or: docker compose up
 ## Gotchas
 
 - Uses **`py-cord`** (not `discord.py`). The slash-command API differs; don't mix docs between the two.
-- `GUILD_IDS` empty → commands register globally (up to 1-hour propagation delay). Set it to a test guild ID during development for instant updates.
+- `GUILD_IDS` must list at least one guild ID. Empty or unset → `_parse_guild_ids("")` returns `[]`, and py-cord only treats `guild_ids is None` as global, so the commands register **nowhere** — not globally, not per-guild.
 - **Slash-command options cap at 25 static `choices`.** Discord rejects any option with >25 entries (error `50035`), and py-cord's startup sync is one all-or-nothing bulk `PUT` — so a single over-limit list (most likely a model menu in `command_options.py`) aborts command registration for **every** cog inside `on_connect`, surfacing only as `Ignoring exception in on_connect`. `CHAT_MODEL_CHOICES` currently sits at 21 of 25 (GPT-5.6 Sol/Terra/Luna added in v1.6.0 into room pre-cleared by the v1.5.0 prune), so there is limited headroom; when it next approaches 25, drop a deprecated model or — to escape the cap permanently — switch that option from `choices=` to an `autocomplete=` callback (no length limit).
 
 ## Environment Variables
@@ -20,7 +20,7 @@ uv run python src/bot.py       # or: docker compose up
 | Variable | Required | Description |
 | --- | --- | --- |
 | `BOT_TOKEN` | Yes | Discord bot token |
-| `GUILD_IDS` | No | Comma-separated Discord server IDs; omit for global slash-command registration (~1h propagation) or set for instant per-guild registration |
+| `GUILD_IDS` | No | Comma-separated Discord server IDs; not enforced by `validate_required_config()`, but leaving it empty registers the slash commands **nowhere** — set at least one guild ID |
 | `OPENAI_API_KEY` | Yes | OpenAI API key |
 | `OPENAI_VECTOR_STORE_IDS` | No | Comma-separated vector store IDs for `/openai chat file_search` |
 | `OPENAI_MCP_PRESETS_JSON` | No | Inline JSON of named MCP presets |

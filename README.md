@@ -21,7 +21,7 @@ A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings toge
 - **Media Generation:**
   - **Images:** Create images using GPT Image models with quality and aspect ratio controls.
   - **Video:** Generate videos using Sora models with customizable duration and resolution.
-  - **Text-to-Speech:** Convert text into lifelike audio using `gpt-4o-mini-tts` or `tts-1` models with 13 distinct voices.
+  - **Text-to-Speech:** Convert text into lifelike audio using `gpt-4o-mini-tts`, `tts-1`, or `tts-1-hd` models with 13 distinct voices.
   - **Speech-to-Text:** Transform audio attachments into verbatim transcriptions or English translations, complete with optional speaker diarization.
 - **Deep Research:** Run autonomous agents that search the web, read pages, and synthesize detailed reports with inline citations.
 - **Interactive UI:** Incorporates button-based controls, real-time feedback, and dynamic context menus.
@@ -65,7 +65,7 @@ Generate lifelike audio from text using OpenAI's TTS stack.
 
 Transcribe or translate uploaded audio (up to 25 MB).
 
-- Supports `gpt-transcribe` (default), `gpt-4o-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts.
+- Supports `gpt-transcribe` (default), `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts.
 
 ### `/openai check_permissions`
 
