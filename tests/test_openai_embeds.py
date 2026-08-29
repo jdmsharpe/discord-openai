@@ -9,6 +9,7 @@ from discord_openai.cogs.openai.embeds import (
     append_thinking_embeds,
     error_embed,
 )
+from discord_openai.util import calculate_cost
 
 
 class TestAppendResponseEmbeds:
@@ -199,6 +200,16 @@ class TestAppendPricingEmbed:
         embeds = []
         append_pricing_embed(embeds, "gpt-4o", 100, 50, 1.23)
         assert "daily $1.23" in embeds[0].description
+
+    def test_description_shows_cached_and_cache_write_tokens(self):
+        embeds = []
+        append_pricing_embed(
+            embeds, "gpt-5.6-sol", 1_000, 500, 0.05, cached_tokens=100, cache_write_tokens=900
+        )
+        desc = embeds[0].description
+        assert "1,000 in (100 cached, 900 cache-write)" in desc
+        expected = calculate_cost("gpt-5.6-sol", 1_000, 500, 100, 900)
+        assert f"${expected:.4f}" in desc
 
     def test_appends_to_existing_embeds(self):
         embeds = [Embed(title="Response", description="Hello")]

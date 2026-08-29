@@ -1,8 +1,8 @@
 # OpenAI model pricing catalog.
 #
-# Canonical source: https://openai.com/api/pricing/
+# Canonical source: https://developers.openai.com/api/docs/pricing
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-08-18
+# Last-verified: 2026-08-28
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
 # billed at cached_input_per_million when present, else at 50% of input.
@@ -19,13 +19,21 @@
 # Reasoning tokens are billed at the standard output price (already aggregated
 # into output_tokens by the API).
 #
+# cache_write_per_million: GPT-5.6+ bills the tokens WRITTEN to the prompt cache
+# (usage.input_tokens_details.cache_write_tokens) at 1.25x the uncached input
+# rate — the pricing table's "Cache writes" column. Every other row prints "-"
+# there (no surcharge), so only the gpt-5.6 rows declare it; a model without the
+# field bills cache-write tokens as ordinary input.
+# `test_gpt_5_6_cache_write_rates_are_125_percent_of_input` pins the ratio.
+#
 # Override this file at runtime by setting OPENAI_PRICING_PATH to an alternate
 # YAML path — useful for pushing new pricing without a code release.
 
 models:
-  gpt-5.6-sol:       { input_per_million: 5.00,   output_per_million: 30.00,  cached_input_per_million: 0.50 }
-  gpt-5.6-terra:     { input_per_million: 2.00,   output_per_million: 12.00,  cached_input_per_million: 0.20 }
-  gpt-5.6-luna:      { input_per_million: 0.20,   output_per_million: 1.20,   cached_input_per_million: 0.02 }
+  # gpt-5.6-sol: promotional rate, guaranteed at least through 2026-11-21 (changelog 2026-08-21) - re-verify after that date
+  gpt-5.6-sol:       { input_per_million: 4.00,   output_per_million: 20.00,  cached_input_per_million: 0.40,  cache_write_per_million: 5.00 }
+  gpt-5.6-terra:     { input_per_million: 2.00,   output_per_million: 12.00,  cached_input_per_million: 0.20,  cache_write_per_million: 2.50 }
+  gpt-5.6-luna:      { input_per_million: 0.20,   output_per_million: 1.20,   cached_input_per_million: 0.02,  cache_write_per_million: 0.25 }
   gpt-5.5-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
   gpt-5.5:           { input_per_million: 5.00,   output_per_million: 30.00,  cached_input_per_million: 0.50 }
   gpt-5.4-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
@@ -129,7 +137,6 @@ text_to_speech:
   tts-1:           { per_character: 0.000015 }  # $15 / 1M chars
   tts-1-hd:        { per_character: 0.000030 }  # $30 / 1M chars
   gpt-4o-mini-tts: { per_character: 0.000020 }  # ~$0.015/min at ~750 chars/min
-  gpt-4o-tts:      { per_character: 0.000020 }
 
 speech_to_text:
   gpt-transcribe:             { per_minute: 0.0045 }

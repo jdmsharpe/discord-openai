@@ -9,6 +9,7 @@ import aiohttp
 from openai import APIError
 
 from discord_openai.config.pricing import (
+    CACHE_WRITE_PRICING,
     CACHED_INPUT_PRICING,
     IMAGE_PRICING,
     IMAGE_PRICING_DEFAULTS,
@@ -31,6 +32,7 @@ class UsageInfo(TypedDict):
     input_tokens: int
     output_tokens: int
     cached_tokens: int
+    cache_write_tokens: int
     reasoning_tokens: int
 
 
@@ -46,42 +48,58 @@ class PendingMcpApproval(TypedDict):
     input_tokens: int
     output_tokens: int
     cached_tokens: int
+    cache_write_tokens: int
     reasoning_tokens: int
     tool_call_counts: dict[str, int]
 
 
 def extract_usage(response: Any) -> UsageInfo:
-    """Extract token usage info from an OpenAI Responses API object."""
+    """Extract token usage info from an OpenAI Responses API object.
+
+    ``cache_write_tokens`` (GPT-5.6+, billed at a surcharge) is read defensively so
+    older usage shapes without the field still normalise to 0.
+    """
     usage = getattr(response, "usage", None)
     input_tokens = getattr(usage, "input_tokens", 0) or 0
     output_tokens = getattr(usage, "output_tokens", 0) or 0
     input_details = getattr(usage, "input_tokens_details", None)
     output_details = getattr(usage, "output_tokens_details", None)
     cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
+    cache_write_tokens = getattr(input_details, "cache_write_tokens", 0) or 0
     reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
     return {
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cached_tokens": cached_tokens,
+        "cache_write_tokens": cache_write_tokens,
         "reasoning_tokens": reasoning_tokens,
     }
 
 
 def calculate_cost(
-    model: str, input_tokens: int, output_tokens: int, cached_tokens: int = 0
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cached_tokens: int = 0,
+    cache_write_tokens: int = 0,
 ) -> float:
     """Calculate the cost in dollars for a given model and token usage.
 
     Cached input tokens are billed at the model's cached_input_per_million rate
     when pricing.yaml declares one, else at 50% of the regular input price.
+    Cache-write tokens (GPT-5.6+) are billed at cache_write_per_million when
+    declared, else as ordinary input; per the prompt-caching guide, ordinary
+    input = input_tokens - cached_tokens - cache_write_tokens (never negative).
     Reasoning tokens are already included in output_tokens at the standard output price.
     """
     input_price, output_price = MODEL_PRICING.get(model, UNKNOWN_CHAT_MODEL_PRICING)
     cached_price = CACHED_INPUT_PRICING.get(model, input_price * 0.5)
-    non_cached = input_tokens - cached_tokens
+    cache_write_price = CACHE_WRITE_PRICING.get(model, input_price)
+    non_cached = max(input_tokens - cached_tokens - cache_write_tokens, 0)
     return (
         (non_cached / 1_000_000) * input_price
         + (cached_tokens / 1_000_000) * cached_price
+        + (cache_write_tokens / 1_000_000) * cache_write_price
         + (output_tokens / 1_000_000) * output_price
     )
 
@@ -163,6 +181,11 @@ CONTEXT_MANAGEMENT = [{"type": "compaction", "compact_threshold": 200_000}]
 
 # Extended prompt caching: retain cached prefixes up to 24 hours instead of
 # the default 5-10 minute in-memory window, improving cache hits across conversations.
+# openai 3.6.0 marks `prompt_cache_retention` deprecated in favour of
+# `prompt_cache_options.ttl` (GPT-5.6+ only; "30m" is the only accepted ttl). The
+# API still accepts "24h" on gpt-5.6 (probed 2026-08-28) and it remains the correct
+# knob for the older models, so no behaviour change yet — revisit when the SDK or
+# API rejects it.
 PROMPT_CACHE_RETENTION = "24h"
 
 # Input content types for Responses API
@@ -199,11 +222,82 @@ REASONING_EFFORT_LOW = "low"
 REASONING_EFFORT_MEDIUM = "medium"
 REASONING_EFFORT_HIGH = "high"
 REASONING_EFFORT_XHIGH = "xhigh"
-REASONING_EFFORT_MAX = "max"  # GPT-5.6 family only; 5.6 also rejects "minimal"
+REASONING_EFFORT_MAX = "max"
+
+# Menu order; used to render the "supported values" list in validation errors.
+REASONING_EFFORT_ORDER = (
+    REASONING_EFFORT_NONE,
+    REASONING_EFFORT_MINIMAL,
+    REASONING_EFFORT_LOW,
+    REASONING_EFFORT_MEDIUM,
+    REASONING_EFFORT_HIGH,
+    REASONING_EFFORT_XHIGH,
+    REASONING_EFFORT_MAX,
+)
+
+# Per-model reasoning-effort support. Every entry is live-probed with the bot's own
+# Responses payload (ResponseParameters.to_dict() + max_output_tokens=16): a 400
+# `unsupported_value` on reasoning.effort = rejected; any other outcome, including
+# status=incomplete, = accepted. Probed 2026-07-13 (5.6 minimal) and 2026-08-28:
+#   gpt-5.6-sol/-terra/-luna         none/low/medium/high/xhigh/max  (reject minimal)
+#   gpt-5.5, gpt-5.4, gpt-5.4-mini,
+#   gpt-5.4-nano, gpt-5.2            none/low/medium/high/xhigh      (reject minimal, max)
+#   gpt-5.1                          none/low/medium/high
+#   gpt-5, gpt-5-mini, gpt-5-nano    minimal/low/medium/high         (reject none)
+#   gpt-5.5-pro, gpt-5.4-pro,
+#   gpt-5.2-pro                      medium/high/xhigh
+#   gpt-5-pro                        high only
+#   o3, o3-pro                       low/medium/high
+# Non-reasoning menu models (gpt-4.1*, gpt-4o-mini) and un-probed ids are absent and
+# pass through unvalidated; the API stays the source of truth for them.
+_EFFORTS_GPT_5_6 = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
+_EFFORTS_GPT_5_2_TO_5_5 = frozenset({"none", "low", "medium", "high", "xhigh"})
+_EFFORTS_PRO = frozenset({"medium", "high", "xhigh"})
+_EFFORTS_GPT_5_BASE = frozenset({"minimal", "low", "medium", "high"})
+_EFFORTS_O_SERIES = frozenset({"low", "medium", "high"})
+SUPPORTED_REASONING_EFFORTS: dict[str, frozenset[str]] = {
+    "gpt-5.6-sol": _EFFORTS_GPT_5_6,
+    "gpt-5.6-terra": _EFFORTS_GPT_5_6,
+    "gpt-5.6-luna": _EFFORTS_GPT_5_6,
+    "gpt-5.5-pro": _EFFORTS_PRO,
+    "gpt-5.5": _EFFORTS_GPT_5_2_TO_5_5,
+    "gpt-5.4-pro": _EFFORTS_PRO,
+    "gpt-5.4": _EFFORTS_GPT_5_2_TO_5_5,
+    "gpt-5.4-mini": _EFFORTS_GPT_5_2_TO_5_5,
+    "gpt-5.4-nano": _EFFORTS_GPT_5_2_TO_5_5,
+    "gpt-5.2-pro": _EFFORTS_PRO,
+    "gpt-5.2": _EFFORTS_GPT_5_2_TO_5_5,
+    "gpt-5.1": frozenset({"none", "low", "medium", "high"}),
+    "gpt-5-pro": frozenset({"high"}),
+    "gpt-5": _EFFORTS_GPT_5_BASE,
+    "gpt-5-mini": _EFFORTS_GPT_5_BASE,
+    "gpt-5-nano": _EFFORTS_GPT_5_BASE,
+    "o3-pro": _EFFORTS_O_SERIES,
+    "o3": _EFFORTS_O_SERIES,
+}
+
+
+def reasoning_effort_error(model: str, reasoning_effort: str | None) -> str | None:
+    """Return a user-facing error when ``model`` rejects ``reasoning_effort``, else None.
+
+    Mirrors the tool ``availability_error`` pattern so the chat path can refuse a
+    menu combination before the request instead of surfacing a raw 400.
+    """
+    if not reasoning_effort:
+        return None
+    supported = SUPPORTED_REASONING_EFFORTS.get(model)
+    if supported is None or reasoning_effort in supported:
+        return None
+    allowed = ", ".join(f"`{effort}`" for effort in REASONING_EFFORT_ORDER if effort in supported)
+    return (
+        f"Reasoning effort `{reasoning_effort}` is not supported by `{model}`. "
+        f"Supported values: {allowed}."
+    )
+
 
 # GPT-5 base models that never support temperature/top_p
 GPT5_NO_TEMP_MODELS = frozenset({"gpt-5", "gpt-5-mini", "gpt-5-nano"})
-RICH_TTS_MODELS = ["gpt-4o-tts", "gpt-4o-mini-tts"]
+RICH_TTS_MODELS = ["gpt-4o-mini-tts"]
 
 RICH_TTS_VOICES = {"ballad", "verse", "marin", "cedar"}
 STANDARD_TTS_VOICES = {"alloy", "ash", "coral", "echo", "fable", "onyx", "nova", "sage", "shimmer"}
@@ -212,7 +306,6 @@ DEFAULT_STANDARD_TTS_VOICE = "coral"
 MODEL_SUPPORTED_TTS_VOICES = {
     "tts-1": STANDARD_TTS_VOICES,
     "tts-1-hd": STANDARD_TTS_VOICES,
-    "gpt-4o-tts": STANDARD_TTS_VOICES | RICH_TTS_VOICES,
     "gpt-4o-mini-tts": STANDARD_TTS_VOICES | RICH_TTS_VOICES,
 }
 DEFAULT_SUPPORTED_TTS_VOICES = STANDARD_TTS_VOICES | RICH_TTS_VOICES

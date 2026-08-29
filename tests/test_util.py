@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import ClassVar
 from unittest.mock import MagicMock
 
@@ -13,6 +14,7 @@ from discord_openai.cogs.openai.tooling import (
     TOOL_WEB_SEARCH,
 )
 from discord_openai.util import (
+    CACHE_WRITE_PRICING,
     CACHED_INPUT_PRICING,
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
@@ -25,7 +27,9 @@ from discord_openai.util import (
     PROMPT_CACHE_RETENTION,
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
+    REASONING_EFFORT_ORDER,
     STT_PRICING_PER_MINUTE,
+    SUPPORTED_REASONING_EFFORTS,
     TTS_PRICING_PER_CHAR,
     VIDEO_PRICING_PER_SECOND,
     VIDEO_SIZE_RESOLUTIONS,
@@ -49,6 +53,7 @@ from discord_openai.util import (
     extract_usage,
     format_openai_error,
     hash_user_id,
+    reasoning_effort_error,
     truncate_text,
 )
 
@@ -228,6 +233,7 @@ class TestResponseParameters:
                 "input_tokens": 10,
                 "output_tokens": 5,
                 "cached_tokens": 0,
+                "cache_write_tokens": 0,
                 "reasoning_tokens": 0,
                 "tool_call_counts": {},
             },
@@ -703,7 +709,47 @@ class TestModelPricing:
     def test_calculate_cost_cached_explicit_rate(self):
         """gpt-5.6 bills cached input at its declared rate (10%), not the 50% fallback."""
         cost = calculate_cost("gpt-5.6-sol", 1_000_000, 0, cached_tokens=1_000_000)
-        assert cost == pytest.approx(0.50)
+        assert cost == pytest.approx(0.40)
+
+    def test_calculate_cost_cache_write_surcharge(self):
+        """GPT-5.6 bills cache-write tokens at cache_write_per_million (1.25x input)."""
+        cost = calculate_cost("gpt-5.6-sol", 1_000_000, 0, cache_write_tokens=1_000_000)
+        assert cost == pytest.approx(5.00)
+
+    def test_calculate_cost_cache_write_splits_ordinary_input(self):
+        """ordinary input = input - cached - cache_write, each slice at its own rate."""
+        cost = calculate_cost(
+            "gpt-5.6-sol", 1_000_000, 0, cached_tokens=400_000, cache_write_tokens=100_000
+        )
+        # 500k ordinary @ 4.00 + 400k cached @ 0.40 + 100k written @ 5.00
+        assert cost == pytest.approx(2.00 + 0.16 + 0.50)
+
+    def test_calculate_cost_cache_write_no_surcharge_without_declared_rate(self):
+        """Rows without cache_write_per_million bill cache-write tokens as ordinary input."""
+        assert "gpt-5.4" not in CACHE_WRITE_PRICING
+        cost = calculate_cost("gpt-5.4", 1_000_000, 0, cache_write_tokens=1_000_000)
+        assert cost == pytest.approx(calculate_cost("gpt-5.4", 1_000_000, 0))
+
+    def test_calculate_cost_ordinary_input_never_negative(self):
+        cost = calculate_cost("gpt-5.6-sol", 100, 0, cached_tokens=100, cache_write_tokens=100)
+        assert cost == pytest.approx((100 / 1_000_000) * 0.40 + (100 / 1_000_000) * 5.00)
+
+    def test_gpt_5_6_cache_write_rates_are_125_percent_of_input(self):
+        """Every gpt-5.6 row declares cache_write_per_million == 1.25x its input rate.
+
+        The pricing table's "Cache writes" column prints a value only for the GPT-5.6
+        rows (every other row prints "-"), so the declared set must be exactly those
+        rows: a stray declaration elsewhere would add a surcharge the vendor does not
+        charge, and a missing one would under-bill first-turn writes.
+        """
+        gpt_5_6_rows = {model for model in MODEL_PRICING if model.startswith("gpt-5.6")}
+        assert gpt_5_6_rows, "no gpt-5.6 rows in pricing.yaml"
+        assert set(CACHE_WRITE_PRICING) == gpt_5_6_rows
+        for model in sorted(gpt_5_6_rows):
+            input_price = MODEL_PRICING[model][0]
+            assert CACHE_WRITE_PRICING[model] == pytest.approx(input_price * 1.25), (
+                f"{model} cache-write rate should be 125% of ${input_price}/M input"
+            )
 
     def test_calculate_cost_cached_fallback_rate(self):
         """Models with no published cached rate keep the historical 50% rule.
@@ -1079,11 +1125,13 @@ class TestExtractUsage:
         response.usage.input_tokens = 100
         response.usage.output_tokens = 200
         response.usage.input_tokens_details.cached_tokens = 50
+        response.usage.input_tokens_details.cache_write_tokens = 20
         response.usage.output_tokens_details.reasoning_tokens = 30
         result = extract_usage(response)
         assert result["input_tokens"] == 100
         assert result["output_tokens"] == 200
         assert result["cached_tokens"] == 50
+        assert result["cache_write_tokens"] == 20
         assert result["reasoning_tokens"] == 30
 
     def test_no_usage_attribute(self):
@@ -1092,6 +1140,7 @@ class TestExtractUsage:
         assert result["input_tokens"] == 0
         assert result["output_tokens"] == 0
         assert result["cached_tokens"] == 0
+        assert result["cache_write_tokens"] == 0
         assert result["reasoning_tokens"] == 0
 
     def test_none_token_values_default_to_zero(self):
@@ -1099,11 +1148,13 @@ class TestExtractUsage:
         response.usage.input_tokens = None
         response.usage.output_tokens = None
         response.usage.input_tokens_details.cached_tokens = None
+        response.usage.input_tokens_details.cache_write_tokens = None
         response.usage.output_tokens_details.reasoning_tokens = None
         result = extract_usage(response)
         assert result["input_tokens"] == 0
         assert result["output_tokens"] == 0
         assert result["cached_tokens"] == 0
+        assert result["cache_write_tokens"] == 0
         assert result["reasoning_tokens"] == 0
 
     def test_no_details(self):
@@ -1117,7 +1168,82 @@ class TestExtractUsage:
         assert result["input_tokens"] == 500
         assert result["output_tokens"] == 300
         assert result["cached_tokens"] == 0
+        assert result["cache_write_tokens"] == 0
         assert result["reasoning_tokens"] == 0
+
+    def test_older_usage_shape_without_cache_write_field(self):
+        """Pre-GPT-5.6 usage objects carry no cache_write_tokens; it must read as 0."""
+        response = SimpleNamespace(
+            usage=SimpleNamespace(
+                input_tokens=100,
+                output_tokens=10,
+                input_tokens_details=SimpleNamespace(cached_tokens=40),
+                output_tokens_details=SimpleNamespace(reasoning_tokens=0),
+            )
+        )
+        result = extract_usage(response)
+        assert result["cached_tokens"] == 40
+        assert result["cache_write_tokens"] == 0
+
+
+class TestSupportedReasoningEfforts:
+    """Pin the live-probed per-model effort map and the chat-path gate built on it."""
+
+    # Probed with the bot's Responses payload, max_output_tokens=16, one call per
+    # effort: 2026-07-13 (5.6 minimal) and 2026-08-28 (everything else).
+    PROBED: ClassVar[dict[str, set[str]]] = {
+        "gpt-5.6-sol": {"none", "low", "medium", "high", "xhigh", "max"},
+        "gpt-5.6-terra": {"none", "low", "medium", "high", "xhigh", "max"},
+        "gpt-5.6-luna": {"none", "low", "medium", "high", "xhigh", "max"},
+        "gpt-5.5": {"none", "low", "medium", "high", "xhigh"},
+        "gpt-5.4": {"none", "low", "medium", "high", "xhigh"},
+        "gpt-5.4-mini": {"none", "low", "medium", "high", "xhigh"},
+        "gpt-5.4-nano": {"none", "low", "medium", "high", "xhigh"},
+        "gpt-5.2": {"none", "low", "medium", "high", "xhigh"},
+        "gpt-5.1": {"none", "low", "medium", "high"},
+        "gpt-5": {"minimal", "low", "medium", "high"},
+        "gpt-5-mini": {"minimal", "low", "medium", "high"},
+        "gpt-5-nano": {"minimal", "low", "medium", "high"},
+        "gpt-5.5-pro": {"medium", "high", "xhigh"},
+        "gpt-5.4-pro": {"medium", "high", "xhigh"},
+        "gpt-5.2-pro": {"medium", "high", "xhigh"},
+        "gpt-5-pro": {"high"},
+        "o3": {"low", "medium", "high"},
+        "o3-pro": {"low", "medium", "high"},
+    }
+
+    def test_map_matches_probed_results(self):
+        """Exact pin: adding a model or loosening a set requires a fresh probe."""
+        actual = {model: set(efforts) for model, efforts in SUPPORTED_REASONING_EFFORTS.items()}
+        assert actual == self.PROBED
+
+    def test_every_supported_value_is_a_known_effort(self):
+        known = set(REASONING_EFFORT_ORDER)
+        for model, efforts in SUPPORTED_REASONING_EFFORTS.items():
+            assert efforts <= known, f"{model} lists an unknown effort: {efforts - known}"
+
+    @pytest.mark.parametrize(
+        "model,effort",
+        [("gpt-5.6-sol", "minimal"), ("gpt-5", "none"), ("gpt-5.5", "max"), ("o3", "xhigh")],
+    )
+    def test_rejects_unsupported_combination(self, model, effort):
+        error = reasoning_effort_error(model, effort)
+        assert error is not None
+        assert f"`{effort}`" in error
+        assert f"`{model}`" in error
+
+    @pytest.mark.parametrize("model,effort", [("gpt-5.6-sol", "max"), ("gpt-5.1", "none")])
+    def test_accepts_supported_combination(self, model, effort):
+        assert reasoning_effort_error(model, effort) is None
+
+    def test_no_effort_and_unmapped_models_pass_through(self):
+        assert reasoning_effort_error("gpt-5.6-sol", None) is None
+        assert reasoning_effort_error("gpt-4.1", "high") is None
+
+    def test_error_lists_supported_values_in_menu_order(self):
+        error = reasoning_effort_error("gpt-5", "none")
+        assert error is not None
+        assert error.endswith("Supported values: `minimal`, `low`, `medium`, `high`.")
 
 
 class TestBuildInputContent:

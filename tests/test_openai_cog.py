@@ -12,8 +12,16 @@ from discord_openai.cogs.openai.command_options import (
     REASONING_EFFORT_CHOICES,
     RESEARCH_MODEL_CHOICES,
     STT_MODEL_CHOICES,
+    TTS_MODEL_CHOICES,
     TTS_VOICE_CHOICES,
     VIDEO_MODEL_CHOICES,
+)
+from discord_openai.config.pricing import TTS_PRICING_PER_CHAR
+from discord_openai.util import (
+    MODEL_SUPPORTED_TTS_VOICES,
+    REASONING_MODELS,
+    RICH_TTS_MODELS,
+    SUPPORTED_REASONING_EFFORTS,
 )
 
 
@@ -186,3 +194,29 @@ class TestOpenAICog:
     def test_reasoning_effort_choice_set(self):
         values = {choice.value for choice in REASONING_EFFORT_CHOICES}
         assert values == {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
+
+    def test_every_menu_reasoning_model_has_an_effort_entry(self):
+        """Every reasoning model the chat menu offers must be in SUPPORTED_REASONING_EFFORTS.
+
+        The gate passes unmapped ids through unvalidated, so a new GPT-5.x / o-series
+        menu entry without a probed row would silently regain the raw-400 behaviour.
+        """
+        menu = [choice.value for choice in CHAT_MODEL_CHOICES]
+        reasoning_menu = [m for m in menu if m in REASONING_MODELS or m.startswith("gpt-5")]
+        assert reasoning_menu, "menu lists no reasoning models"
+        missing = [m for m in reasoning_menu if m not in SUPPORTED_REASONING_EFFORTS]
+        assert not missing, f"{missing} lack a probed reasoning-effort entry"
+        menu_efforts = {choice.value for choice in REASONING_EFFORT_CHOICES}
+        for model, efforts in SUPPORTED_REASONING_EFFORTS.items():
+            assert efforts <= menu_efforts, f"{model} maps efforts the menu cannot select"
+
+    def test_tts_model_maps_only_cover_menu_models(self):
+        """RICH_TTS_MODELS and the voice map name only menu-selectable TTS ids.
+
+        Pricing may keep retired rows (house rule), so it is checked as a superset.
+        """
+        menu = {choice.value for choice in TTS_MODEL_CHOICES}
+        assert RICH_TTS_MODELS == ["gpt-4o-mini-tts"]
+        assert set(RICH_TTS_MODELS) <= menu
+        assert set(MODEL_SUPPORTED_TTS_VOICES) == menu
+        assert menu <= set(TTS_PRICING_PER_CHAR)

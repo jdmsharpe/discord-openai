@@ -38,7 +38,8 @@ A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings toge
 Start an interactive thread with an OpenAI model.
 
 - **Models:** GPT-5.6 Sol (default) / Terra / Luna, GPT-5 series (incl. 5.5 / 5.5 Pro and 5.4 / 5.2 / 5.1 / 5 variants), GPT-4.1 / 4.1 Mini, o3 / o3 Pro, and GPT-4o Mini.
-- **Tuning Options:** Adjust temperature, `top_p`, reasoning effort (`none` through `max`), and verbosity.
+- **Tuning Options:** Adjust temperature, `top_p`, reasoning effort, and verbosity. Effort support is per model — `minimal` is GPT-5 / 5 Mini / 5 Nano only; `none` is rejected by those three, the Pro tiers, and the o-series; `xhigh` needs GPT-5.2 or newer; `max` is GPT-5.6 only; the Pro tiers accept `medium` / `high` / `xhigh` and GPT-5 Pro `high` only — and an unsupported combination is refused with a clear error before any request is sent.
+- **Cost Embeds:** Each reply shows its cost and token split (input, cached, GPT-5.6 cache-write, output, thinking, tools) plus a running daily total. GPT-5.6 cache writes are billed at OpenAI's published 1.25x input surcharge; GPT-5.6 Sol is priced at its promotional rate (guaranteed through 2026-11-21).
 - **Tools:** `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), `shell`.
 - **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors.
 

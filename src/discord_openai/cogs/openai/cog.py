@@ -121,6 +121,7 @@ class OpenAICog(commands.Cog):
         cached_tokens: int = 0,
         tool_call_counts: dict[str, int] | None = None,
         command: str = "chat",
+        cache_write_tokens: int = 0,
     ) -> float:
         return track_daily_cost(
             self,
@@ -131,6 +132,7 @@ class OpenAICog(commands.Cog):
             cached_tokens,
             tool_call_counts,
             command,
+            cache_write_tokens=cache_write_tokens,
         )
 
     def _track_daily_cost_direct(
@@ -279,7 +281,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "reasoning_effort",
-        description="(Advanced) Reasoning depth. none=fastest, max=deepest (GPT-5.6 only). (default: not set)",
+        description="(Advanced) Reasoning depth (varies by model). none=fastest, max=deepest. (default: not set)",
         required=False,
         type=str,
         choices=REASONING_EFFORT_CHOICES,

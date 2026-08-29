@@ -26,12 +26,21 @@ class TestPricingLoader:
         is how terra and luna went unnoticed while overbilling 25% and 5x.
         """
         pricing = _reload_pricing()
-        assert pricing.MODEL_PRICING["gpt-5.6-sol"] == (5.00, 30.00)
+        assert pricing.MODEL_PRICING["gpt-5.6-sol"] == (4.00, 20.00)  # promo through 2026-11-21
         assert pricing.MODEL_PRICING["gpt-5.6-terra"] == (2.00, 12.00)
         assert pricing.MODEL_PRICING["gpt-5.6-luna"] == (0.20, 1.20)
-        assert pricing.CACHED_INPUT_PRICING["gpt-5.6-sol"] == 0.50
+        assert pricing.CACHED_INPUT_PRICING["gpt-5.6-sol"] == 0.40
         assert pricing.CACHED_INPUT_PRICING["gpt-5.6-terra"] == 0.20
         assert pricing.CACHED_INPUT_PRICING["gpt-5.6-luna"] == 0.02
+
+    def test_gpt_5_6_cache_write_rates_are_pinned(self):
+        """Cache writes (1.25x input) are declared on the three gpt-5.6 rows and nowhere else."""
+        pricing = _reload_pricing()
+        assert pricing.CACHE_WRITE_PRICING == {
+            "gpt-5.6-sol": 5.00,
+            "gpt-5.6-terra": 2.50,
+            "gpt-5.6-luna": 0.25,
+        }
 
     def test_bundled_yaml_loads_tool_pricing(self):
         pricing = _reload_pricing()
@@ -84,6 +93,7 @@ class TestPricingLoader:
                   custom-model:
                     input_per_million: 1.5
                     output_per_million: 3.0
+                    cache_write_per_million: 2.0
                 tools:
                   custom_tool:
                     per_call: 0.007
@@ -116,6 +126,8 @@ class TestPricingLoader:
         pricing = _reload_pricing()
 
         assert pricing.MODEL_PRICING == {"custom-model": (1.5, 3.0)}
+        assert pricing.CACHED_INPUT_PRICING == {}
+        assert pricing.CACHE_WRITE_PRICING == {"custom-model": 2.0}
         assert pricing.TOOL_CALL_PRICING == {"custom_tool": 0.007}
         assert pricing.IMAGE_PRICING[("fake-image", "high", "1024x1024")] == 1.23
         assert pricing.IMAGE_PRICING_DEFAULTS == {"fake-image": 0.99}

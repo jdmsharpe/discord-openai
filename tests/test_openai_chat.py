@@ -18,12 +18,15 @@ def _make_usage(
     input_tokens: int = 100,
     output_tokens: int = 25,
     cached_tokens: int = 0,
+    cache_write_tokens: int = 0,
     reasoning_tokens: int = 0,
 ):
     return SimpleNamespace(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        input_tokens_details=SimpleNamespace(cached_tokens=cached_tokens),
+        input_tokens_details=SimpleNamespace(
+            cached_tokens=cached_tokens, cache_write_tokens=cache_write_tokens
+        ),
         output_tokens_details=SimpleNamespace(reasoning_tokens=reasoning_tokens),
     )
 
@@ -119,6 +122,52 @@ class TestRunChatCommand:
         assert ctx.send_followup.await_args.kwargs["view"] is approval_view
         assert cog.views[789][1] is approval_view
         assert cog.last_view_messages[789][1] is reply_message
+
+    @pytest.mark.asyncio
+    async def test_chat_command_rejects_unsupported_reasoning_effort_before_request(self):
+        create = AsyncMock()
+        cog = SimpleNamespace(
+            conversation_histories={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="hi",
+            persona="You are helpful.",
+            model="gpt-5.6-sol",
+            attachment=None,
+            temperature=None,
+            top_p=None,
+            reasoning_effort="minimal",
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+        )
+
+        create.assert_not_awaited()
+        assert 789 not in cog.conversation_histories
+        ctx.send_followup.assert_awaited_once()
+        kwargs = ctx.send_followup.await_args.kwargs
+        embeds = kwargs.get("embeds") or [kwargs["embed"]]
+        assert embeds[0].title == "Error"
+        assert "`minimal`" in embeds[0].description
+        assert "`gpt-5.6-sol`" in embeds[0].description
 
     @pytest.mark.asyncio
     async def test_chat_command_renders_zero_numeric_params(self):
@@ -256,6 +305,7 @@ class TestHandleOnMessage:
                 "input_tokens": 10,
                 "output_tokens": 5,
                 "cached_tokens": 0,
+                "cache_write_tokens": 0,
                 "reasoning_tokens": 0,
                 "tool_call_counts": {},
             },
@@ -337,6 +387,7 @@ class TestHandleMcpApprovalAction:
                 "input_tokens": 100,
                 "output_tokens": 25,
                 "cached_tokens": 5,
+                "cache_write_tokens": 7,
                 "reasoning_tokens": 3,
                 "tool_call_counts": {},
             },
@@ -346,7 +397,11 @@ class TestHandleMcpApprovalAction:
             output=[],
             output_text="Created the issue.",
             usage=_make_usage(
-                input_tokens=20, output_tokens=10, cached_tokens=2, reasoning_tokens=1
+                input_tokens=20,
+                output_tokens=10,
+                cached_tokens=2,
+                cache_write_tokens=4,
+                reasoning_tokens=1,
             ),
         )
         reply_view = MagicMock()
@@ -378,8 +433,16 @@ class TestHandleMcpApprovalAction:
             followup=SimpleNamespace(send=AsyncMock()),
         )
 
-        with patch("discord_openai.cogs.openai.chat.keep_typing", new=AsyncMock()):
+        with (
+            patch("discord_openai.cogs.openai.chat.keep_typing", new=AsyncMock()),
+            patch("discord_openai.cogs.openai.chat.SHOW_COST_EMBEDS", True),
+        ):
             await handle_mcp_approval_action(cog, interaction, conversation, approve=True)
+
+        # Cache-write tokens follow cached tokens through cost tracking and the embed.
+        assert cog._track_daily_cost.call_args.kwargs["cache_write_tokens"] == 4
+        edited_embeds = message.edit.await_args.kwargs["embeds"]
+        assert any("7 cached, 11 cache-write" in (e.description or "") for e in edited_embeds)
 
         request_payload = cog.openai_client.responses.create.await_args.kwargs
         assert request_payload["previous_response_id"] == "resp_pending"

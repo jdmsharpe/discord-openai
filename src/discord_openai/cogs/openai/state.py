@@ -228,10 +228,11 @@ def track_daily_cost(
     cached_tokens: int = 0,
     tool_call_counts: dict[str, int] | None = None,
     command: str = "chat",
+    cache_write_tokens: int = 0,
 ) -> float:
     """Add this request's cost to the user's daily total and return the new daily total."""
     prune_daily_costs(cog)
-    cost = calculate_cost(model, input_tokens, output_tokens, cached_tokens)
+    cost = calculate_cost(model, input_tokens, output_tokens, cached_tokens, cache_write_tokens)
     tool_cost = 0.0
     if tool_call_counts:
         tool_cost = calculate_tool_cost(tool_call_counts)
@@ -243,7 +244,7 @@ def track_daily_cost(
     cog.logger.info(
         f"COST | command={command} | user={user_id} | model={model}"
         f" | input_tokens={input_tokens} | output_tokens={output_tokens}"
-        f" | cached_tokens={cached_tokens}"
+        f" | cached_tokens={cached_tokens} | cache_write_tokens={cache_write_tokens}"
         + (f" | tools={tool_call_counts} | tool_cost=${tool_cost:.4f}" if tool_call_counts else "")
         + f" | cost=${cost:.4f} | daily=${new_total:.4f}"
     )
@@ -292,6 +293,7 @@ def track_and_append_cost(
         usage["cached_tokens"],
         tool_call_counts,
         command=command,
+        cache_write_tokens=usage["cache_write_tokens"],
     )
     if SHOW_COST_EMBEDS:
         append_pricing_embed(
@@ -303,6 +305,7 @@ def track_and_append_cost(
             usage["cached_tokens"],
             usage["reasoning_tokens"],
             tool_call_counts,
+            cache_write_tokens=usage["cache_write_tokens"],
         )
 
 

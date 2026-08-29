@@ -134,13 +134,22 @@ def append_pricing_embed(
     cached_tokens: int = 0,
     reasoning_tokens: int = 0,
     tool_call_counts: dict[str, int] | None = None,
+    cache_write_tokens: int = 0,
 ) -> None:
     """Append a compact pricing embed showing model, cost, and token usage."""
     tool_cost = calculate_tool_cost(tool_call_counts) if tool_call_counts else 0.0
-    cost = calculate_cost(model, input_tokens, output_tokens, cached_tokens) + tool_cost
+    cost = (
+        calculate_cost(model, input_tokens, output_tokens, cached_tokens, cache_write_tokens)
+        + tool_cost
+    )
     in_part = f"{input_tokens:,} in"
+    cache_parts = []
     if cached_tokens:
-        in_part += f" ({cached_tokens:,} cached)"
+        cache_parts.append(f"{cached_tokens:,} cached")
+    if cache_write_tokens:
+        cache_parts.append(f"{cache_write_tokens:,} cache-write")
+    if cache_parts:
+        in_part += f" ({', '.join(cache_parts)})"
     visible_tokens = output_tokens - reasoning_tokens
     out_part = f"{visible_tokens:,} out"
     if reasoning_tokens:

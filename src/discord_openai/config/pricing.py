@@ -63,6 +63,14 @@ CACHED_INPUT_PRICING: dict[str, float] = {
     if "cached_input_per_million" in cfg
 }
 
+# Cache-write surcharge (GPT-5.6+: 1.25x the uncached input rate); models absent
+# here bill cache-write tokens as ordinary input.
+CACHE_WRITE_PRICING: dict[str, float] = {
+    model_id: float(cfg["cache_write_per_million"])
+    for model_id, cfg in _MODELS.items()
+    if "cache_write_per_million" in cfg
+}
+
 TOOL_CALL_PRICING: dict[str, float] = {
     tool_id: float(cfg["per_call"]) for tool_id, cfg in _TOOLS.items()
 }
@@ -111,6 +119,7 @@ UNKNOWN_VIDEO_MODEL_PRICING: float = _fallback("unknown_video_model", "per_secon
 
 __all__ = [
     "CACHED_INPUT_PRICING",
+    "CACHE_WRITE_PRICING",
     "IMAGE_PRICING",
     "IMAGE_PRICING_DEFAULTS",
     "MODEL_PRICING",

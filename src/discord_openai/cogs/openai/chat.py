@@ -14,6 +14,7 @@ from ...util import (
     extract_usage,
     format_openai_error,
     hash_user_id,
+    reasoning_effort_error,
     truncate_text,
 )
 from .embed_delivery import send_embed_batches
@@ -110,6 +111,7 @@ def _append_public_pricing_embed(
     reasoning_tokens: int,
     tool_call_counts: dict[str, int],
     daily_cost: float,
+    cache_write_tokens: int = 0,
 ) -> None:
     if not SHOW_COST_EMBEDS:
         return
@@ -122,6 +124,7 @@ def _append_public_pricing_embed(
         cached_tokens,
         reasoning_tokens,
         tool_call_counts or None,
+        cache_write_tokens=cache_write_tokens,
     )
 
 
@@ -175,6 +178,8 @@ def _build_pending_mcp_approval(
         + usage["output_tokens"],
         "cached_tokens": (existing_pending["cached_tokens"] if existing_pending else 0)
         + usage["cached_tokens"],
+        "cache_write_tokens": (existing_pending["cache_write_tokens"] if existing_pending else 0)
+        + usage["cache_write_tokens"],
         "reasoning_tokens": (existing_pending["reasoning_tokens"] if existing_pending else 0)
         + usage["reasoning_tokens"],
         "tool_call_counts": merged_counts,
@@ -245,6 +250,7 @@ async def _run_followup_response(
                 usage["output_tokens"],
                 usage["cached_tokens"],
                 dict(tool_info["tool_call_counts"]) or None,
+                cache_write_tokens=usage["cache_write_tokens"],
             )
             conversation.pending_mcp_approval = _build_pending_mcp_approval(
                 tool_info=tool_info,
@@ -450,6 +456,7 @@ async def handle_mcp_approval_action(
             usage["output_tokens"],
             usage["cached_tokens"],
             dict(tool_info["tool_call_counts"]) or None,
+            cache_write_tokens=usage["cache_write_tokens"],
         )
 
         if tool_info["pending_mcp_approval"] is not None:
@@ -519,6 +526,7 @@ async def handle_mcp_approval_action(
             reasoning_tokens=pending["reasoning_tokens"] + usage["reasoning_tokens"],
             tool_call_counts=combined_tool_counts,
             daily_cost=daily_cost,
+            cache_write_tokens=pending["cache_write_tokens"] + usage["cache_write_tokens"],
         )
 
         reply_view = cog._create_button_view(
@@ -647,6 +655,13 @@ async def run_chat_command(
             )
             return
 
+    effort_error = reasoning_effort_error(model, reasoning_effort)
+    if effort_error:
+        await send_embed_batches(
+            ctx.send_followup, embed=error_embed(effort_error), logger=cog.logger
+        )
+        return
+
     input_content = build_input_content(prompt, [attachment] if attachment else [])
     selected_tool_names: list[str] = []
     if web_search:
@@ -728,6 +743,7 @@ async def run_chat_command(
                 usage["output_tokens"],
                 usage["cached_tokens"],
                 dict(tool_info["tool_call_counts"]) or None,
+                cache_write_tokens=usage["cache_write_tokens"],
             )
             params.pending_mcp_approval = _build_pending_mcp_approval(
                 tool_info=tool_info,

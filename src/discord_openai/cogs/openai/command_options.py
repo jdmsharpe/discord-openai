@@ -25,12 +25,14 @@ CHAT_MODEL_CHOICES = [
 ]
 
 REASONING_EFFORT_CHOICES = [
-    OptionChoice(name="None (fastest, no reasoning)", value="none"),
-    OptionChoice(name="Minimal (not supported by GPT-5.6)", value="minimal"),
+    OptionChoice(
+        name="None (fastest; rejected by GPT-5/5 Mini/5 Nano, Pro tiers, o-series)", value="none"
+    ),
+    OptionChoice(name="Minimal (GPT-5 / 5 Mini / 5 Nano only)", value="minimal"),
     OptionChoice(name="Low", value="low"),
     OptionChoice(name="Medium", value="medium"),
     OptionChoice(name="High", value="high"),
-    OptionChoice(name="Extra High", value="xhigh"),
+    OptionChoice(name="Extra High (GPT-5.2 and newer)", value="xhigh"),
     OptionChoice(name="Max (deepest, GPT-5.6 only)", value="max"),
 ]
 
