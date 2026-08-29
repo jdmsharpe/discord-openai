@@ -4,7 +4,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from discord_openai.cogs.openai.state import prune_runtime_state, track_daily_cost
+from discord_openai.cogs.openai.state import (
+    prune_runtime_state,
+    track_and_append_cost,
+    track_daily_cost,
+)
 from discord_openai.util import ResponseParameters, calculate_cost
 
 
@@ -77,3 +81,64 @@ def test_track_daily_cost_bills_cache_write_tokens():
     assert total == pytest.approx(calculate_cost("gpt-5.6-sol", 1_000, 0, 0, 1_000))
     assert total > calculate_cost("gpt-5.6-sol", 1_000, 0)
     assert "cache_write_tokens=1000" in cog.logger.info.call_args.args[0]
+
+
+def _usage_response(status: str, input_tokens: int, output_tokens: int):
+    return SimpleNamespace(
+        id="resp_1",
+        status=status,
+        usage=SimpleNamespace(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            input_tokens_details=SimpleNamespace(cached_tokens=0, cache_write_tokens=0),
+            output_tokens_details=SimpleNamespace(reasoning_tokens=0),
+        ),
+    )
+
+
+def _empty_tool_info():
+    return {
+        "tool_types": [],
+        "tool_call_counts": {},
+        "citations": [],
+        "file_citations": [],
+        "mcp_calls": [],
+        "mcp_list_tools": [],
+        "pending_mcp_approval": None,
+    }
+
+
+def test_track_and_append_cost_warns_on_incomplete_response_with_zero_usage():
+    """Probed 2026-08-28: a max_output_tokens cut-off returned status=incomplete, usage all 0."""
+    cog = SimpleNamespace(logger=MagicMock(), daily_costs={})
+
+    track_and_append_cost(
+        cog, [], 11, "gpt-5.6-luna", _usage_response("incomplete", 0, 0), _empty_tool_info()
+    )
+
+    cog.logger.warning.assert_called_once()
+    warning = cog.logger.warning.call_args.args[0]
+    assert "status=incomplete" in warning
+    assert "model=gpt-5.6-luna" in warning
+    assert "resp_1" in warning
+
+
+@pytest.mark.parametrize(
+    "status,input_tokens,output_tokens",
+    [("completed", 24, 5), ("incomplete", 1549, 59), ("completed", 0, 0)],
+)
+def test_track_and_append_cost_does_not_warn_when_usage_is_reported(
+    status, input_tokens, output_tokens
+):
+    cog = SimpleNamespace(logger=MagicMock(), daily_costs={})
+
+    track_and_append_cost(
+        cog,
+        [],
+        11,
+        "gpt-5.6-luna",
+        _usage_response(status, input_tokens, output_tokens),
+        _empty_tool_info(),
+    )
+
+    cog.logger.warning.assert_not_called()

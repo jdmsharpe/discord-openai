@@ -173,7 +173,7 @@ def calculate_video_cost(model: str, seconds: int, size: str | None = None) -> f
 
 
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
-DEEP_RESEARCH_MODELS = ["gpt-5.5", "gpt-5.5-pro"]
+DEEP_RESEARCH_MODELS = ["gpt-5.6-sol", "gpt-5.5", "gpt-5.5-pro"]
 
 # Server-side compaction: automatically compress context when it exceeds this
 # token threshold, preventing context-window overflow in long conversations.
@@ -295,6 +295,39 @@ def reasoning_effort_error(model: str, reasoning_effort: str | None) -> str | No
     )
 
 
+# Reasoning modes (Responses API, GPT-5.6+). `standard` is the API default and is
+# never sent; only `pro` is ever emitted (see build_reasoning_config).
+REASONING_MODE_STANDARD = "standard"
+REASONING_MODE_PRO = "pro"
+
+# Models accepting `reasoning.mode = "pro"`. Live-probed 2026-08-28 with the bot's own
+# Responses payload: gpt-5.6-sol/-terra/-luna accept pro with any effort (none..max)
+# or with no effort at all (the API then defaults to medium). gpt-5.5 returns a 400
+# `unsupported_value` on reasoning.mode; gpt-5.5-pro accepts it as a no-op and is
+# excluded on purpose. Mode and effort are independent. Pro bills at the model's
+# standard token rates but on far more tokens (~1.5k fixed input overhead per call,
+# roughly 4-6x per turn, tool schemas and history multiplied), so pricing.yaml needs
+# nothing: extract_usage already captures the inflated usage.
+PRO_MODE_MODELS = frozenset({"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"})
+
+
+def reasoning_mode_error(model: str, reasoning_mode: str | None) -> str | None:
+    """Return a user-facing error when ``model`` rejects ``reasoning_mode``, else None.
+
+    Mirrors ``reasoning_effort_error``: an unset mode and ``standard`` (the API
+    default) always pass; ``pro`` is refused unless ``model`` is in PRO_MODE_MODELS.
+    """
+    if not reasoning_mode or reasoning_mode == REASONING_MODE_STANDARD:
+        return None
+    if model in PRO_MODE_MODELS:
+        return None
+    allowed = ", ".join(f"`{name}`" for name in sorted(PRO_MODE_MODELS))
+    return (
+        f"Reasoning mode `{reasoning_mode}` is not supported by `{model}`. "
+        f"Supported models: {allowed}."
+    )
+
+
 # GPT-5 base models that never support temperature/top_p
 GPT5_NO_TEMP_MODELS = frozenset({"gpt-5", "gpt-5-mini", "gpt-5-nano"})
 RICH_TTS_MODELS = ["gpt-4o-mini-tts"]
@@ -365,8 +398,12 @@ class ResponseParameters:
         else:
             # GPT-5.6/5.5/5.4/5.2/5.1/5-pro, GPT-4.x, etc.
             # temperature/top_p are not supported when reasoning effort is not "none".
+            # Pro mode with no explicit effort reasons at the API default (medium), so
+            # it drops them too (probed 2026-08-28: a 400 on temperature otherwise);
+            # pro with effort "none" still accepts them.
             effort = reasoning.get("effort") if reasoning else None
-            if effort and effort != REASONING_EFFORT_NONE:
+            pro_mode = reasoning is not None and reasoning.get("mode") == REASONING_MODE_PRO
+            if (effort and effort != REASONING_EFFORT_NONE) or (pro_mode and not effort):
                 self.temperature = None
                 self.top_p = None
             else:
@@ -505,7 +542,7 @@ class ResearchParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "gpt-5.5",
+        model: str = "gpt-5.6-sol",
         file_search: bool = False,
         code_interpreter: bool = False,
     ):

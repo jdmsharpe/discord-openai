@@ -1,15 +1,35 @@
 from typing import Any
 
-from ...util import REASONING_EFFORT_MEDIUM, REASONING_MODELS, UsageInfo, extract_usage
+from ...util import (
+    REASONING_EFFORT_MEDIUM,
+    REASONING_MODE_PRO,
+    REASONING_MODELS,
+    UsageInfo,
+    extract_usage,
+)
 
 
-def build_reasoning_config(model: str, reasoning_effort: str | None) -> dict[str, str] | None:
-    """Build the Responses API reasoning config for a chat request."""
+def build_reasoning_config(
+    model: str, reasoning_effort: str | None, reasoning_mode: str | None = None
+) -> dict[str, str] | None:
+    """Build the Responses API reasoning config for a chat request.
+
+    ``mode`` is only ever emitted as ``"pro"``; ``"standard"`` is the API default and
+    is omitted so models that reject ``reasoning.mode`` never see the key. Pro mode
+    carries the chosen effort when there is one and otherwise leaves it to the API.
+    """
     if model in REASONING_MODELS:
         return {
             "effort": reasoning_effort or REASONING_EFFORT_MEDIUM,
             "summary": "auto",
         }
+    if reasoning_mode == REASONING_MODE_PRO:
+        config: dict[str, str] = {}
+        if reasoning_effort:
+            config["effort"] = reasoning_effort
+        config["summary"] = "auto"
+        config["mode"] = REASONING_MODE_PRO
+        return config
     if reasoning_effort:
         return {"effort": reasoning_effort, "summary": "auto"}
     return None

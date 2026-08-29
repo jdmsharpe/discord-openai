@@ -7,6 +7,7 @@ from discord import ApplicationContext, Attachment, Colour, Embed, Interaction
 from ...config.auth import SHOW_COST_EMBEDS
 from ...config.mcp import parse_mcp_preset_names
 from ...util import (
+    REASONING_MODE_PRO,
     PendingMcpApproval,
     ResponseParameters,
     UsageInfo,
@@ -15,6 +16,7 @@ from ...util import (
     format_openai_error,
     hash_user_id,
     reasoning_effort_error,
+    reasoning_mode_error,
     truncate_text,
 )
 from .embed_delivery import send_embed_batches
@@ -627,6 +629,7 @@ async def run_chat_command(
     file_search: bool,
     shell: bool,
     mcp: str | None = None,
+    reasoning_mode: str | None = None,
 ) -> None:
     """Run the /openai chat command."""
     await ctx.defer()
@@ -654,6 +657,13 @@ async def run_chat_command(
                 logger=cog.logger,
             )
             return
+
+    mode_error = reasoning_mode_error(model, reasoning_mode)
+    if mode_error:
+        await send_embed_batches(
+            ctx.send_followup, embed=error_embed(mode_error), logger=cog.logger
+        )
+        return
 
     effort_error = reasoning_effort_error(model, reasoning_effort)
     if effort_error:
@@ -691,7 +701,7 @@ async def run_chat_command(
         input=input_content,
         temperature=temperature,
         top_p=top_p,
-        reasoning=build_reasoning_config(model, reasoning_effort),
+        reasoning=build_reasoning_config(model, reasoning_effort, reasoning_mode),
         verbosity=verbosity,
         tools=tools,
         tool_names=selected_tool_names,
@@ -721,6 +731,8 @@ async def run_chat_command(
             description += f"**Nucleus Sampling:** {params.top_p}\n"
         if params.reasoning:
             description += f"**Reasoning Effort:** {params.reasoning.get('effort', 'medium')}\n"
+            if params.reasoning.get("mode") == REASONING_MODE_PRO:
+                description += f"**Reasoning Mode:** {REASONING_MODE_PRO}\n"
         if params.verbosity:
             description += f"**Verbosity:** {params.verbosity}\n"
 

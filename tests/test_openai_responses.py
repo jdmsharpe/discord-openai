@@ -1,6 +1,42 @@
 from unittest.mock import MagicMock
 
-from discord_openai.cogs.openai.responses import extract_summary_text
+import pytest
+
+from discord_openai.cogs.openai.responses import build_reasoning_config, extract_summary_text
+
+
+class TestBuildReasoningConfig:
+    @pytest.mark.parametrize(
+        "model,effort,mode,expected",
+        [
+            ("gpt-5.6-sol", None, "pro", {"summary": "auto", "mode": "pro"}),
+            ("gpt-5.6-sol", "max", "pro", {"effort": "max", "summary": "auto", "mode": "pro"}),
+            ("gpt-5.6-sol", "none", "pro", {"effort": "none", "summary": "auto", "mode": "pro"}),
+            ("gpt-5.6-sol", "medium", None, {"effort": "medium", "summary": "auto"}),
+            ("gpt-5.6-sol", "medium", "standard", {"effort": "medium", "summary": "auto"}),
+            ("gpt-5.6-sol", None, None, None),
+            ("gpt-5.6-sol", None, "standard", None),
+            ("o3", None, None, {"effort": "medium", "summary": "auto"}),
+        ],
+        ids=[
+            "pro-no-effort",
+            "pro-max",
+            "pro-effort-none",
+            "effort-only",
+            "effort-standard-omits-mode",
+            "nothing",
+            "standard-alone-is-nothing",
+            "o-series-default",
+        ],
+    )
+    def test_table(self, model, effort, mode, expected):
+        assert build_reasoning_config(model, effort, mode) == expected
+
+    def test_standard_mode_is_never_emitted(self):
+        """`mode: standard` must never reach the API; older models 400 on the key."""
+        for effort in (None, "none", "medium"):
+            config = build_reasoning_config("gpt-5.5", effort, "standard") or {}
+            assert "mode" not in config
 
 
 class TestExtractSummaryText:

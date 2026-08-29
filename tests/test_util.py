@@ -24,6 +24,7 @@ from discord_openai.util import (
     INPUT_IMAGE_TYPE,
     INPUT_TEXT_TYPE,
     MODEL_PRICING,
+    PRO_MODE_MODELS,
     PROMPT_CACHE_RETENTION,
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
@@ -54,6 +55,7 @@ from discord_openai.util import (
     format_openai_error,
     hash_user_id,
     reasoning_effort_error,
+    reasoning_mode_error,
     truncate_text,
 )
 
@@ -162,6 +164,34 @@ class TestResponseParameters:
         result = params.to_dict()
         assert result["temperature"] == 0.7
         assert result["top_p"] == 0.9
+
+    def test_pro_mode_without_effort_strips_temperature(self):
+        """Pro mode with no effort reasons at the API default, which rejects temperature."""
+        params = ResponseParameters(
+            model="gpt-5.6-sol",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            temperature=0.7,
+            top_p=0.9,
+            reasoning={"mode": "pro", "summary": "auto"},
+        )
+        result = params.to_dict()
+        assert "temperature" not in result
+        assert "top_p" not in result
+        assert result["reasoning"] == {"mode": "pro", "summary": "auto"}
+
+    def test_pro_mode_with_effort_none_keeps_temperature(self):
+        """Pro mode plus effort 'none' still accepts temperature/top_p (probed 2026-08-28)."""
+        params = ResponseParameters(
+            model="gpt-5.6-sol",
+            input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
+            temperature=0.7,
+            top_p=0.9,
+            reasoning={"effort": "none", "mode": "pro", "summary": "auto"},
+        )
+        result = params.to_dict()
+        assert result["temperature"] == 0.7
+        assert result["top_p"] == 0.9
+        assert result["reasoning"]["mode"] == "pro"
 
     def test_verbosity_included_in_payload(self):
         """Test that verbosity is included in the text block when set."""
@@ -482,7 +512,7 @@ class TestResearchParameters:
     def test_defaults(self):
         params = ResearchParameters(prompt="Test research")
         assert params.prompt == "Test research"
-        assert params.model == "gpt-5.5"
+        assert params.model == "gpt-5.6-sol"
         assert params.file_search is False
         assert params.code_interpreter is False
 
@@ -490,7 +520,7 @@ class TestResearchParameters:
         params = ResearchParameters(prompt="What is quantum computing?")
         tools = [TOOL_WEB_SEARCH]
         result = params.to_dict(tools)
-        assert result["model"] == "gpt-5.5"
+        assert result["model"] == "gpt-5.6-sol"
         assert result["input"] == "What is quantum computing?"
         assert result["tools"] == [TOOL_WEB_SEARCH]
         assert result["background"] is True
@@ -509,6 +539,7 @@ class TestResearchParameters:
         assert result["background"] is True
 
     def test_deep_research_models_constant(self):
+        assert "gpt-5.6-sol" in DEEP_RESEARCH_MODELS
         assert "gpt-5.5" in DEEP_RESEARCH_MODELS
         assert "gpt-5.5-pro" in DEEP_RESEARCH_MODELS
 
@@ -1244,6 +1275,34 @@ class TestSupportedReasoningEfforts:
         error = reasoning_effort_error("gpt-5", "none")
         assert error is not None
         assert error.endswith("Supported values: `minimal`, `low`, `medium`, `high`.")
+
+
+class TestReasoningModeError:
+    """Pin the pro-mode model set and the chat-path gate built on it."""
+
+    PRO_IDS: ClassVar[set[str]] = {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+
+    def test_pro_mode_models_match_probed_results(self):
+        """Exact pin (probed 2026-08-28): gpt-5.5 400s on reasoning.mode, 5.5-pro is a no-op."""
+        assert set(PRO_MODE_MODELS) == self.PRO_IDS
+
+    @pytest.mark.parametrize("model", sorted(PRO_IDS))
+    def test_accepts_pro_on_gpt_5_6(self, model):
+        assert reasoning_mode_error(model, "pro") is None
+
+    @pytest.mark.parametrize("model", ["gpt-5.5", "gpt-5.5-pro", "o3", "gpt-4.1"])
+    def test_rejects_pro_elsewhere_and_lists_supported_ids(self, model):
+        error = reasoning_mode_error(model, "pro")
+        assert error is not None
+        assert "`pro`" in error
+        assert f"`{model}`" in error
+        for supported in self.PRO_IDS:
+            assert f"`{supported}`" in error
+
+    @pytest.mark.parametrize("model", ["gpt-5.5", "gpt-5.6-sol", "o3"])
+    @pytest.mark.parametrize("mode", [None, "", "standard"])
+    def test_unset_and_standard_pass_through(self, model, mode):
+        assert reasoning_mode_error(model, mode) is None
 
 
 class TestBuildInputContent:

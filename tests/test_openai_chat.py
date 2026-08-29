@@ -170,6 +170,110 @@ class TestRunChatCommand:
         assert "`gpt-5.6-sol`" in embeds[0].description
 
     @pytest.mark.asyncio
+    async def test_chat_command_rejects_pro_mode_on_unsupported_model_before_request(self):
+        create = AsyncMock()
+        cog = SimpleNamespace(
+            conversation_histories={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="hi",
+            persona="You are helpful.",
+            model="gpt-5.5",
+            attachment=None,
+            temperature=None,
+            top_p=None,
+            reasoning_effort="medium",
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+            reasoning_mode="pro",
+        )
+
+        create.assert_not_awaited()
+        assert 789 not in cog.conversation_histories
+        ctx.send_followup.assert_awaited_once()
+        kwargs = ctx.send_followup.await_args.kwargs
+        embeds = kwargs.get("embeds") or [kwargs["embed"]]
+        assert embeds[0].title == "Error"
+        assert "`pro`" in embeds[0].description
+        assert "`gpt-5.5`" in embeds[0].description
+        assert "`gpt-5.6-sol`" in embeds[0].description
+
+    @pytest.mark.asyncio
+    async def test_chat_command_sends_pro_mode_and_renders_it(self):
+        reply_view = MagicMock()
+        response = _make_response(response_id="resp_pro", output=[], output_text="Done")
+        create = AsyncMock(return_value=response)
+        cog = SimpleNamespace(
+            conversation_histories={},
+            views={},
+            last_view_messages={},
+            daily_costs={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+            _create_mcp_approval_view=MagicMock(),
+            _create_button_view=MagicMock(return_value=reply_view),
+            _track_and_append_cost=MagicMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(return_value=MagicMock()),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="Think hard",
+            persona="You are helpful.",
+            model="gpt-5.6-sol",
+            attachment=None,
+            temperature=0.7,
+            top_p=None,
+            reasoning_effort=None,
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+            reasoning_mode="pro",
+        )
+
+        payload = create.await_args.kwargs
+        assert payload["reasoning"]["mode"] == "pro"
+        assert "effort" not in payload["reasoning"]
+        # Pro with no effort reasons at the API default, which 400s on temperature.
+        assert "temperature" not in payload
+        intro_description = ctx.send_followup.await_args.kwargs["embeds"][0].description
+        assert "**Reasoning Mode:** pro" in intro_description
+        assert "**Temperature:**" not in intro_description
+        assert cog.conversation_histories[789].reasoning["mode"] == "pro"
+
+    @pytest.mark.asyncio
     async def test_chat_command_renders_zero_numeric_params(self):
         reply_message = MagicMock()
         reply_view = MagicMock()

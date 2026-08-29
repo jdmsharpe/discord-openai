@@ -283,6 +283,17 @@ def track_and_append_cost(
 ) -> None:
     """Extract usage, track daily cost, and append a pricing embed."""
     usage = get_usage(response)
+    if (
+        getattr(response, "status", None) == "incomplete"
+        and usage["input_tokens"] + usage["output_tokens"] == 0
+    ):
+        # Probed 2026-08-28: a max_output_tokens cut-off can come back status=incomplete
+        # with all-zero usage even though tokens were consumed, so this call bills $0.00.
+        cog.logger.warning(
+            f"BILLING | command={command} | model={model}"
+            f" | response={getattr(response, 'id', None)}"
+            " | status=incomplete with zero usage; billing $0.00 although tokens were consumed"
+        )
     tool_call_counts = tool_info["tool_call_counts"] or None
     daily_cost = track_daily_cost(
         cog,

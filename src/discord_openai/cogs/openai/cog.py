@@ -29,6 +29,7 @@ from .command_options import (
     IMAGE_QUALITY_CHOICES,
     IMAGE_SIZE_CHOICES,
     REASONING_EFFORT_CHOICES,
+    REASONING_MODE_CHOICES,
     RESEARCH_MODEL_CHOICES,
     STT_ACTION_CHOICES,
     STT_MODEL_CHOICES,
@@ -287,6 +288,13 @@ class OpenAICog(commands.Cog):
         choices=REASONING_EFFORT_CHOICES,
     )
     @option(
+        "reasoning_mode",
+        description="(Advanced) Pro reasoning mode: GPT-5.6 only, several times the cost, slower. (default: not set)",
+        required=False,
+        type=str,
+        choices=REASONING_MODE_CHOICES,
+    )
+    @option(
         "verbosity",
         description="(Advanced) Controls response length. low=concise, high=detailed. (default: medium)",
         required=False,
@@ -333,6 +341,7 @@ class OpenAICog(commands.Cog):
         temperature: float | None = None,
         top_p: float | None = None,
         reasoning_effort: str | None = None,
+        reasoning_mode: str | None = None,
         verbosity: str | None = None,
         web_search: bool = False,
         code_interpreter: bool = False,
@@ -356,6 +365,7 @@ class OpenAICog(commands.Cog):
             file_search,
             shell,
             mcp,
+            reasoning_mode,
         )
 
     @openai_media.command(
@@ -546,7 +556,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "model",
-        description="Choose the deep research model. (default: GPT-5.5)",
+        description="Choose the deep research model. (default: GPT-5.6 Sol)",
         required=False,
         type=str,
         choices=RESEARCH_MODEL_CHOICES,
@@ -567,7 +577,7 @@ class OpenAICog(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "gpt-5.5",
+        model: str = "gpt-5.6-sol",
         file_search: bool = False,
         code_interpreter: bool = False,
     ):

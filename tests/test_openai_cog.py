@@ -10,6 +10,7 @@ from discord_openai.cogs.openai.command_options import (
     CHAT_MODEL_CHOICES,
     IMAGE_MODEL_CHOICES,
     REASONING_EFFORT_CHOICES,
+    REASONING_MODE_CHOICES,
     RESEARCH_MODEL_CHOICES,
     STT_MODEL_CHOICES,
     TTS_MODEL_CHOICES,
@@ -19,6 +20,7 @@ from discord_openai.cogs.openai.command_options import (
 from discord_openai.config.pricing import TTS_PRICING_PER_CHAR
 from discord_openai.util import (
     MODEL_SUPPORTED_TTS_VOICES,
+    PRO_MODE_MODELS,
     REASONING_MODELS,
     RICH_TTS_MODELS,
     SUPPORTED_REASONING_EFFORTS,
@@ -135,6 +137,7 @@ class TestOpenAICog:
             None,
             None,
             None,
+            None,
             False,
             False,
             False,
@@ -145,7 +148,7 @@ class TestOpenAICog:
         assert OpenAICog.tts.callback.__defaults__ == ("gpt-4o-mini-tts", "marin", "", "mp3", 1.0)
         assert OpenAICog.stt.callback.__defaults__ == ("gpt-transcribe", "transcription")
         assert OpenAICog.video.callback.__defaults__ == ("sora-2", "1280x720", "8")
-        assert OpenAICog.research.callback.__defaults__ == ("gpt-5.5", False, False)
+        assert OpenAICog.research.callback.__defaults__ == ("gpt-5.6-sol", False, False)
 
     def test_registered_command_groups_fit_discord_size_limit(self):
         """Discord rejects any single top-level command payload over 8000 bytes."""
@@ -189,11 +192,23 @@ class TestOpenAICog:
         assert any(choice.value == "marin" for choice in TTS_VOICE_CHOICES)
         assert any(choice.value == "gpt-transcribe" for choice in STT_MODEL_CHOICES)
         assert any(choice.value == "sora-2" for choice in VIDEO_MODEL_CHOICES)
+        assert any(choice.value == "gpt-5.6-sol" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.5" for choice in RESEARCH_MODEL_CHOICES)
 
     def test_reasoning_effort_choice_set(self):
         values = {choice.value for choice in REASONING_EFFORT_CHOICES}
         assert values == {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
+
+    def test_reasoning_mode_choice_set(self):
+        values = {choice.value for choice in REASONING_MODE_CHOICES}
+        assert values == {"standard", "pro"}
+
+    def test_reasoning_mode_option_is_on_chat_and_pro_models_are_menu_selectable(self):
+        """The refusal message lists PRO_MODE_MODELS, so each must be a chat menu entry."""
+        chat_options = [opt.name for opt in OpenAICog.chat.options]
+        assert "reasoning_mode" in chat_options
+        assert len(chat_options) == 14
+        assert {choice.value for choice in CHAT_MODEL_CHOICES} >= PRO_MODE_MODELS
 
     def test_every_menu_reasoning_model_has_an_effort_entry(self):
         """Every reasoning model the chat menu offers must be in SUPPORTED_REASONING_EFFORTS.

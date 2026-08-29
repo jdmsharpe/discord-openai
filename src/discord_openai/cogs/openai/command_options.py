@@ -36,6 +36,11 @@ REASONING_EFFORT_CHOICES = [
     OptionChoice(name="Max (deepest, GPT-5.6 only)", value="max"),
 ]
 
+REASONING_MODE_CHOICES = [
+    OptionChoice(name="Standard (default)", value="standard"),
+    OptionChoice(name="Pro (GPT-5.6 only; several times the tokens and cost, slower)", value="pro"),
+]
+
 VERBOSITY_CHOICES = [
     OptionChoice(name="Low (concise)", value="low"),
     OptionChoice(name="Medium (default)", value="medium"),
@@ -130,6 +135,7 @@ VIDEO_SECONDS_CHOICES = [
 ]
 
 RESEARCH_MODEL_CHOICES = [
+    OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
     OptionChoice(name="GPT-5.5", value="gpt-5.5"),
     OptionChoice(name="GPT-5.5 Pro", value="gpt-5.5-pro"),
 ]
