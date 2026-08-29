@@ -1267,9 +1267,15 @@ class TestSupportedReasoningEfforts:
     def test_accepts_supported_combination(self, model, effort):
         assert reasoning_effort_error(model, effort) is None
 
-    def test_no_effort_and_unmapped_models_pass_through(self):
+    def test_no_effort_passes_and_unmapped_models_reject_explicit_effort(self):
         assert reasoning_effort_error("gpt-5.6-sol", None) is None
-        assert reasoning_effort_error("gpt-4.1", "high") is None
+        assert reasoning_effort_error("gpt-4.1", None) is None
+
+        error = reasoning_effort_error("gpt-4.1", "high")
+        assert error is not None
+        assert "`high`" in error
+        assert "`gpt-4.1`" in error
+        assert "Leave reasoning effort unset" in error
 
     def test_error_lists_supported_values_in_menu_order(self):
         error = reasoning_effort_error("gpt-5", "none")

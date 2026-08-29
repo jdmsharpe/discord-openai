@@ -248,8 +248,8 @@ REASONING_EFFORT_ORDER = (
 #   gpt-5.2-pro                      medium/high/xhigh
 #   gpt-5-pro                        high only
 #   o3, o3-pro                       low/medium/high
-# Non-reasoning menu models (gpt-4.1*, gpt-4o-mini) and un-probed ids are absent and
-# pass through unvalidated; the API stays the source of truth for them.
+# Non-reasoning menu models (gpt-4.1*, gpt-4o-mini) and un-probed ids are absent;
+# an explicit effort is rejected locally for those models rather than sent to the API.
 _EFFORTS_GPT_5_6 = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
 _EFFORTS_GPT_5_2_TO_5_5 = frozenset({"none", "low", "medium", "high", "xhigh"})
 _EFFORTS_PRO = frozenset({"medium", "high", "xhigh"})
@@ -286,7 +286,12 @@ def reasoning_effort_error(model: str, reasoning_effort: str | None) -> str | No
     if not reasoning_effort:
         return None
     supported = SUPPORTED_REASONING_EFFORTS.get(model)
-    if supported is None or reasoning_effort in supported:
+    if supported is None:
+        return (
+            f"Reasoning effort `{reasoning_effort}` is not supported by `{model}`. "
+            "Leave reasoning effort unset for this model."
+        )
+    if reasoning_effort in supported:
         return None
     allowed = ", ".join(f"`{effort}`" for effort in REASONING_EFFORT_ORDER if effort in supported)
     return (

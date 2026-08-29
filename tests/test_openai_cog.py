@@ -213,8 +213,8 @@ class TestOpenAICog:
     def test_every_menu_reasoning_model_has_an_effort_entry(self):
         """Every reasoning model the chat menu offers must be in SUPPORTED_REASONING_EFFORTS.
 
-        The gate passes unmapped ids through unvalidated, so a new GPT-5.x / o-series
-        menu entry without a probed row would silently regain the raw-400 behaviour.
+        The gate rejects unmapped ids, so a new GPT-5.x / o-series menu entry needs a
+        probed row before users can select a reasoning effort for it.
         """
         menu = [choice.value for choice in CHAT_MODEL_CHOICES]
         reasoning_menu = [m for m in menu if m in REASONING_MODELS or m.startswith("gpt-5")]
