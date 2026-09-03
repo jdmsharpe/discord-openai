@@ -8,10 +8,12 @@ from discord import Bot, Intents
 from discord_openai import OpenAICog
 from discord_openai.cogs.openai.command_options import (
     CHAT_MODEL_CHOICES,
+    IMAGE_BACKGROUND_CHOICES,
     IMAGE_MODEL_CHOICES,
     REASONING_EFFORT_CHOICES,
     REASONING_MODE_CHOICES,
     RESEARCH_MODEL_CHOICES,
+    SERVICE_TIER_CHOICES,
     STT_MODEL_CHOICES,
     TTS_MODEL_CHOICES,
     TTS_VOICE_CHOICES,
@@ -143,8 +145,15 @@ class TestOpenAICog:
             False,
             False,
             None,
+            None,
         )
-        assert OpenAICog.image.callback.__defaults__ == ("gpt-image-2", "auto", "auto", None)
+        assert OpenAICog.image.callback.__defaults__ == (
+            "gpt-image-2",
+            "auto",
+            "auto",
+            "auto",
+            None,
+        )
         assert OpenAICog.tts.callback.__defaults__ == ("gpt-4o-mini-tts", "marin", "", "mp3", 1.0)
         assert OpenAICog.stt.callback.__defaults__ == ("gpt-transcribe", "transcription")
         assert OpenAICog.video.callback.__defaults__ == ("sora-2", "1280x720", "8")
@@ -203,11 +212,25 @@ class TestOpenAICog:
         values = {choice.value for choice in REASONING_MODE_CHOICES}
         assert values == {"standard", "pro"}
 
+    def test_service_tier_choice_set(self):
+        """`standard` is never sent (mirrors reasoning_mode); `fast` is the only tier offered —
+        `ultrafast` is Sol-only, access-controlled and unpriced."""
+        values = [choice.value for choice in SERVICE_TIER_CHOICES]
+        assert values == ["standard", "fast"]
+
+    def test_image_background_choice_set(self):
+        """Every GPT Image model returned an RGBA PNG for `transparent` (probed 2026-09-03)."""
+        values = [choice.value for choice in IMAGE_BACKGROUND_CHOICES]
+        assert values == ["auto", "opaque", "transparent"]
+        image_options = [opt.name for opt in OpenAICog.image.options]
+        assert "background" in image_options
+
     def test_reasoning_mode_option_is_on_chat_and_pro_models_are_menu_selectable(self):
         """The refusal message lists PRO_MODE_MODELS, so each must be a chat menu entry."""
         chat_options = [opt.name for opt in OpenAICog.chat.options]
         assert "reasoning_mode" in chat_options
-        assert len(chat_options) == 14
+        assert "service_tier" in chat_options
+        assert len(chat_options) == 15
         assert {choice.value for choice in CHAT_MODEL_CHOICES} >= PRO_MODE_MODELS
 
     def test_every_menu_reasoning_model_has_an_effort_entry(self):

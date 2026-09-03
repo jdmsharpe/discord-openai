@@ -249,7 +249,7 @@ DEFAULT_CLAIMS, UNASSERTABLE_OPTIONS = _discover_default_claims()
 #: two things — a real change to the command surface, or a discovery regression — and both
 #: deserve a human look before the number moves. Never "fix" a mismatch by relaxing the
 #: comparison back to an inequality.
-EXPECTED_ASSERTABLE_OPTIONS = 13
+EXPECTED_ASSERTABLE_OPTIONS = 14
 EXPECTED_UNASSERTABLE_OPTIONS = 0
 
 

@@ -182,3 +182,59 @@ class TestPricingLoader:
         assert pricing.UNKNOWN_CHAT_MODEL_PRICING == (42.0, 100.0)
         assert pricing.VIDEO_PRICING_PER_SECOND == {"fake-video": {"default": 0.5, "1080p": 0.9}}
         assert pricing.UNKNOWN_VIDEO_MODEL_PRICING == 1.0
+
+
+class TestFastTiers:
+    """Fast mode (`service_tier: "fast"` / "priority") rates from the pricing page's
+    "Fast mode" tab, 2026-09-03. One flat rate per model — no long-context split."""
+
+    def test_fast_tiers_are_pinned(self):
+        pricing = _reload_pricing()
+        expected = {
+            # model: (input, output, cached input, cache write)
+            "gpt-5.6-sol": (8.00, 40.00, 0.80, 10.00),
+            "gpt-5.6-terra": (4.00, 24.00, 0.40, 5.00),
+            "gpt-5.6-luna": (0.40, 2.40, 0.04, 0.50),
+            "gpt-5.5": (12.50, 75.00, 1.25, None),
+            "gpt-5.4": (5.00, 30.00, 0.50, None),
+            "gpt-5.4-mini": (1.50, 9.00, 0.15, None),
+            "gpt-5.2": (3.50, 28.00, 0.35, None),
+            "gpt-5.1": (2.50, 20.00, 0.25, None),
+            "gpt-5": (2.50, 20.00, 0.25, None),
+            "gpt-5-mini": (0.45, 3.60, 0.045, None),
+            "gpt-4.1": (3.50, 14.00, 0.875, None),
+            "gpt-4.1-mini": (0.70, 2.80, 0.175, None),
+            "gpt-4.1-nano": (0.20, 0.80, 0.05, None),
+            "o4-mini": (2.00, 8.00, 0.50, None),
+            "o3": (3.50, 14.00, 0.875, None),
+            "gpt-4o": (4.25, 17.00, 2.125, None),
+            "gpt-4o-mini": (0.25, 1.00, 0.125, None),
+        }
+        assert set(pricing.FAST_TIER_PRICING) == set(expected)
+        for model, (inp, out, cached, write) in expected.items():
+            tier = pricing.FAST_TIER_PRICING[model]
+            assert tier["input_per_million"] == inp, model
+            assert tier["output_per_million"] == out, model
+            assert tier["cached_input_per_million"] == cached, model
+            assert tier["cache_write_per_million"] == write, model
+
+    def test_gpt_5_6_fast_rates_are_double_standard(self):
+        pricing = _reload_pricing()
+        for model in ("gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"):
+            tier = pricing.FAST_TIER_PRICING[model]
+            std_in, std_out = pricing.MODEL_PRICING[model]
+            assert tier["input_per_million"] == pytest.approx(2 * std_in), model
+            assert tier["output_per_million"] == pytest.approx(2 * std_out), model
+            assert tier["cached_input_per_million"] == pytest.approx(
+                2 * pricing.CACHED_INPUT_PRICING[model]
+            ), model
+            assert tier["cache_write_per_million"] == pytest.approx(
+                2 * pricing.CACHE_WRITE_PRICING[model]
+            ), model
+
+    def test_every_fast_model_is_a_priced_chat_model(self):
+        pricing = _reload_pricing()
+        assert set(pricing.FAST_TIER_PRICING) <= set(pricing.MODEL_PRICING)
+        # The Pro tiers and legacy ids the page lists no Fast-mode rate for are absent.
+        for model in ("gpt-5.5-pro", "gpt-5.4-pro", "gpt-5.2-pro", "gpt-5-pro", "o3-pro", "o1"):
+            assert model not in pricing.FAST_TIER_PRICING

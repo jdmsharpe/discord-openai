@@ -109,6 +109,40 @@ LONG_CONTEXT_PRICING: dict[str, LongContextTier] = {
     if "long_context" in cfg
 }
 
+
+class FastTier(TypedDict):
+    """Fast-mode rates a model bills at when the request ran under
+    ``service_tier`` "fast" / "priority" (flat at any prompt size)."""
+
+    input_per_million: float
+    output_per_million: float
+    cached_input_per_million: float | None
+    cache_write_per_million: float | None
+
+
+def _fast_tier(cfg: dict[str, Any]) -> FastTier:
+    return {
+        "input_per_million": float(cfg["input_per_million"]),
+        "output_per_million": float(cfg["output_per_million"]),
+        "cached_input_per_million": (
+            float(cfg["cached_input_per_million"])
+            if cfg.get("cached_input_per_million") is not None
+            else None
+        ),
+        "cache_write_per_million": (
+            float(cfg["cache_write_per_million"])
+            if cfg.get("cache_write_per_million") is not None
+            else None
+        ),
+    }
+
+
+# Fast-mode rates (pricing page "Fast mode" tab). Models absent here are not
+# offered Fast mode by the bot.
+FAST_TIER_PRICING: dict[str, FastTier] = {
+    model_id: _fast_tier(cfg["fast"]) for model_id, cfg in _MODELS.items() if "fast" in cfg
+}
+
 TOOL_CALL_PRICING: dict[str, float] = {
     tool_id: float(cfg["per_call"]) for tool_id, cfg in _TOOLS.items()
 }

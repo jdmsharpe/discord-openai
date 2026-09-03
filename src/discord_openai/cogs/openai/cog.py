@@ -25,12 +25,14 @@ from .chat import (
 from .client import build_openai_client
 from .command_options import (
     CHAT_MODEL_CHOICES,
+    IMAGE_BACKGROUND_CHOICES,
     IMAGE_MODEL_CHOICES,
     IMAGE_QUALITY_CHOICES,
     IMAGE_SIZE_CHOICES,
     REASONING_EFFORT_CHOICES,
     REASONING_MODE_CHOICES,
     RESEARCH_MODEL_CHOICES,
+    SERVICE_TIER_CHOICES,
     STT_ACTION_CHOICES,
     STT_MODEL_CHOICES,
     TTS_MODEL_CHOICES,
@@ -123,6 +125,7 @@ class OpenAICog(commands.Cog):
         tool_call_counts: dict[str, int] | None = None,
         command: str = "chat",
         cache_write_tokens: int = 0,
+        service_tier: str | None = None,
     ) -> float:
         return track_daily_cost(
             self,
@@ -134,6 +137,7 @@ class OpenAICog(commands.Cog):
             tool_call_counts,
             command,
             cache_write_tokens=cache_write_tokens,
+            service_tier=service_tier,
         )
 
     def _track_daily_cost_direct(
@@ -295,6 +299,13 @@ class OpenAICog(commands.Cog):
         choices=REASONING_MODE_CHOICES,
     )
     @option(
+        "service_tier",
+        description="(Advanced) Fast mode: up to 2.5x faster at about 2x the token price. (default: not set)",
+        required=False,
+        type=str,
+        choices=SERVICE_TIER_CHOICES,
+    )
+    @option(
         "verbosity",
         description="(Advanced) Controls response length. low=concise, high=detailed. (default: medium)",
         required=False,
@@ -348,6 +359,7 @@ class OpenAICog(commands.Cog):
         file_search: bool = False,
         shell: bool = False,
         mcp: str | None = None,
+        service_tier: str | None = None,
     ):
         await run_chat_command(
             self,
@@ -366,6 +378,7 @@ class OpenAICog(commands.Cog):
             shell,
             mcp,
             reasoning_mode,
+            service_tier=service_tier,
         )
 
     @openai_media.command(
@@ -395,6 +408,13 @@ class OpenAICog(commands.Cog):
         choices=IMAGE_SIZE_CHOICES,
     )
     @option(
+        "background",
+        description="Background of the image; transparent returns an alpha PNG. (default: auto)",
+        required=False,
+        type=str,
+        choices=IMAGE_BACKGROUND_CHOICES,
+    )
+    @option(
         "attachment",
         description="Image to edit (PNG, JPEG, GIF, WebP). (default: not set)",
         required=False,
@@ -407,9 +427,12 @@ class OpenAICog(commands.Cog):
         model: str = "gpt-image-2",
         quality: str | None = "auto",
         size: str | None = "auto",
+        background: str | None = "auto",
         attachment: Attachment | None = None,
     ):
-        await run_image_command(self, ctx, prompt, model, quality, size, attachment)
+        await run_image_command(
+            self, ctx, prompt, model, quality, size, attachment, background=background
+        )
 
     @openai_tools.command(
         name="tts",

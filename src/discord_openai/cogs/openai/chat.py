@@ -8,6 +8,7 @@ from ...config.auth import SHOW_COST_EMBEDS
 from ...config.mcp import parse_mcp_preset_names
 from ...util import (
     REASONING_MODE_PRO,
+    SERVICE_TIER_STANDARD,
     PendingMcpApproval,
     ResponseParameters,
     UsageInfo,
@@ -17,6 +18,7 @@ from ...util import (
     hash_user_id,
     reasoning_effort_error,
     reasoning_mode_error,
+    service_tier_error,
     truncate_text,
 )
 from .embed_delivery import send_embed_batches
@@ -114,6 +116,7 @@ def _append_public_pricing_embed(
     tool_call_counts: dict[str, int],
     daily_cost: float,
     cache_write_tokens: int = 0,
+    service_tier: str | None = None,
 ) -> None:
     if not SHOW_COST_EMBEDS:
         return
@@ -127,6 +130,7 @@ def _append_public_pricing_embed(
         reasoning_tokens,
         tool_call_counts or None,
         cache_write_tokens=cache_write_tokens,
+        service_tier=service_tier,
     )
 
 
@@ -253,6 +257,7 @@ async def _run_followup_response(
                 usage["cached_tokens"],
                 dict(tool_info["tool_call_counts"]) or None,
                 cache_write_tokens=usage["cache_write_tokens"],
+                service_tier=usage["service_tier"],
             )
             conversation.pending_mcp_approval = _build_pending_mcp_approval(
                 tool_info=tool_info,
@@ -459,6 +464,7 @@ async def handle_mcp_approval_action(
             usage["cached_tokens"],
             dict(tool_info["tool_call_counts"]) or None,
             cache_write_tokens=usage["cache_write_tokens"],
+            service_tier=usage["service_tier"],
         )
 
         if tool_info["pending_mcp_approval"] is not None:
@@ -529,6 +535,7 @@ async def handle_mcp_approval_action(
             tool_call_counts=combined_tool_counts,
             daily_cost=daily_cost,
             cache_write_tokens=pending["cache_write_tokens"] + usage["cache_write_tokens"],
+            service_tier=usage["service_tier"],
         )
 
         reply_view = cog._create_button_view(
@@ -630,6 +637,7 @@ async def run_chat_command(
     shell: bool,
     mcp: str | None = None,
     reasoning_mode: str | None = None,
+    service_tier: str | None = None,
 ) -> None:
     """Run the /openai chat command."""
     await ctx.defer()
@@ -672,6 +680,15 @@ async def run_chat_command(
         )
         return
 
+    tier_error = service_tier_error(model, service_tier)
+    if tier_error:
+        await send_embed_batches(
+            ctx.send_followup, embed=error_embed(tier_error), logger=cog.logger
+        )
+        return
+    # "standard" is the API default and is never sent (mirrors reasoning_mode).
+    requested_tier = None if service_tier == SERVICE_TIER_STANDARD else service_tier
+
     input_content = build_input_content(prompt, [attachment] if attachment else [])
     selected_tool_names: list[str] = []
     if web_search:
@@ -712,6 +729,7 @@ async def run_chat_command(
         channel_id=channel_id,
         response_id_history=[],
         safety_identifier=hash_user_id(author.id),
+        service_tier=requested_tier,
     )
     params.set_last_user_input(input_content)
 
@@ -735,6 +753,8 @@ async def run_chat_command(
                 description += f"**Reasoning Mode:** {REASONING_MODE_PRO}\n"
         if params.verbosity:
             description += f"**Verbosity:** {params.verbosity}\n"
+        if params.service_tier:
+            description += f"**Service Tier:** {params.service_tier}\n"
 
         response = await cog.openai_client.responses.create(**params.to_dict())
         response_text = get_response_text(response)
@@ -756,6 +776,7 @@ async def run_chat_command(
                 usage["cached_tokens"],
                 dict(tool_info["tool_call_counts"]) or None,
                 cache_write_tokens=usage["cache_write_tokens"],
+                service_tier=usage["service_tier"],
             )
             params.pending_mcp_approval = _build_pending_mcp_approval(
                 tool_info=tool_info,

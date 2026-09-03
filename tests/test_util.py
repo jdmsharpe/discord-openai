@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from typing import ClassVar
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import httpx2
 import pytest
@@ -18,6 +18,8 @@ from discord_openai.util import (
     CACHED_INPUT_PRICING,
     CONTEXT_MANAGEMENT,
     DEEP_RESEARCH_MODELS,
+    FAST_SERVICE_TIERS,
+    IMAGE_BACKGROUND_TRANSPARENT,
     IMAGE_PRICING,
     IMAGE_PRICING_DEFAULTS,
     INPUT_FILE_TYPE,
@@ -56,11 +58,17 @@ from discord_openai.util import (
     hash_user_id,
     reasoning_effort_error,
     reasoning_mode_error,
+    service_tier_error,
     truncate_text,
 )
 
 
 class TestResponseParameters:
+    def test_service_tier_is_sent_only_when_requested(self):
+        assert "service_tier" not in ResponseParameters(model="gpt-5.6-sol").to_dict()
+        fast = ResponseParameters(model="gpt-5.6-sol", service_tier="fast")
+        assert fast.to_dict()["service_tier"] == "fast"
+
     def test_to_dict_basic(self):
         """Test basic to_dict output for non-reasoning model."""
         params = ResponseParameters(
@@ -370,6 +378,25 @@ class TestResponseParameters:
 
 
 class TestImageGenerationParameters:
+    def test_background_defaults_to_auto_and_transparent_forces_png(self):
+        """`transparent` needs png/webp output (jpeg has no alpha); the bot saves .png."""
+        default = ImageGenerationParameters(prompt="A cat").to_dict()
+        assert default["background"] == "auto"
+        assert "output_format" not in default
+
+        transparent = ImageGenerationParameters(
+            prompt="A cat", background=IMAGE_BACKGROUND_TRANSPARENT
+        ).to_dict()
+        assert transparent["background"] == "transparent"
+        assert transparent["output_format"] == "png"
+
+        opaque = ImageGenerationParameters(prompt="A cat", background="opaque").to_dict()
+        assert opaque["background"] == "opaque"
+        assert "output_format" not in opaque
+
+        unset = ImageGenerationParameters(prompt="A cat", background=None).to_dict()
+        assert "background" not in unset
+
     def test_to_dict(self):
         params = ImageGenerationParameters(
             prompt="A house in the woods",
@@ -824,6 +851,48 @@ class TestModelPricing:
         """Models without a long_context block bill the same rate at any prompt size."""
         assert calculate_cost("gpt-5.2", 1_000_000, 0) == pytest.approx(1.75)
 
+    def test_fast_tier_bills_every_bucket_at_the_fast_rate(self):
+        """Sol under Fast mode: $8 in / $0.80 cached / $10 cache-write / $40 out per 1M
+        (a prompt below the 272K long-context threshold, so standard is the base rate)."""
+        cost = calculate_cost("gpt-5.6-sol", 200_000, 10_000, 50_000, 20_000, service_tier="fast")
+        # 130k ordinary input @8 + 50k cached @0.8 + 20k cache-write @10 + 10k out @40
+        assert cost == pytest.approx(1.04 + 0.04 + 0.2 + 0.4)
+        standard = calculate_cost("gpt-5.6-sol", 200_000, 10_000, 50_000, 20_000)
+        assert cost == pytest.approx(2 * standard)
+
+    def test_fast_tier_honours_the_priority_alias_the_response_reports(self):
+        fast = calculate_cost("gpt-5.6-luna", 1_000_000, 0, service_tier="fast")
+        priority = calculate_cost("gpt-5.6-luna", 1_000_000, 0, service_tier="priority")
+        assert fast == priority == pytest.approx(0.40)
+        assert {"fast", "priority"} == FAST_SERVICE_TIERS
+
+    def test_other_service_tiers_bill_standard(self):
+        standard = calculate_cost("gpt-5.6-sol", 1_000_000, 0)
+        for tier in (None, "default", "auto", "flex", "scale", "ultrafast"):
+            assert calculate_cost("gpt-5.6-sol", 1_000_000, 0, service_tier=tier) == standard
+
+    def test_fast_tier_without_a_fast_row_falls_back_to_standard(self):
+        standard = calculate_cost("gpt-5.5-pro", 1_000_000, 0)
+        assert calculate_cost("gpt-5.5-pro", 1_000_000, 0, service_tier="priority") == standard
+
+    def test_fast_tier_ignores_the_long_context_split(self):
+        """The Fast-mode tab publishes one rate per model, so a >272K fast prompt bills the
+        flat fast rate, not the long-context tier."""
+        cost = calculate_cost("gpt-5.6-sol", 300_000, 0, service_tier="priority")
+        assert cost == pytest.approx(300_000 / 1_000_000 * 8.00)
+
+    def test_fast_tier_without_cached_rate_falls_back_to_half_fast_input(self):
+        tier_without_cached = {
+            "input_per_million": 10.0,
+            "output_per_million": 20.0,
+            "cached_input_per_million": None,
+            "cache_write_per_million": None,
+        }
+        with patch.dict("discord_openai.util.FAST_TIER_PRICING", {"gpt-5": tier_without_cached}):
+            cost = calculate_cost("gpt-5", 1_000_000, 0, 400_000, 100_000, service_tier="fast")
+        # 500k @10 + 400k cached @5 + 100k cache-write @10 (no surcharge without a rate)
+        assert cost == pytest.approx(5.0 + 2.0 + 1.0)
+
     def test_calculate_cost_cached_fallback_rate(self):
         """Models with no published cached rate keep the historical 50% rule.
 
@@ -1244,6 +1313,17 @@ class TestExtractUsage:
         assert result["cache_write_tokens"] == 0
         assert result["reasoning_tokens"] == 0
 
+    def test_service_tier_is_read_from_the_response(self):
+        response = SimpleNamespace(
+            usage=SimpleNamespace(input_tokens=1, output_tokens=1),
+            service_tier="priority",
+        )
+        assert extract_usage(response)["service_tier"] == "priority"
+
+    def test_service_tier_is_none_when_missing_or_not_a_string(self):
+        assert extract_usage(SimpleNamespace(usage=None))["service_tier"] is None
+        assert extract_usage(MagicMock())["service_tier"] is None  # MagicMock attribute
+
     def test_older_usage_shape_without_cache_write_field(self):
         """Pre-GPT-5.6 usage objects carry no cache_write_tokens; it must read as 0."""
         response = SimpleNamespace(
@@ -1519,3 +1599,23 @@ class TestExtractResponseErrorInfo:
         response.text = "   "
         result = _extract_response_error_info(response)
         assert result == {}
+
+
+class TestServiceTierError:
+    def test_unset_and_standard_pass(self):
+        assert service_tier_error("gpt-5.6-sol", None) is None
+        assert service_tier_error("gpt-5.5-pro", "standard") is None
+
+    def test_fast_passes_on_priced_models(self):
+        for model in ("gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.4-mini", "gpt-4o-mini", "o3"):
+            assert service_tier_error(model, "fast") is None, model
+
+    def test_fast_is_refused_where_no_fast_rate_is_published(self):
+        error = service_tier_error("gpt-5.5-pro", "fast")
+        assert error is not None
+        assert "`gpt-5.5-pro`" in error
+        assert "`gpt-5.6-sol`" in error
+
+    def test_unknown_tiers_are_refused(self):
+        error = service_tier_error("gpt-5.6-sol", "ultrafast")
+        assert error is not None and "`ultrafast`" in error

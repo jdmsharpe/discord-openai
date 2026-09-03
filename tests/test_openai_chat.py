@@ -218,6 +218,154 @@ class TestRunChatCommand:
         assert "`gpt-5.6-sol`" in embeds[0].description
 
     @pytest.mark.asyncio
+    async def test_chat_command_rejects_fast_mode_on_unpriced_model_before_request(self):
+        create = AsyncMock()
+        cog = SimpleNamespace(
+            conversation_histories={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="hi",
+            persona="You are helpful.",
+            model="gpt-5.5-pro",
+            attachment=None,
+            temperature=None,
+            top_p=None,
+            reasoning_effort=None,
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+            service_tier="fast",
+        )
+
+        create.assert_not_awaited()
+        assert 789 not in cog.conversation_histories
+        kwargs = ctx.send_followup.await_args.kwargs
+        embeds = kwargs.get("embeds") or [kwargs["embed"]]
+        assert embeds[0].title == "Error"
+        assert "Fast mode is not offered for `gpt-5.5-pro`" in embeds[0].description
+
+    @pytest.mark.asyncio
+    async def test_chat_command_sends_fast_service_tier_and_renders_it(self):
+        reply_view = MagicMock()
+        response = _make_response(response_id="resp_fast", output=[], output_text="Done")
+        response.service_tier = "priority"
+        create = AsyncMock(return_value=response)
+        cog = SimpleNamespace(
+            conversation_histories={},
+            views={},
+            last_view_messages={},
+            daily_costs={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+            _create_mcp_approval_view=MagicMock(),
+            _create_button_view=MagicMock(return_value=reply_view),
+            _track_and_append_cost=MagicMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(return_value=MagicMock()),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="Quick answer",
+            persona="You are helpful.",
+            model="gpt-5.6-sol",
+            attachment=None,
+            temperature=None,
+            top_p=None,
+            reasoning_effort=None,
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+            service_tier="fast",
+        )
+
+        payload = create.await_args.kwargs
+        assert payload["service_tier"] == "fast"
+        intro_description = ctx.send_followup.await_args.kwargs["embeds"][0].description
+        assert "**Service Tier:** fast" in intro_description
+        assert cog.conversation_histories[789].service_tier == "fast"
+
+    @pytest.mark.asyncio
+    async def test_chat_command_never_sends_the_standard_tier(self):
+        response = _make_response(response_id="resp_std", output=[], output_text="Done")
+        create = AsyncMock(return_value=response)
+        cog = SimpleNamespace(
+            conversation_histories={},
+            views={},
+            last_view_messages={},
+            daily_costs={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+            _create_mcp_approval_view=MagicMock(),
+            _create_button_view=MagicMock(return_value=MagicMock()),
+            _track_and_append_cost=MagicMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(return_value=MagicMock()),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="hi",
+            persona="You are helpful.",
+            model="gpt-5.6-sol",
+            attachment=None,
+            temperature=None,
+            top_p=None,
+            reasoning_effort=None,
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+            service_tier="standard",
+        )
+
+        assert "service_tier" not in create.await_args.kwargs
+        assert (
+            "**Service Tier:**" not in ctx.send_followup.await_args.kwargs["embeds"][0].description
+        )
+
+    @pytest.mark.asyncio
     async def test_chat_command_sends_pro_mode_and_renders_it(self):
         reply_view = MagicMock()
         response = _make_response(response_id="resp_pro", output=[], output_text="Done")

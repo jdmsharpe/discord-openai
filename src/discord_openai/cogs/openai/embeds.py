@@ -1,6 +1,6 @@
 from discord import Colour, Embed
 
-from ...util import calculate_cost, calculate_tool_cost, chunk_text
+from ...util import FAST_SERVICE_TIERS, calculate_cost, calculate_tool_cost, chunk_text
 
 
 def _fit_markdown_sections(
@@ -135,11 +135,19 @@ def append_pricing_embed(
     reasoning_tokens: int = 0,
     tool_call_counts: dict[str, int] | None = None,
     cache_write_tokens: int = 0,
+    service_tier: str | None = None,
 ) -> None:
     """Append a compact pricing embed showing model, cost, and token usage."""
     tool_cost = calculate_tool_cost(tool_call_counts) if tool_call_counts else 0.0
     cost = (
-        calculate_cost(model, input_tokens, output_tokens, cached_tokens, cache_write_tokens)
+        calculate_cost(
+            model,
+            input_tokens,
+            output_tokens,
+            cached_tokens,
+            cache_write_tokens,
+            service_tier=service_tier,
+        )
         + tool_cost
     )
     in_part = f"{input_tokens:,} in"
@@ -155,6 +163,8 @@ def append_pricing_embed(
     if reasoning_tokens:
         out_part += f" / {reasoning_tokens:,} thinking"
     parts = [f"${cost:.4f}", f"{in_part} / {out_part}"]
+    if service_tier in FAST_SERVICE_TIERS:
+        parts.append("fast mode")
     if tool_call_counts:
         tool_str = " + ".join(
             f"{tool.replace('_', ' ')} ×{count}" for tool, count in sorted(tool_call_counts.items())

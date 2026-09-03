@@ -11,6 +11,7 @@ from openai import APIError
 from discord_openai.config.pricing import (
     CACHE_WRITE_PRICING,
     CACHED_INPUT_PRICING,
+    FAST_TIER_PRICING,
     IMAGE_PRICING,
     IMAGE_PRICING_DEFAULTS,
     LONG_CONTEXT_PRICING,
@@ -35,6 +36,9 @@ class UsageInfo(TypedDict):
     cached_tokens: int
     cache_write_tokens: int
     reasoning_tokens: int
+    # The processing tier that actually served the response ("priority" for a
+    # Fast-mode request, whatever was asked for); None when the API omits it.
+    service_tier: str | None
 
 
 class PendingMcpApproval(TypedDict):
@@ -68,13 +72,47 @@ def extract_usage(response: Any) -> UsageInfo:
     cached_tokens = getattr(input_details, "cached_tokens", 0) or 0
     cache_write_tokens = getattr(input_details, "cache_write_tokens", 0) or 0
     reasoning_tokens = getattr(output_details, "reasoning_tokens", 0) or 0
+    service_tier = getattr(response, "service_tier", None)
+    if not isinstance(service_tier, str):
+        service_tier = None
     return {
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
         "cached_tokens": cached_tokens,
         "cache_write_tokens": cache_write_tokens,
         "reasoning_tokens": reasoning_tokens,
+        "service_tier": service_tier,
     }
+
+
+# Fast mode (formerly "Priority processing", renamed 2026-07-30): request it
+# with `service_tier: "fast"` (or the legacy "priority"); the response reports
+# "priority" either way. Billed at FAST_TIER_PRICING. "ultrafast" is Sol-only,
+# access-controlled (limited preview since 2026-08-13) and unpriced — not offered.
+SERVICE_TIER_STANDARD = "standard"
+SERVICE_TIER_FAST = "fast"
+FAST_SERVICE_TIERS = frozenset({"fast", "priority"})
+
+
+def service_tier_error(model: str, service_tier: str | None) -> str | None:
+    """Return a user-facing error when ``model`` has no Fast-mode rate, else None.
+
+    Fast mode is only offered for models the pricing page lists under its
+    "Fast mode" tab (``FAST_TIER_PRICING``); anything else would be billed at
+    the wrong rate, so it is rejected before the request, like an unsupported
+    reasoning effort.
+    """
+    if not service_tier or service_tier == SERVICE_TIER_STANDARD:
+        return None
+    if service_tier != SERVICE_TIER_FAST:
+        return f"Service tier `{service_tier}` is not supported. Choose `fast` or leave it unset."
+    if model in FAST_TIER_PRICING:
+        return None
+    supported = ", ".join(f"`{model_id}`" for model_id in sorted(FAST_TIER_PRICING))
+    return (
+        f"Fast mode is not offered for `{model}`. Leave service tier unset for this model. "
+        f"Fast-mode models: {supported}."
+    )
 
 
 def calculate_cost(
@@ -83,8 +121,15 @@ def calculate_cost(
     output_tokens: int,
     cached_tokens: int = 0,
     cache_write_tokens: int = 0,
+    service_tier: str | None = None,
 ) -> float:
     """Calculate the cost in dollars for a given model and token usage.
+
+    ``service_tier`` is the tier the RESPONSE reports (``extract_usage``): "fast" or
+    "priority" bills every bucket at the model's Fast-mode rates (``FAST_TIER_PRICING``,
+    flat at any prompt size — the page publishes no long-context fast rate), falling
+    back to the standard rates for a model without a fast row; anything else
+    (None, "default", "flex", ...) bills standard.
 
     Cached input tokens are billed at the model's cached_input_per_million rate
     when pricing.yaml declares one, else at 50% of the regular input price.
@@ -103,8 +148,16 @@ def calculate_cost(
     input_price, output_price = MODEL_PRICING.get(model, UNKNOWN_CHAT_MODEL_PRICING)
     cached_price = CACHED_INPUT_PRICING.get(model, input_price * 0.5)
     cache_write_price = CACHE_WRITE_PRICING.get(model, input_price)
+    fast = FAST_TIER_PRICING.get(model) if service_tier in FAST_SERVICE_TIERS else None
     tier = LONG_CONTEXT_PRICING.get(model)
-    if tier is not None and input_tokens >= tier["threshold_tokens"]:
+    if fast is not None:
+        input_price = fast["input_per_million"]
+        output_price = fast["output_per_million"]
+        fast_cached = fast["cached_input_per_million"]
+        cached_price = fast_cached if fast_cached is not None else input_price * 0.5
+        fast_write = fast["cache_write_per_million"]
+        cache_write_price = fast_write if fast_write is not None else input_price
+    elif tier is not None and input_tokens >= tier["threshold_tokens"]:
         input_price = tier["input_per_million"]
         output_price = tier["output_per_million"]
         tier_cached = tier["cached_input_per_million"]
@@ -395,6 +448,8 @@ class ResponseParameters:
         response_id_history: list[str] | None = None,
         # OpenAI safety identifier (hashed user ID for abuse detection)
         safety_identifier: str | None = None,
+        # Processing tier requested for every turn (SERVICE_TIER_FAST); None = API default
+        service_tier: str | None = None,
     ):
         self.model = model
         self.instructions = instructions
@@ -459,6 +514,7 @@ class ResponseParameters:
         # Response ID history for regeneration
         self.response_id_history = response_id_history if response_id_history is not None else []
         self.safety_identifier = safety_identifier
+        self.service_tier = service_tier
 
     def touch(self) -> None:
         """Update the in-memory activity timestamp for this conversation."""
@@ -500,8 +556,13 @@ class ResponseParameters:
             ]
         if self.safety_identifier:
             payload["safety_identifier"] = self.safety_identifier
+        if self.service_tier:
+            payload["service_tier"] = self.service_tier
 
         return payload
+
+
+IMAGE_BACKGROUND_TRANSPARENT = "transparent"
 
 
 class ImageGenerationParameters:
@@ -512,12 +573,20 @@ class ImageGenerationParameters:
         n: int = 1,
         quality: str | None = "auto",
         size: str | None = "auto",
+        background: str | None = "auto",
+        output_format: str | None = None,
     ):
         self.prompt = prompt
         self.model = model
         self.n = n
         self.quality = quality
         self.size = size
+        self.background = background
+        # A transparent background needs png or webp output (jpeg has no alpha);
+        # the bot saves every image as .png, so png is forced unless overridden.
+        if output_format is None and background == IMAGE_BACKGROUND_TRANSPARENT:
+            output_format = "png"
+        self.output_format = output_format
 
     def to_dict(self):
         payload = {
@@ -529,6 +598,10 @@ class ImageGenerationParameters:
             payload["quality"] = self.quality
         if self.size is not None:
             payload["size"] = self.size
+        if self.background is not None:
+            payload["background"] = self.background
+        if self.output_format is not None:
+            payload["output_format"] = self.output_format
         return payload
 
 

@@ -41,6 +41,13 @@ REASONING_MODE_CHOICES = [
     OptionChoice(name="Pro (GPT-5.6 only; several times the tokens and cost, slower)", value="pro"),
 ]
 
+SERVICE_TIER_CHOICES = [
+    OptionChoice(name="Standard (default)", value="standard"),
+    OptionChoice(
+        name="Fast (Fast mode: up to 2.5x faster, about 2x the token price)", value="fast"
+    ),
+]
+
 VERBOSITY_CHOICES = [
     OptionChoice(name="Low (concise)", value="low"),
     OptionChoice(name="Medium (default)", value="medium"),
@@ -66,6 +73,12 @@ IMAGE_SIZE_CHOICES = [
     OptionChoice(name="1024x1024 (square)", value="1024x1024"),
     OptionChoice(name="1024x1536 (portrait)", value="1024x1536"),
     OptionChoice(name="1536x1024 (landscape)", value="1536x1024"),
+]
+
+IMAGE_BACKGROUND_CHOICES = [
+    OptionChoice(name="Auto", value="auto"),
+    OptionChoice(name="Opaque", value="opaque"),
+    OptionChoice(name="Transparent (PNG output)", value="transparent"),
 ]
 
 TTS_MODEL_CHOICES = [

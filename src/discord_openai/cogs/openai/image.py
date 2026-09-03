@@ -1,12 +1,16 @@
 import asyncio
 import base64
 import io
-from typing import Any, cast
+from typing import Any
 
 from discord import ApplicationContext, Attachment, Colour, Embed, File
 
 from ...config.auth import SHOW_COST_EMBEDS
-from ...util import calculate_image_cost, format_openai_error, truncate_text
+from ...util import (
+    calculate_image_cost,
+    format_openai_error,
+    truncate_text,
+)
 from .attachments import download_attachment, validate_image_attachment
 from .embed_delivery import send_embed_batches
 from .embeds import append_flat_pricing_embed, error_embed
@@ -21,6 +25,7 @@ async def run_image_command(
     quality: str | None,
     size: str | None,
     attachment: Attachment | None,
+    background: str | None = "auto",
 ) -> None:
     """Run the /openai-media image command."""
     await ctx.defer()
@@ -39,6 +44,7 @@ async def run_image_command(
         model=model,
         quality=quality,
         size=size,
+        background=background,
     )
     cog.logger.info(f"{mode} with model {model}")
 
@@ -47,14 +53,19 @@ async def run_image_command(
         if is_editing:
             image_file_path = await download_attachment(attachment.url, attachment.filename)
             image_bytes = await asyncio.to_thread(image_file_path.read_bytes)
-            response = await cog.openai_client.images.edit(
-                image=(attachment.filename, image_bytes),
-                prompt=prompt,
-                model=model,
-                n=1,
-                quality=cast(Any, quality),
-                size=cast(Any, size),
-            )
+            edit_kwargs: dict[str, Any] = {
+                "image": (attachment.filename, image_bytes),
+                "prompt": prompt,
+                "model": model,
+                "n": 1,
+                "quality": quality,
+                "size": size,
+            }
+            if image_params.background is not None:
+                edit_kwargs["background"] = image_params.background
+            if image_params.output_format is not None:
+                edit_kwargs["output_format"] = image_params.output_format
+            response = await cog.openai_client.images.edit(**edit_kwargs)
         else:
             response = await cog.openai_client.images.generate(**image_params.to_dict())
 
@@ -75,6 +86,8 @@ async def run_image_command(
             f"**Quality:** {image_params.quality}\n"
             f"**Size:** {image_params.size}\n"
         )
+        if image_params.background and image_params.background != "auto":
+            description += f"**Background:** {image_params.background}\n"
 
         embed = Embed(title=mode, description=description, color=Colour.blue())
         embed.set_image(url=f"attachment://{image_files[0].filename}")
@@ -90,7 +103,8 @@ async def run_image_command(
             "image",
             model,
             image_cost,
-            f"mode={mode.lower()} | quality={effective_quality} | size={effective_size} | n={len(image_files)}",
+            f"mode={mode.lower()} | quality={effective_quality} | size={effective_size}"
+            f" | background={image_params.background or 'auto'} | n={len(image_files)}",
         )
         if SHOW_COST_EMBEDS:
             append_flat_pricing_embed(
