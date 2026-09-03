@@ -13,6 +13,7 @@ from discord_openai.config.pricing import (
     CACHED_INPUT_PRICING,
     IMAGE_PRICING,
     IMAGE_PRICING_DEFAULTS,
+    LONG_CONTEXT_PRICING,
     MODEL_PRICING,
     STT_PRICING_PER_MINUTE,
     TOOL_CALL_PRICING,
@@ -91,10 +92,25 @@ def calculate_cost(
     declared, else as ordinary input; per the prompt-caching guide, ordinary
     input = input_tokens - cached_tokens - cache_write_tokens (never negative).
     Reasoning tokens are already included in output_tokens at the standard output price.
+
+    Models with a ``long_context`` block in pricing.yaml (GPT-5.4 / 5.5 / 5.6 families)
+    bill EVERY bucket at the tier rates once the request's prompt (``input_tokens``,
+    cached and cache-write tokens included) reaches ``threshold_tokens`` — the page
+    prices the tier "for the full request", not just the overflow. A tier without a
+    cached or cache-write rate falls back the same way the base tier does (50% of
+    the tier input rate, and the tier input rate respectively).
     """
     input_price, output_price = MODEL_PRICING.get(model, UNKNOWN_CHAT_MODEL_PRICING)
     cached_price = CACHED_INPUT_PRICING.get(model, input_price * 0.5)
     cache_write_price = CACHE_WRITE_PRICING.get(model, input_price)
+    tier = LONG_CONTEXT_PRICING.get(model)
+    if tier is not None and input_tokens >= tier["threshold_tokens"]:
+        input_price = tier["input_per_million"]
+        output_price = tier["output_per_million"]
+        tier_cached = tier["cached_input_per_million"]
+        cached_price = tier_cached if tier_cached is not None else input_price * 0.5
+        tier_write = tier["cache_write_per_million"]
+        cache_write_price = tier_write if tier_write is not None else input_price
     non_cached = max(input_tokens - cached_tokens - cache_write_tokens, 0)
     return (
         (non_cached / 1_000_000) * input_price

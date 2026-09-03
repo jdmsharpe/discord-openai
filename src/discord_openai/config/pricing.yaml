@@ -2,7 +2,7 @@
 #
 # Canonical source: https://developers.openai.com/api/docs/pricing
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-08-28
+# Last-verified: 2026-09-03
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
 # billed at cached_input_per_million when present, else at 50% of input.
@@ -26,18 +26,59 @@
 # field bills cache-write tokens as ordinary input.
 # `test_gpt_5_6_cache_write_rates_are_125_percent_of_input` pins the ratio.
 #
+# long_context: GPT-5.4 / 5.4 Pro / 5.5 / 5.5 Pro and the GPT-5.6 trio carry a
+# second tier once a request's prompt exceeds 272K input tokens (pricing page:
+# "Short context <=272K input tokens" / "Long context >272K"; model pages:
+# "prompts with >272K input tokens are priced at 2x input and 1.5x output for
+# the full session"), so threshold_tokens is 272001 and the WHOLE request —
+# input, cached input, cache writes and output — bills at the tier rates, not
+# just the overflow. OpenAI does not say whether 272K is 272,000 or 278,528
+# (272 x 1024) tokens; 272,000 is assumed, matching colmad. Rows without the
+# block bill flat at any prompt size. `test_long_context_tiers_are_pinned` pins
+# the published tier rates.
+#
 # Override this file at runtime by setting OPENAI_PRICING_PATH to an alternate
 # YAML path — useful for pushing new pricing without a code release.
 
 models:
   # gpt-5.6-sol: promotional rate, guaranteed at least through 2026-11-21 (changelog 2026-08-21) - re-verify after that date
-  gpt-5.6-sol:       { input_per_million: 4.00,   output_per_million: 20.00,  cached_input_per_million: 0.40,  cache_write_per_million: 5.00 }
-  gpt-5.6-terra:     { input_per_million: 2.00,   output_per_million: 12.00,  cached_input_per_million: 0.20,  cache_write_per_million: 2.50 }
-  gpt-5.6-luna:      { input_per_million: 0.20,   output_per_million: 1.20,   cached_input_per_million: 0.02,  cache_write_per_million: 0.25 }
-  gpt-5.5-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
-  gpt-5.5:           { input_per_million: 5.00,   output_per_million: 30.00,  cached_input_per_million: 0.50 }
-  gpt-5.4-pro:       { input_per_million: 30.00,  output_per_million: 180.00 }
-  gpt-5.4:           { input_per_million: 2.50,   output_per_million: 15.00,  cached_input_per_million: 0.25 }
+  gpt-5.6-sol:
+    input_per_million: 4.00
+    output_per_million: 20.00
+    cached_input_per_million: 0.40
+    cache_write_per_million: 5.00
+    long_context: { threshold_tokens: 272001, input_per_million: 8.00, output_per_million: 30.00, cached_input_per_million: 0.80, cache_write_per_million: 10.00 }
+  gpt-5.6-terra:
+    input_per_million: 2.00
+    output_per_million: 12.00
+    cached_input_per_million: 0.20
+    cache_write_per_million: 2.50
+    long_context: { threshold_tokens: 272001, input_per_million: 4.00, output_per_million: 18.00, cached_input_per_million: 0.40, cache_write_per_million: 5.00 }
+  gpt-5.6-luna:
+    input_per_million: 0.20
+    output_per_million: 1.20
+    cached_input_per_million: 0.02
+    cache_write_per_million: 0.25
+    long_context: { threshold_tokens: 272001, input_per_million: 0.40, output_per_million: 1.80, cached_input_per_million: 0.04, cache_write_per_million: 0.50 }
+  # The Pro tiers publish no cached-input rate at either tier.
+  gpt-5.5-pro:
+    input_per_million: 30.00
+    output_per_million: 180.00
+    long_context: { threshold_tokens: 272001, input_per_million: 60.00, output_per_million: 270.00 }
+  gpt-5.5:
+    input_per_million: 5.00
+    output_per_million: 30.00
+    cached_input_per_million: 0.50
+    long_context: { threshold_tokens: 272001, input_per_million: 10.00, output_per_million: 45.00, cached_input_per_million: 1.00 }
+  gpt-5.4-pro:
+    input_per_million: 30.00
+    output_per_million: 180.00
+    long_context: { threshold_tokens: 272001, input_per_million: 60.00, output_per_million: 270.00 }
+  gpt-5.4:
+    input_per_million: 2.50
+    output_per_million: 15.00
+    cached_input_per_million: 0.25
+    long_context: { threshold_tokens: 272001, input_per_million: 5.00, output_per_million: 22.50, cached_input_per_million: 0.50 }
   gpt-5.4-mini:      { input_per_million: 0.75,   output_per_million: 4.50,   cached_input_per_million: 0.075 }
   gpt-5.4-nano:      { input_per_million: 0.20,   output_per_million: 1.25,   cached_input_per_million: 0.02 }
   gpt-5.3-chat-latest: { input_per_million: 1.75, output_per_million: 14.00, cached_input_per_million: 0.175 }

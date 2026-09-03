@@ -5,6 +5,8 @@ import sys
 import textwrap
 from pathlib import Path
 
+import pytest
+
 
 def _reload_pricing():
     for mod_name in ("discord_openai.config.pricing",):
@@ -41,6 +43,52 @@ class TestPricingLoader:
             "gpt-5.6-terra": 2.50,
             "gpt-5.6-luna": 0.25,
         }
+
+    def test_long_context_tiers_are_pinned(self):
+        """Prompts over 272K input tokens bill 2x input / 1.5x output for the whole request.
+
+        Published for the GPT-5.4 / 5.5 / 5.6 families only (pricing page tooltips
+        "Short context <=272K" / "Long context >272K"; model pages: "for the full
+        session"). Cache writes double with the input rate; the Pro tiers publish no
+        cached rate at either tier.
+        """
+        pricing = _reload_pricing()
+        assert set(pricing.LONG_CONTEXT_PRICING) == {
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.6-luna",
+            "gpt-5.5",
+            "gpt-5.5-pro",
+            "gpt-5.4",
+            "gpt-5.4-pro",
+        }
+        assert pricing.LONG_CONTEXT_PRICING["gpt-5.6-sol"] == {
+            "threshold_tokens": 272001,
+            "input_per_million": 8.00,
+            "output_per_million": 30.00,
+            "cached_input_per_million": 0.80,
+            "cache_write_per_million": 10.00,
+        }
+        assert pricing.LONG_CONTEXT_PRICING["gpt-5.5"] == {
+            "threshold_tokens": 272001,
+            "input_per_million": 10.00,
+            "output_per_million": 45.00,
+            "cached_input_per_million": 1.00,
+            "cache_write_per_million": None,
+        }
+        assert pricing.LONG_CONTEXT_PRICING["gpt-5.5-pro"]["cached_input_per_million"] is None
+        for model, tier in pricing.LONG_CONTEXT_PRICING.items():
+            base_input, base_output = pricing.MODEL_PRICING[model]
+            assert tier["threshold_tokens"] == 272001, model
+            assert tier["input_per_million"] == pytest.approx(2 * base_input), model
+            assert tier["output_per_million"] == pytest.approx(1.5 * base_output), model
+            if model in pricing.CACHED_INPUT_PRICING:
+                cached = tier["cached_input_per_million"]
+                assert cached == pytest.approx(2 * pricing.CACHED_INPUT_PRICING[model]), model
+            if model in pricing.CACHE_WRITE_PRICING:
+                assert tier["cache_write_per_million"] == pytest.approx(
+                    2 * pricing.CACHE_WRITE_PRICING[model]
+                ), model
 
     def test_bundled_yaml_loads_tool_pricing(self):
         pricing = _reload_pricing()

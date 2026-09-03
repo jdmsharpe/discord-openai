@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import yaml
 
@@ -71,6 +71,44 @@ CACHE_WRITE_PRICING: dict[str, float] = {
     if "cache_write_per_million" in cfg
 }
 
+
+class LongContextTier(TypedDict):
+    """Second pricing tier a model bills at once a request's prompt reaches
+    ``threshold_tokens`` input tokens; the whole request bills at these rates."""
+
+    threshold_tokens: int
+    input_per_million: float
+    output_per_million: float
+    cached_input_per_million: float | None
+    cache_write_per_million: float | None
+
+
+def _long_context_tier(cfg: dict[str, Any]) -> LongContextTier:
+    return {
+        "threshold_tokens": int(cfg["threshold_tokens"]),
+        "input_per_million": float(cfg["input_per_million"]),
+        "output_per_million": float(cfg["output_per_million"]),
+        "cached_input_per_million": (
+            float(cfg["cached_input_per_million"])
+            if cfg.get("cached_input_per_million") is not None
+            else None
+        ),
+        "cache_write_per_million": (
+            float(cfg["cache_write_per_million"])
+            if cfg.get("cache_write_per_million") is not None
+            else None
+        ),
+    }
+
+
+# Long-context tiers (GPT-5.4 / 5.5 / 5.6 families: prompts over 272K input tokens
+# bill the whole request at the tier rates). Models absent here bill flat.
+LONG_CONTEXT_PRICING: dict[str, LongContextTier] = {
+    model_id: _long_context_tier(cfg["long_context"])
+    for model_id, cfg in _MODELS.items()
+    if "long_context" in cfg
+}
+
 TOOL_CALL_PRICING: dict[str, float] = {
     tool_id: float(cfg["per_call"]) for tool_id, cfg in _TOOLS.items()
 }
@@ -122,6 +160,7 @@ __all__ = [
     "CACHE_WRITE_PRICING",
     "IMAGE_PRICING",
     "IMAGE_PRICING_DEFAULTS",
+    "LONG_CONTEXT_PRICING",
     "MODEL_PRICING",
     "STT_PRICING_PER_MINUTE",
     "TOOL_CALL_PRICING",
@@ -132,4 +171,5 @@ __all__ = [
     "UNKNOWN_TTS_MODEL_PRICING",
     "UNKNOWN_VIDEO_MODEL_PRICING",
     "VIDEO_PRICING_PER_SECOND",
+    "LongContextTier",
 ]

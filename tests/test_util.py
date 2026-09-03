@@ -738,22 +738,26 @@ class TestModelPricing:
         assert cost == pytest.approx(expected)
 
     def test_calculate_cost_cached_explicit_rate(self):
-        """gpt-5.6 bills cached input at its declared rate (10%), not the 50% fallback."""
-        cost = calculate_cost("gpt-5.6-sol", 1_000_000, 0, cached_tokens=1_000_000)
-        assert cost == pytest.approx(0.40)
+        """gpt-5.6 bills cached input at its declared rate (10%), not the 50% fallback.
+
+        Prompts stay under the 272K long-context threshold here so the base tier applies;
+        the tier itself is covered by the test_long_context_tier_* cases.
+        """
+        cost = calculate_cost("gpt-5.6-sol", 200_000, 0, cached_tokens=200_000)
+        assert cost == pytest.approx(0.08)  # 200k @ $0.40/M
 
     def test_calculate_cost_cache_write_surcharge(self):
         """GPT-5.6 bills cache-write tokens at cache_write_per_million (1.25x input)."""
-        cost = calculate_cost("gpt-5.6-sol", 1_000_000, 0, cache_write_tokens=1_000_000)
-        assert cost == pytest.approx(5.00)
+        cost = calculate_cost("gpt-5.6-sol", 200_000, 0, cache_write_tokens=200_000)
+        assert cost == pytest.approx(1.00)  # 200k @ $5.00/M
 
     def test_calculate_cost_cache_write_splits_ordinary_input(self):
         """ordinary input = input - cached - cache_write, each slice at its own rate."""
         cost = calculate_cost(
-            "gpt-5.6-sol", 1_000_000, 0, cached_tokens=400_000, cache_write_tokens=100_000
+            "gpt-5.6-sol", 250_000, 0, cached_tokens=100_000, cache_write_tokens=25_000
         )
-        # 500k ordinary @ 4.00 + 400k cached @ 0.40 + 100k written @ 5.00
-        assert cost == pytest.approx(2.00 + 0.16 + 0.50)
+        # 125k ordinary @ 4.00 + 100k cached @ 0.40 + 25k written @ 5.00
+        assert cost == pytest.approx(0.50 + 0.04 + 0.125)
 
     def test_calculate_cost_cache_write_no_surcharge_without_declared_rate(self):
         """Rows without cache_write_per_million bill cache-write tokens as ordinary input."""
@@ -781,6 +785,44 @@ class TestModelPricing:
             assert CACHE_WRITE_PRICING[model] == pytest.approx(input_price * 1.25), (
                 f"{model} cache-write rate should be 125% of ${input_price}/M input"
             )
+
+    def test_long_context_tier_not_applied_below_threshold(self):
+        """272,000 prompt tokens is still the short tier (gpt-5.6-sol bills $4/M)."""
+        assert calculate_cost("gpt-5.6-sol", 272_000, 0) == pytest.approx(272_000 / 1e6 * 4.00)
+
+    def test_long_context_tier_bills_every_bucket_at_the_tier_rate(self):
+        """At 272,001 prompt tokens the WHOLE request moves to the tier — input $8,
+        cached $0.80, cache writes $10, output $30 on gpt-5.6-sol — not just the overflow."""
+        cost = calculate_cost(
+            "gpt-5.6-sol", 272_001, 1_000, cached_tokens=100_000, cache_write_tokens=50_000
+        )
+        ordinary = 272_001 - 100_000 - 50_000
+        expected = (
+            ordinary / 1e6 * 8.00
+            + 100_000 / 1e6 * 0.80
+            + 50_000 / 1e6 * 10.00
+            + 1_000 / 1e6 * 30.00
+        )
+        assert cost == pytest.approx(expected)
+        # One token shorter and every bucket bills the base tier.
+        short = calculate_cost(
+            "gpt-5.6-sol", 272_000, 1_000, cached_tokens=100_000, cache_write_tokens=50_000
+        )
+        assert short == pytest.approx(
+            (272_000 - 150_000) / 1e6 * 4.00
+            + 100_000 / 1e6 * 0.40
+            + 50_000 / 1e6 * 5.00
+            + 1_000 / 1e6 * 20.00
+        )
+
+    def test_long_context_tier_without_cached_rate_falls_back_to_half_tier_input(self):
+        """gpt-5.5-pro publishes no cached rate at either tier: 50% of the TIER input ($30)."""
+        cost = calculate_cost("gpt-5.5-pro", 300_000, 0, cached_tokens=300_000)
+        assert cost == pytest.approx(300_000 / 1e6 * 30.00)
+
+    def test_flat_rows_ignore_prompt_size(self):
+        """Models without a long_context block bill the same rate at any prompt size."""
+        assert calculate_cost("gpt-5.2", 1_000_000, 0) == pytest.approx(1.75)
 
     def test_calculate_cost_cached_fallback_rate(self):
         """Models with no published cached rate keep the historical 50% rule.

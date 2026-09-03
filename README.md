@@ -71,7 +71,7 @@ Generate lifelike audio from text using OpenAI's TTS stack.
 
 Transcribe or translate uploaded audio (up to 25 MB).
 
-- Supports `gpt-transcribe` (default), `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts.
+- Supports `gpt-transcribe` (default), `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts. OpenAI retires `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, and `gpt-4o-transcribe-diarize` on 2027-02-26; `gpt-transcribe` is the successor.
 
 ### `/openai check_permissions`
 
