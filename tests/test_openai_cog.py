@@ -140,11 +140,11 @@ class TestOpenAICog:
             None,
             None,
             None,
-            False,
-            False,
-            False,
-            False,
             None,
+            False,
+            False,
+            False,
+            False,
             None,
         )
         assert OpenAICog.image.callback.__defaults__ == (
@@ -217,6 +217,28 @@ class TestOpenAICog:
         `ultrafast` is Sol-only, access-controlled and unpriced."""
         values = [choice.value for choice in SERVICE_TIER_CHOICES]
         assert values == ["standard", "fast"]
+
+    def test_chat_option_order_follows_decorators(self):
+        """py-cord orders slash options by the callback's signature, not by `@option` order,
+        so a parameter appended to the end of `chat()` lands after the tool toggles in Discord."""
+        chat_options = [opt.name for opt in OpenAICog.chat.options]
+        assert chat_options == [
+            "prompt",
+            "persona",
+            "model",
+            "attachment",
+            "temperature",
+            "top_p",
+            "reasoning_effort",
+            "reasoning_mode",
+            "service_tier",
+            "verbosity",
+            "web_search",
+            "code_interpreter",
+            "file_search",
+            "shell",
+            "mcp",
+        ]
 
     def test_image_background_choice_set(self):
         """Every GPT Image model returned an RGBA PNG for `transparent` (probed 2026-09-03)."""

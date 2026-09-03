@@ -353,13 +353,13 @@ class OpenAICog(commands.Cog):
         top_p: float | None = None,
         reasoning_effort: str | None = None,
         reasoning_mode: str | None = None,
+        service_tier: str | None = None,
         verbosity: str | None = None,
         web_search: bool = False,
         code_interpreter: bool = False,
         file_search: bool = False,
         shell: bool = False,
         mcp: str | None = None,
-        service_tier: str | None = None,
     ):
         await run_chat_command(
             self,
