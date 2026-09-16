@@ -1,6 +1,7 @@
 from discord.commands import OptionChoice
 
 CHAT_MODEL_CHOICES = [
+    OptionChoice(name="GPT-6 Astra", value="gpt-6-astra"),
     OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
     OptionChoice(name="GPT-5.6 Terra", value="gpt-5.6-terra"),
     OptionChoice(name="GPT-5.6 Luna", value="gpt-5.6-luna"),
@@ -26,25 +27,29 @@ CHAT_MODEL_CHOICES = [
 
 REASONING_EFFORT_CHOICES = [
     OptionChoice(
-        name="None (fastest; rejected by GPT-5/5 Mini/5 Nano, Pro tiers, o-series)", value="none"
+        name="None (fastest; rejected by GPT-6 Astra, GPT-5/5 Mini/5 Nano, Pro tiers, o-series)",
+        value="none",
     ),
     OptionChoice(name="Minimal (GPT-5 / 5 Mini / 5 Nano only)", value="minimal"),
     OptionChoice(name="Low", value="low"),
     OptionChoice(name="Medium", value="medium"),
     OptionChoice(name="High", value="high"),
     OptionChoice(name="Extra High (GPT-5.2 and newer)", value="xhigh"),
-    OptionChoice(name="Max (deepest, GPT-5.6 only)", value="max"),
+    OptionChoice(name="Max (deepest; GPT-6 Astra and GPT-5.6)", value="max"),
 ]
 
 REASONING_MODE_CHOICES = [
     OptionChoice(name="Standard (default)", value="standard"),
-    OptionChoice(name="Pro (GPT-5.6 only; several times the tokens and cost, slower)", value="pro"),
+    OptionChoice(
+        name="Pro (GPT-6 Astra / GPT-5.6 only; several times the tokens and cost, slower)",
+        value="pro",
+    ),
 ]
 
 SERVICE_TIER_CHOICES = [
     OptionChoice(name="Standard (default)", value="standard"),
     OptionChoice(
-        name="Fast (Fast mode: up to 2.5x faster, about 2x the token price)", value="fast"
+        name="Fast (Fast mode: faster processing, about 2x the token price)", value="fast"
     ),
 ]
 
@@ -55,6 +60,8 @@ VERBOSITY_CHOICES = [
 ]
 
 IMAGE_MODEL_CHOICES = [
+    OptionChoice(name="GPT Image 2.5 Sunburst", value="gpt-image-2.5-sunburst"),
+    OptionChoice(name="GPT Image 2.5 Flare", value="gpt-image-2.5-flare"),
     OptionChoice(name="GPT Image 2", value="gpt-image-2"),
     OptionChoice(name="GPT Image 1.5", value="gpt-image-1.5"),
     OptionChoice(name="GPT Image 1", value="gpt-image-1"),
@@ -66,6 +73,8 @@ IMAGE_QUALITY_CHOICES = [
     OptionChoice(name="Low", value="low"),
     OptionChoice(name="Medium", value="medium"),
     OptionChoice(name="High", value="high"),
+    OptionChoice(name="Extra High (GPT Image 2.5 only)", value="xhigh"),
+    OptionChoice(name="Max (GPT Image 2.5 only)", value="max"),
 ]
 
 IMAGE_SIZE_CHOICES = [
@@ -148,6 +157,7 @@ VIDEO_SECONDS_CHOICES = [
 ]
 
 RESEARCH_MODEL_CHOICES = [
+    OptionChoice(name="GPT-6 Astra", value="gpt-6-astra"),
     OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
     OptionChoice(name="GPT-5.5", value="gpt-5.5"),
     OptionChoice(name="GPT-5.5 Pro", value="gpt-5.5-pro"),

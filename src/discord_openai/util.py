@@ -14,6 +14,7 @@ from discord_openai.config.pricing import (
     FAST_TIER_PRICING,
     IMAGE_PRICING,
     IMAGE_PRICING_DEFAULTS,
+    IMAGE_TOKEN_PRICING,
     LONG_CONTEXT_PRICING,
     MODEL_PRICING,
     STT_PRICING_PER_MINUTE,
@@ -126,10 +127,11 @@ def calculate_cost(
     """Calculate the cost in dollars for a given model and token usage.
 
     ``service_tier`` is the tier the RESPONSE reports (``extract_usage``): "fast" or
-    "priority" bills every bucket at the model's Fast-mode rates (``FAST_TIER_PRICING``,
-    flat at any prompt size — the page publishes no long-context fast rate), falling
-    back to the standard rates for a model without a fast row; anything else
-    (None, "default", "flex", ...) bills standard.
+    "priority" bills every bucket at the model's Fast-mode rates (``FAST_TIER_PRICING``),
+    falling back to the standard rates for a model without a fast row; anything else
+    (None, "default", "flex", ...) bills standard. A fast row with its own
+    ``long_context`` tier (GPT-5.6 trio, GPT-6 Astra) bills that tier once the prompt
+    reaches its threshold; other fast rows are flat at any prompt size.
 
     Cached input tokens are billed at the model's cached_input_per_million rate
     when pricing.yaml declares one, else at 50% of the regular input price.
@@ -151,11 +153,17 @@ def calculate_cost(
     fast = FAST_TIER_PRICING.get(model) if service_tier in FAST_SERVICE_TIERS else None
     tier = LONG_CONTEXT_PRICING.get(model)
     if fast is not None:
-        input_price = fast["input_per_million"]
-        output_price = fast["output_per_million"]
-        fast_cached = fast["cached_input_per_million"]
+        fast_tier = fast.get("long_context")
+        rates = (
+            fast_tier
+            if fast_tier is not None and input_tokens >= fast_tier["threshold_tokens"]
+            else fast
+        )
+        input_price = rates["input_per_million"]
+        output_price = rates["output_per_million"]
+        fast_cached = rates["cached_input_per_million"]
         cached_price = fast_cached if fast_cached is not None else input_price * 0.5
-        fast_write = fast["cache_write_per_million"]
+        fast_write = rates["cache_write_per_million"]
         cache_write_price = fast_write if fast_write is not None else input_price
     elif tier is not None and input_tokens >= tier["threshold_tokens"]:
         input_price = tier["input_per_million"]
@@ -179,7 +187,11 @@ def calculate_tool_cost(tool_call_counts: dict[str, int]) -> float:
 
 
 def calculate_image_cost(model: str, quality: str, size: str, n: int = 1) -> float:
-    """Calculate cost for image generation based on model, quality, and size."""
+    """Calculate cost for image generation from the per-image table (quality x size).
+
+    OpenAI's per-image figures are its approximation for the standard sizes; when
+    the response carries token usage, ``calculate_image_cost_from_usage`` is exact.
+    """
     if quality == "auto" or size == "auto":
         per_image = IMAGE_PRICING_DEFAULTS.get(model, UNKNOWN_IMAGE_MODEL_PRICING)
     else:
@@ -188,6 +200,57 @@ def calculate_image_cost(model: str, quality: str, size: str, n: int = 1) -> flo
             IMAGE_PRICING_DEFAULTS.get(model, UNKNOWN_IMAGE_MODEL_PRICING),
         )
     return per_image * n
+
+
+def _usage_int(details: Any, name: str) -> int:
+    value = getattr(details, name, 0)
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def calculate_image_cost_from_usage(model: str, usage: Any) -> float | None:
+    """Cost of an image generation from the token usage the Images API reports.
+
+    OpenAI bills GPT Image models per token (``IMAGE_TOKEN_PRICING``: text input,
+    image input, image output); the response's ``usage`` carries those counts, so
+    this is the exact charge, including for ``auto`` quality/size (which the API
+    resolves server-side, often to ``low`` at a non-standard size) and for
+    non-standard sizes. Returns None when the model publishes no token rates or
+    the response reports no tokens, so callers fall back to
+    ``calculate_image_cost``. The Images API reports no cached-token split, so
+    every input token bills at the full input rate.
+    """
+    rates = IMAGE_TOKEN_PRICING.get(model)
+    if rates is None or usage is None:
+        return None
+    input_details = getattr(usage, "input_tokens_details", None)
+    output_details = getattr(usage, "output_tokens_details", None)
+    text_in = _usage_int(input_details, "text_tokens")
+    image_in = _usage_int(input_details, "image_tokens")
+    image_out = _usage_int(output_details, "image_tokens")
+    if text_in + image_in + image_out == 0:
+        return None
+    return (
+        text_in * rates["text_input"]
+        + image_in * rates["image_input"]
+        + image_out * rates["image_output"]
+    ) / 1_000_000
+
+
+# Image qualities beyond `high`: GPT Image 2.5 only (Images API reference); older
+# GPT Image models return 400 "does not support quality 'xhigh'", so the menu
+# combination is refused before any request.
+EXTENDED_IMAGE_QUALITIES = frozenset({"xhigh", "max"})
+EXTENDED_IMAGE_QUALITY_MODELS = frozenset({"gpt-image-2.5-sunburst", "gpt-image-2.5-flare"})
+
+
+def image_quality_error(model: str, quality: str | None) -> str | None:
+    """Return a user-facing error when ``model`` rejects ``quality``, else None."""
+    if quality not in EXTENDED_IMAGE_QUALITIES or model in EXTENDED_IMAGE_QUALITY_MODELS:
+        return None
+    supported = ", ".join(f"`{name}`" for name in sorted(EXTENDED_IMAGE_QUALITY_MODELS))
+    return (
+        f"Image quality `{quality}` is not supported by `{model}`. Supported models: {supported}."
+    )
 
 
 def calculate_tts_cost(model: str, num_characters: int) -> float:
@@ -242,7 +305,7 @@ def calculate_video_cost(model: str, seconds: int, size: str | None = None) -> f
 
 
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
-DEEP_RESEARCH_MODELS = ["gpt-5.6-sol", "gpt-5.5", "gpt-5.5-pro"]
+DEEP_RESEARCH_MODELS = ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.5", "gpt-5.5-pro"]
 
 # Server-side compaction: automatically compress context when it exceeds this
 # token threshold, preventing context-window overflow in long conversations.
@@ -307,7 +370,9 @@ REASONING_EFFORT_ORDER = (
 # Per-model reasoning-effort support. Every entry is live-probed with the bot's own
 # Responses payload (ResponseParameters.to_dict() + max_output_tokens=16): a 400
 # `unsupported_value` on reasoning.effort = rejected; any other outcome, including
-# status=incomplete, = accepted. Probed 2026-07-13 (5.6 minimal) and 2026-08-28:
+# status=incomplete, = accepted. Probed 2026-07-13 (5.6 minimal), 2026-08-28 and
+# 2026-09-15 (gpt-6-astra):
+#   gpt-6-astra                      low/medium/high/xhigh/max       (reject none, minimal)
 #   gpt-5.6-sol/-terra/-luna         none/low/medium/high/xhigh/max  (reject minimal)
 #   gpt-5.5, gpt-5.4, gpt-5.4-mini,
 #   gpt-5.4-nano, gpt-5.2            none/low/medium/high/xhigh      (reject minimal, max)
@@ -319,12 +384,14 @@ REASONING_EFFORT_ORDER = (
 #   o3, o3-pro                       low/medium/high
 # Non-reasoning menu models (gpt-4.1*, gpt-4o-mini) and un-probed ids are absent;
 # an explicit effort is rejected locally for those models rather than sent to the API.
+_EFFORTS_GPT_6 = frozenset({"low", "medium", "high", "xhigh", "max"})
 _EFFORTS_GPT_5_6 = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
 _EFFORTS_GPT_5_2_TO_5_5 = frozenset({"none", "low", "medium", "high", "xhigh"})
 _EFFORTS_PRO = frozenset({"medium", "high", "xhigh"})
 _EFFORTS_GPT_5_BASE = frozenset({"minimal", "low", "medium", "high"})
 _EFFORTS_O_SERIES = frozenset({"low", "medium", "high"})
 SUPPORTED_REASONING_EFFORTS: dict[str, frozenset[str]] = {
+    "gpt-6-astra": _EFFORTS_GPT_6,
     "gpt-5.6-sol": _EFFORTS_GPT_5_6,
     "gpt-5.6-terra": _EFFORTS_GPT_5_6,
     "gpt-5.6-luna": _EFFORTS_GPT_5_6,
@@ -381,8 +448,9 @@ REASONING_MODE_PRO = "pro"
 # excluded on purpose. Mode and effort are independent. Pro bills at the model's
 # standard token rates but on far more tokens (~1.5k fixed input overhead per call,
 # roughly 4-6x per turn, tool schemas and history multiplied), so pricing.yaml needs
-# nothing: extract_usage already captures the inflated usage.
-PRO_MODE_MODELS = frozenset({"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"})
+# nothing: extract_usage already captures the inflated usage. gpt-6-astra accepts
+# pro as well.
+PRO_MODE_MODELS = frozenset({"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"})
 
 
 def reasoning_mode_error(model: str, reasoning_mode: str | None) -> str | None:
@@ -402,8 +470,10 @@ def reasoning_mode_error(model: str, reasoning_mode: str | None) -> str | None:
     )
 
 
-# GPT-5 base models that never support temperature/top_p
-GPT5_NO_TEMP_MODELS = frozenset({"gpt-5", "gpt-5-mini", "gpt-5-nano"})
+# Models that reject temperature/top_p outright, whatever the reasoning effort: the
+# gpt-5 base trio, and gpt-6-astra (400 "Unsupported parameter: 'temperature'"; it
+# has no `none` effort to lift the restriction).
+NO_SAMPLING_MODELS = frozenset({"gpt-6-astra", "gpt-5", "gpt-5-mini", "gpt-5-nano"})
 RICH_TTS_MODELS = ["gpt-4o-mini-tts"]
 
 RICH_TTS_VOICES = {"ballad", "verse", "marin", "cedar"}
@@ -423,7 +493,7 @@ class ResponseParameters:
 
     def __init__(
         self,
-        model: str = "gpt-5.6-sol",
+        model: str = "gpt-6-astra",
         instructions: str = "You are a helpful assistant.",
         input: Any = None,  # Can be string or list of content items
         previous_response_id: str | None = None,
@@ -466,8 +536,8 @@ class ResponseParameters:
             self.reasoning = (
                 reasoning if reasoning else {"effort": REASONING_EFFORT_MEDIUM, "summary": "auto"}
             )
-        elif model in GPT5_NO_TEMP_MODELS:
-            # gpt-5, gpt-5-mini, gpt-5-nano never support temperature/top_p.
+        elif model in NO_SAMPLING_MODELS:
+            # gpt-6-astra and the gpt-5 base trio reject temperature/top_p outright.
             self.temperature = None
             self.top_p = None
             self.reasoning = reasoning
@@ -569,7 +639,7 @@ class ImageGenerationParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "gpt-image-2",
+        model: str = "gpt-image-2.5-sunburst",
         n: int = 1,
         quality: str | None = "auto",
         size: str | None = "auto",
@@ -636,7 +706,7 @@ class ResearchParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "gpt-5.6-sol",
+        model: str = "gpt-6-astra",
         file_search: bool = False,
         code_interpreter: bool = False,
     ):

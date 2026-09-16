@@ -2,7 +2,7 @@
 #
 # Canonical source: https://developers.openai.com/api/docs/pricing
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-09-03
+# Last-verified: 2026-09-15
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
 # billed at cached_input_per_million when present, else at 50% of input.
@@ -42,7 +42,8 @@
 # "priority") and bills every bucket at the rates on the pricing page's "Fast
 # mode" tab — 2x standard for the GPT-5.6 trio, other multiples elsewhere.
 # The tab publishes one rate per model (the GPT-5.5 / 5.4 rows are labelled
-# "<272K context length" and no long-context fast rate exists), so a fast
+# "<272K context length" ; the GPT-5.6 trio and GPT-6 Astra also publish
+# fast long-context rates, nested under `fast.long_context`), so a fast
 # request bills these rates at any prompt size and the long_context block is
 # ignored for it. Rows without the block cannot be requested with Fast mode
 # (`service_tier_error`). "ultrafast" (GPT-5.6 Sol only, limited preview since
@@ -53,6 +54,20 @@
 # YAML path — useful for pushing new pricing without a code release.
 
 models:
+  # gpt-6-astra: flagship. Long context (>272K input) 2x input and cache rates,
+  # 1.5x output; fast mode 2x the applicable rates (model page, pricing page).
+  gpt-6-astra:
+    input_per_million: 10.00
+    output_per_million: 50.00
+    cached_input_per_million: 1.00
+    cache_write_per_million: 12.50
+    long_context: { threshold_tokens: 272001, input_per_million: 20.00, output_per_million: 75.00, cached_input_per_million: 2.00, cache_write_per_million: 25.00 }
+    fast:
+      input_per_million: 20.00
+      output_per_million: 100.00
+      cached_input_per_million: 2.00
+      cache_write_per_million: 25.00
+      long_context: { threshold_tokens: 272001, input_per_million: 40.00, output_per_million: 150.00, cached_input_per_million: 4.00, cache_write_per_million: 50.00 }
   # gpt-5.6-sol: promotional rate, guaranteed at least through 2026-11-21 (changelog 2026-08-21) - re-verify after that date
   gpt-5.6-sol:
     input_per_million: 4.00
@@ -60,21 +75,36 @@ models:
     cached_input_per_million: 0.40
     cache_write_per_million: 5.00
     long_context: { threshold_tokens: 272001, input_per_million: 8.00, output_per_million: 30.00, cached_input_per_million: 0.80, cache_write_per_million: 10.00 }
-    fast: { input_per_million: 8.00, output_per_million: 40.00, cached_input_per_million: 0.8, cache_write_per_million: 10.00 }
+    fast:
+      input_per_million: 8.00
+      output_per_million: 40.00
+      cached_input_per_million: 0.80
+      cache_write_per_million: 10.00
+      long_context: { threshold_tokens: 272001, input_per_million: 16.00, output_per_million: 60.00, cached_input_per_million: 1.60, cache_write_per_million: 20.00 }
   gpt-5.6-terra:
     input_per_million: 2.00
     output_per_million: 12.00
     cached_input_per_million: 0.20
     cache_write_per_million: 2.50
     long_context: { threshold_tokens: 272001, input_per_million: 4.00, output_per_million: 18.00, cached_input_per_million: 0.40, cache_write_per_million: 5.00 }
-    fast: { input_per_million: 4.00, output_per_million: 24.00, cached_input_per_million: 0.4, cache_write_per_million: 5.00 }
+    fast:
+      input_per_million: 4.00
+      output_per_million: 24.00
+      cached_input_per_million: 0.40
+      cache_write_per_million: 5.00
+      long_context: { threshold_tokens: 272001, input_per_million: 8.00, output_per_million: 36.00, cached_input_per_million: 0.80, cache_write_per_million: 10.00 }
   gpt-5.6-luna:
     input_per_million: 0.20
     output_per_million: 1.20
     cached_input_per_million: 0.02
     cache_write_per_million: 0.25
     long_context: { threshold_tokens: 272001, input_per_million: 0.40, output_per_million: 1.80, cached_input_per_million: 0.04, cache_write_per_million: 0.50 }
-    fast: { input_per_million: 0.40, output_per_million: 2.40, cached_input_per_million: 0.04, cache_write_per_million: 0.50 }
+    fast:
+      input_per_million: 0.40
+      output_per_million: 2.40
+      cached_input_per_million: 0.04
+      cache_write_per_million: 0.50
+      long_context: { threshold_tokens: 272001, input_per_million: 0.80, output_per_million: 3.60, cached_input_per_million: 0.08, cache_write_per_million: 1.00 }
   # The Pro tiers publish no cached-input rate at either tier.
   gpt-5.5-pro:
     input_per_million: 30.00
@@ -175,11 +205,68 @@ tools:
   code_interpreter: { per_call: 0.03 }      # $0.03 / container
   shell:            { per_call: 0.03 }      # Same billing as code_interpreter
 
-# Image-generation pricing is nested per model → quality → size.
-# "default_per_image" is used when quality or size is "auto".
+# Image-generation pricing. OpenAI bills GPT Image models per token, and the
+# Images API reports that usage on every response: "per_million_tokens" carries
+# the token rates (pricing page) and `calculate_image_cost_from_usage`
+# bills from them. The per-image table (quality → size) is OpenAI's own
+# approximation for the standard sizes and is the fallback when a response has
+# no usage; "default_per_image" covers the remaining "auto" cases there.
+# GPT Image 2.5 (Sunburst / Flare, GA 2026-09-08): token rates match GPT Image 2.
+# Its per-image rows come from OpenAI's image-cost calculator (tokens per
+# quality/size) and match the token counts the API reports (low 1024x1024 =
+# 196 tokens, medium 1024x1024 = 439, high 1536x1024 = 1372).
 image_generation:
+  gpt-image-2.5-sunburst:
+    default_per_image: 0.013
+    per_million_tokens: { text_input: 5.00, cached_text_input: 1.25, image_input: 8.00, cached_image_input: 2.00, image_output: 30.00 }
+    by_quality_size:
+      low:
+        1024x1024: 0.006
+        1024x1536: 0.005
+        1536x1024: 0.005
+      medium:
+        1024x1024: 0.013
+        1024x1536: 0.010
+        1536x1024: 0.010
+      high:
+        1024x1024: 0.053
+        1024x1536: 0.041
+        1536x1024: 0.041
+      xhigh:
+        1024x1024: 0.094
+        1024x1536: 0.074
+        1536x1024: 0.074
+      max:
+        1024x1024: 0.211
+        1024x1536: 0.165
+        1536x1024: 0.165
+  gpt-image-2.5-flare:
+    default_per_image: 0.013
+    per_million_tokens: { text_input: 5.00, cached_text_input: 1.25, image_input: 8.00, cached_image_input: 2.00, image_output: 30.00 }
+    by_quality_size:
+      low:
+        1024x1024: 0.006
+        1024x1536: 0.005
+        1536x1024: 0.005
+      medium:
+        1024x1024: 0.013
+        1024x1536: 0.010
+        1536x1024: 0.010
+      high:
+        1024x1024: 0.053
+        1024x1536: 0.041
+        1536x1024: 0.041
+      xhigh:
+        1024x1024: 0.094
+        1024x1536: 0.074
+        1536x1024: 0.074
+      max:
+        1024x1024: 0.211
+        1024x1536: 0.165
+        1536x1024: 0.165
   gpt-image-2:
     default_per_image: 0.053
+    per_million_tokens: { text_input: 5.00, cached_text_input: 1.25, image_input: 8.00, cached_image_input: 2.00, image_output: 30.00 }
     by_quality_size:
       low:
         1024x1024: 0.006
@@ -195,6 +282,7 @@ image_generation:
         1536x1024: 0.165
   gpt-image-1.5:
     default_per_image: 0.034
+    per_million_tokens: { text_input: 5.00, cached_text_input: 1.25, image_input: 8.00, cached_image_input: 2.00, image_output: 32.00 }
     by_quality_size:
       low:
         1024x1024: 0.009
@@ -210,6 +298,7 @@ image_generation:
         1536x1024: 0.20
   gpt-image-1:
     default_per_image: 0.042
+    per_million_tokens: { text_input: 5.00, cached_text_input: 1.25, image_input: 10.00, cached_image_input: 2.50, image_output: 40.00 }
     by_quality_size:
       low:
         1024x1024: 0.011
@@ -225,6 +314,7 @@ image_generation:
         1536x1024: 0.25
   gpt-image-1-mini:
     default_per_image: 0.011
+    per_million_tokens: { text_input: 2.00, cached_text_input: 0.20, image_input: 2.50, cached_image_input: 0.25, image_output: 8.00 }
     by_quality_size:
       low:
         1024x1024: 0.005

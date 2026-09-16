@@ -261,7 +261,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models. (default: GPT-5.6 Sol)",
+        description="Choose from the following GPT models. (default: GPT-6 Astra)",
         required=False,
         type=str,
         choices=CHAT_MODEL_CHOICES,
@@ -293,14 +293,14 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "reasoning_mode",
-        description="(Advanced) Pro reasoning mode: GPT-5.6 only, several times the cost, slower. (default: not set)",
+        description="(Advanced) Pro mode: GPT-6 Astra / GPT-5.6 only; much more cost, slower. (default: not set)",
         required=False,
         type=str,
         choices=REASONING_MODE_CHOICES,
     )
     @option(
         "service_tier",
-        description="(Advanced) Fast mode: up to 2.5x faster at about 2x the token price. (default: not set)",
+        description="(Advanced) Fast mode: faster processing at about 2x the token price. (default: not set)",
         required=False,
         type=str,
         choices=SERVICE_TIER_CHOICES,
@@ -347,7 +347,7 @@ class OpenAICog(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-5.6-sol",
+        model: str = "gpt-6-astra",
         attachment: Attachment | None = None,
         temperature: float | None = None,
         top_p: float | None = None,
@@ -388,14 +388,14 @@ class OpenAICog(commands.Cog):
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
         "model",
-        description="Choose from the following image generation models. (default: GPT Image 2)",
+        description="Choose from the following image generation models. (default: GPT Image 2.5 Sunburst)",
         required=False,
         type=str,
         choices=IMAGE_MODEL_CHOICES,
     )
     @option(
         "quality",
-        description="Image quality. (default: auto)",
+        description="Image quality; xhigh and max are GPT Image 2.5 only. (default: auto)",
         required=False,
         type=str,
         choices=IMAGE_QUALITY_CHOICES,
@@ -424,7 +424,7 @@ class OpenAICog(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "gpt-image-2",
+        model: str = "gpt-image-2.5-sunburst",
         quality: str | None = "auto",
         size: str | None = "auto",
         background: str | None = "auto",
@@ -579,7 +579,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "model",
-        description="Choose the deep research model. (default: GPT-5.6 Sol)",
+        description="Choose the deep research model. (default: GPT-6 Astra)",
         required=False,
         type=str,
         choices=RESEARCH_MODEL_CHOICES,
@@ -600,7 +600,7 @@ class OpenAICog(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "gpt-5.6-sol",
+        model: str = "gpt-6-astra",
         file_search: bool = False,
         code_interpreter: bool = False,
     ):

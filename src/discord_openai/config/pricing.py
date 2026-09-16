@@ -112,12 +112,15 @@ LONG_CONTEXT_PRICING: dict[str, LongContextTier] = {
 
 class FastTier(TypedDict):
     """Fast-mode rates a model bills at when the request ran under
-    ``service_tier`` "fast" / "priority" (flat at any prompt size)."""
+    ``service_tier`` "fast" / "priority". ``long_context`` is the fast-mode
+    long-context tier where the page publishes one (GPT-5.6 trio, GPT-6 Astra);
+    None means the fast rate is flat at any prompt size."""
 
     input_per_million: float
     output_per_million: float
     cached_input_per_million: float | None
     cache_write_per_million: float | None
+    long_context: LongContextTier | None
 
 
 def _fast_tier(cfg: dict[str, Any]) -> FastTier:
@@ -133,6 +136,9 @@ def _fast_tier(cfg: dict[str, Any]) -> FastTier:
             float(cfg["cache_write_per_million"])
             if cfg.get("cache_write_per_million") is not None
             else None
+        ),
+        "long_context": (
+            _long_context_tier(cfg["long_context"]) if cfg.get("long_context") else None
         ),
     }
 
@@ -153,6 +159,35 @@ IMAGE_PRICING_DEFAULTS: dict[str, float] = {
     model_id: float(cfg["default_per_image"])
     for model_id, cfg in _IMAGE.items()
     if "default_per_image" in cfg
+}
+
+
+class ImageTokenRates(TypedDict):
+    """Per-million-token rates the Images API bills a GPT Image model at."""
+
+    text_input: float
+    cached_text_input: float
+    image_input: float
+    cached_image_input: float
+    image_output: float
+
+
+def _image_token_rates(cfg: dict[str, Any]) -> ImageTokenRates:
+    return {
+        "text_input": float(cfg["text_input"]),
+        "cached_text_input": float(cfg["cached_text_input"]),
+        "image_input": float(cfg["image_input"]),
+        "cached_image_input": float(cfg["cached_image_input"]),
+        "image_output": float(cfg["image_output"]),
+    }
+
+
+# Token rates (pricing page "Image generation" table); models absent here bill
+# from the per-image table only.
+IMAGE_TOKEN_PRICING: dict[str, ImageTokenRates] = {
+    model_id: _image_token_rates(cfg["per_million_tokens"])
+    for model_id, cfg in _IMAGE.items()
+    if "per_million_tokens" in cfg
 }
 
 TTS_PRICING_PER_CHAR: dict[str, float] = {
@@ -194,6 +229,7 @@ __all__ = [
     "CACHE_WRITE_PRICING",
     "IMAGE_PRICING",
     "IMAGE_PRICING_DEFAULTS",
+    "IMAGE_TOKEN_PRICING",
     "LONG_CONTEXT_PRICING",
     "MODEL_PRICING",
     "STT_PRICING_PER_MINUTE",

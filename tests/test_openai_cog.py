@@ -133,7 +133,7 @@ class TestOpenAICog:
     def test_command_defaults_are_unchanged(self):
         assert OpenAICog.chat.callback.__defaults__ == (
             "You are a helpful assistant.",
-            "gpt-5.6-sol",
+            "gpt-6-astra",
             None,
             None,
             None,
@@ -148,7 +148,7 @@ class TestOpenAICog:
             None,
         )
         assert OpenAICog.image.callback.__defaults__ == (
-            "gpt-image-2",
+            "gpt-image-2.5-sunburst",
             "auto",
             "auto",
             "auto",
@@ -157,7 +157,7 @@ class TestOpenAICog:
         assert OpenAICog.tts.callback.__defaults__ == ("gpt-4o-mini-tts", "marin", "", "mp3", 1.0)
         assert OpenAICog.stt.callback.__defaults__ == ("gpt-transcribe", "transcription")
         assert OpenAICog.video.callback.__defaults__ == ("sora-2", "1280x720", "8")
-        assert OpenAICog.research.callback.__defaults__ == ("gpt-5.6-sol", False, False)
+        assert OpenAICog.research.callback.__defaults__ == ("gpt-6-astra", False, False)
 
     def test_registered_command_groups_fit_discord_size_limit(self):
         """Discord rejects any single top-level command payload over 8000 bytes."""
@@ -195,7 +195,11 @@ class TestOpenAICog:
         assert payload_sizes["openai-tools"] < 8000
 
     def test_critical_choice_values_present(self):
+        assert any(choice.value == "gpt-6-astra" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.6-sol" for choice in CHAT_MODEL_CHOICES)
+        assert any(choice.value == "gpt-image-2.5-sunburst" for choice in IMAGE_MODEL_CHOICES)
+        assert any(choice.value == "gpt-image-2.5-flare" for choice in IMAGE_MODEL_CHOICES)
+        assert any(choice.value == "gpt-6-astra" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.4" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-1.5" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "marin" for choice in TTS_VOICE_CHOICES)
@@ -262,7 +266,9 @@ class TestOpenAICog:
         probed row before users can select a reasoning effort for it.
         """
         menu = [choice.value for choice in CHAT_MODEL_CHOICES]
-        reasoning_menu = [m for m in menu if m in REASONING_MODELS or m.startswith("gpt-5")]
+        reasoning_menu = [
+            m for m in menu if m in REASONING_MODELS or m.startswith(("gpt-5", "gpt-6"))
+        ]
         assert reasoning_menu, "menu lists no reasoning models"
         missing = [m for m in reasoning_menu if m not in SUPPORTED_REASONING_EFFORTS]
         assert not missing, f"{missing} lack a probed reasoning-effort entry"

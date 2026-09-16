@@ -35,10 +35,25 @@ class TestPricingLoader:
         assert pricing.CACHED_INPUT_PRICING["gpt-5.6-terra"] == 0.20
         assert pricing.CACHED_INPUT_PRICING["gpt-5.6-luna"] == 0.02
 
+    def test_gpt_6_astra_rates_are_pinned(self):
+        """gpt-6-astra (GA 2026-09-03): $10 / $1 cached / $12.50 cache write / $50."""
+        pricing = _reload_pricing()
+        assert pricing.MODEL_PRICING["gpt-6-astra"] == (10.00, 50.00)
+        assert pricing.CACHED_INPUT_PRICING["gpt-6-astra"] == 1.00
+        assert pricing.CACHE_WRITE_PRICING["gpt-6-astra"] == 12.50
+        assert pricing.LONG_CONTEXT_PRICING["gpt-6-astra"] == {
+            "threshold_tokens": 272001,
+            "input_per_million": 20.00,
+            "output_per_million": 75.00,
+            "cached_input_per_million": 2.00,
+            "cache_write_per_million": 25.00,
+        }
+
     def test_gpt_5_6_cache_write_rates_are_pinned(self):
-        """Cache writes (1.25x input) are declared on the three gpt-5.6 rows and nowhere else."""
+        """Cache writes (1.25x input) are declared on gpt-6-astra and the three gpt-5.6 rows only."""
         pricing = _reload_pricing()
         assert pricing.CACHE_WRITE_PRICING == {
+            "gpt-6-astra": 12.50,
             "gpt-5.6-sol": 5.00,
             "gpt-5.6-terra": 2.50,
             "gpt-5.6-luna": 0.25,
@@ -54,6 +69,7 @@ class TestPricingLoader:
         """
         pricing = _reload_pricing()
         assert set(pricing.LONG_CONTEXT_PRICING) == {
+            "gpt-6-astra",
             "gpt-5.6-sol",
             "gpt-5.6-terra",
             "gpt-5.6-luna",
@@ -101,6 +117,49 @@ class TestPricingLoader:
         assert pricing.IMAGE_PRICING[("gpt-image-2", "high", "1024x1024")] == 0.211
         assert pricing.IMAGE_PRICING[("gpt-image-1.5", "low", "1024x1024")] == 0.009
         assert pricing.IMAGE_PRICING[("gpt-image-1", "high", "1536x1024")] == 0.25
+
+    def test_image_token_rates_are_pinned(self):
+        """Per-token image rates (pricing page 2026-09-15); 2.5 matches GPT Image 2."""
+        pricing = _reload_pricing()
+        gpt_image_2 = {
+            "text_input": 5.00,
+            "cached_text_input": 1.25,
+            "image_input": 8.00,
+            "cached_image_input": 2.00,
+            "image_output": 30.00,
+        }
+        assert {
+            "gpt-image-2.5-sunburst": gpt_image_2,
+            "gpt-image-2.5-flare": gpt_image_2,
+            "gpt-image-2": gpt_image_2,
+            "gpt-image-1.5": {**gpt_image_2, "image_output": 32.00},
+            "gpt-image-1": {
+                "text_input": 5.00,
+                "cached_text_input": 1.25,
+                "image_input": 10.00,
+                "cached_image_input": 2.50,
+                "image_output": 40.00,
+            },
+            "gpt-image-1-mini": {
+                "text_input": 2.00,
+                "cached_text_input": 0.20,
+                "image_input": 2.50,
+                "cached_image_input": 0.25,
+                "image_output": 8.00,
+            },
+        } == pricing.IMAGE_TOKEN_PRICING
+
+    def test_gpt_image_2_5_per_image_rows(self):
+        """Calculator-derived rows, confirmed by live token counts on 2026-09-15."""
+        pricing = _reload_pricing()
+        for model in ("gpt-image-2.5-sunburst", "gpt-image-2.5-flare"):
+            assert pricing.IMAGE_PRICING_DEFAULTS[model] == 0.013
+            assert pricing.IMAGE_PRICING[(model, "low", "1024x1024")] == 0.006
+            assert pricing.IMAGE_PRICING[(model, "medium", "1024x1024")] == 0.013
+            assert pricing.IMAGE_PRICING[(model, "high", "1536x1024")] == 0.041
+            assert pricing.IMAGE_PRICING[(model, "xhigh", "1024x1024")] == 0.094
+            assert pricing.IMAGE_PRICING[(model, "max", "1024x1024")] == 0.211
+        assert ("gpt-image-2", "xhigh", "1024x1024") not in pricing.IMAGE_PRICING
 
     def test_bundled_yaml_loads_image_defaults(self):
         pricing = _reload_pricing()
@@ -186,12 +245,14 @@ class TestPricingLoader:
 
 class TestFastTiers:
     """Fast mode (`service_tier: "fast"` / "priority") rates from the pricing page's
-    "Fast mode" tab, 2026-09-03. One flat rate per model — no long-context split."""
+    "Fast mode" tab, 2026-09-15. One flat rate per model, except the GPT-5.6 trio and
+    GPT-6 Astra, whose fast rows carry their own long-context tier."""
 
     def test_fast_tiers_are_pinned(self):
         pricing = _reload_pricing()
         expected = {
             # model: (input, output, cached input, cache write)
+            "gpt-6-astra": (20.00, 100.00, 2.00, 25.00),
             "gpt-5.6-sol": (8.00, 40.00, 0.80, 10.00),
             "gpt-5.6-terra": (4.00, 24.00, 0.40, 5.00),
             "gpt-5.6-luna": (0.40, 2.40, 0.04, 0.50),
@@ -217,6 +278,32 @@ class TestFastTiers:
             assert tier["output_per_million"] == out, model
             assert tier["cached_input_per_million"] == cached, model
             assert tier["cache_write_per_million"] == write, model
+
+    def test_fast_long_context_tiers_are_pinned(self):
+        """Fast tab columns 6-9: 2x the long-context rates, on the models that publish them."""
+        pricing = _reload_pricing()
+        expected = {
+            # model: (input, output, cached input, cache write)
+            "gpt-6-astra": (40.00, 150.00, 4.00, 50.00),
+            "gpt-5.6-sol": (16.00, 60.00, 1.60, 20.00),
+            "gpt-5.6-terra": (8.00, 36.00, 0.80, 10.00),
+            "gpt-5.6-luna": (0.80, 3.60, 0.08, 1.00),
+        }
+        for model, fast in pricing.FAST_TIER_PRICING.items():
+            tier = fast["long_context"]
+            if model not in expected:
+                assert tier is None, f"{model} has an unexpected fast long-context tier"
+                continue
+            assert tier is not None, model
+            inp, out, cached, write = expected[model]
+            assert tier["threshold_tokens"] == 272001, model
+            assert tier["input_per_million"] == inp, model
+            assert tier["output_per_million"] == out, model
+            assert tier["cached_input_per_million"] == cached, model
+            assert tier["cache_write_per_million"] == write, model
+            standard = pricing.LONG_CONTEXT_PRICING[model]
+            assert inp == pytest.approx(2 * standard["input_per_million"]), model
+            assert out == pytest.approx(2 * standard["output_per_million"]), model
 
     def test_gpt_5_6_fast_rates_are_double_standard(self):
         pricing = _reload_pricing()

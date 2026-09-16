@@ -47,6 +47,7 @@ from discord_openai.util import (
     build_input_content,
     calculate_cost,
     calculate_image_cost,
+    calculate_image_cost_from_usage,
     calculate_stt_cost,
     calculate_tool_cost,
     calculate_tts_cost,
@@ -56,6 +57,7 @@ from discord_openai.util import (
     extract_usage,
     format_openai_error,
     hash_user_id,
+    image_quality_error,
     reasoning_effort_error,
     reasoning_mode_error,
     service_tier_error,
@@ -87,12 +89,12 @@ class TestResponseParameters:
         assert "reasoning" not in result
         assert "previous_response_id" not in result
 
-    def test_default_model_is_gpt_56_sol(self):
-        """Guard the promoted default: gpt-5.6-sol, priced, and menu-selectable."""
+    def test_default_model_is_gpt_6_astra(self):
+        """Guard the promoted default: gpt-6-astra, priced, and menu-selectable."""
         params = ResponseParameters()
-        assert params.model == "gpt-5.6-sol"
-        assert params.to_dict()["model"] == "gpt-5.6-sol"
-        assert "gpt-5.6-sol" in MODEL_PRICING
+        assert params.model == "gpt-6-astra"
+        assert params.to_dict()["model"] == "gpt-6-astra"
+        assert "gpt-6-astra" in MODEL_PRICING
 
     def test_reasoning_model_behavior(self):
         """Test that reasoning models use reasoning parameter instead of temperature/top_p."""
@@ -123,7 +125,7 @@ class TestResponseParameters:
     def test_non_reasoning_model_behavior(self):
         """Test that non-reasoning models use temperature and top_p."""
         params = ResponseParameters(
-            model="gpt-4o",  # Not a reasoning model and not in GPT5_NO_TEMP_MODELS
+            model="gpt-4o",  # Not a reasoning model and not in NO_SAMPLING_MODELS
             input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
             temperature=0.7,
             top_p=0.9,
@@ -415,7 +417,7 @@ class TestImageGenerationParameters:
     def test_defaults(self):
         params = ImageGenerationParameters(prompt="Test prompt")
         result = params.to_dict()
-        assert result["model"] == "gpt-image-2"
+        assert result["model"] == "gpt-image-2.5-sunburst"
         assert result["quality"] == "auto"
         assert result["size"] == "auto"
         assert result["n"] == 1
@@ -539,7 +541,7 @@ class TestResearchParameters:
     def test_defaults(self):
         params = ResearchParameters(prompt="Test research")
         assert params.prompt == "Test research"
-        assert params.model == "gpt-5.6-sol"
+        assert params.model == "gpt-6-astra"
         assert params.file_search is False
         assert params.code_interpreter is False
 
@@ -547,7 +549,7 @@ class TestResearchParameters:
         params = ResearchParameters(prompt="What is quantum computing?")
         tools = [TOOL_WEB_SEARCH]
         result = params.to_dict(tools)
-        assert result["model"] == "gpt-5.6-sol"
+        assert result["model"] == "gpt-6-astra"
         assert result["input"] == "What is quantum computing?"
         assert result["tools"] == [TOOL_WEB_SEARCH]
         assert result["background"] is True
@@ -566,6 +568,7 @@ class TestResearchParameters:
         assert result["background"] is True
 
     def test_deep_research_models_constant(self):
+        assert DEEP_RESEARCH_MODELS[0] == "gpt-6-astra"
         assert "gpt-5.6-sol" in DEEP_RESEARCH_MODELS
         assert "gpt-5.5" in DEEP_RESEARCH_MODELS
         assert "gpt-5.5-pro" in DEEP_RESEARCH_MODELS
@@ -797,15 +800,15 @@ class TestModelPricing:
         assert cost == pytest.approx((100 / 1_000_000) * 0.40 + (100 / 1_000_000) * 5.00)
 
     def test_gpt_5_6_cache_write_rates_are_125_percent_of_input(self):
-        """Every gpt-5.6 row declares cache_write_per_million == 1.25x its input rate.
+        """Every gpt-6 / gpt-5.6 row declares cache_write_per_million == 1.25x its input rate.
 
-        The pricing table's "Cache writes" column prints a value only for the GPT-5.6
-        rows (every other row prints "-"), so the declared set must be exactly those
+        The pricing table's "Cache writes" column prints a value only for the GPT-6 Astra
+        and GPT-5.6 rows (every other row prints "-"), so the declared set must be exactly those
         rows: a stray declaration elsewhere would add a surcharge the vendor does not
         charge, and a missing one would under-bill first-turn writes.
         """
-        gpt_5_6_rows = {model for model in MODEL_PRICING if model.startswith("gpt-5.6")}
-        assert gpt_5_6_rows, "no gpt-5.6 rows in pricing.yaml"
+        gpt_5_6_rows = {model for model in MODEL_PRICING if model.startswith(("gpt-6", "gpt-5.6"))}
+        assert gpt_5_6_rows, "no gpt-6 / gpt-5.6 rows in pricing.yaml"
         assert set(CACHE_WRITE_PRICING) == gpt_5_6_rows
         for model in sorted(gpt_5_6_rows):
             input_price = MODEL_PRICING[model][0]
@@ -861,9 +864,10 @@ class TestModelPricing:
         assert cost == pytest.approx(2 * standard)
 
     def test_fast_tier_honours_the_priority_alias_the_response_reports(self):
-        fast = calculate_cost("gpt-5.6-luna", 1_000_000, 0, service_tier="fast")
-        priority = calculate_cost("gpt-5.6-luna", 1_000_000, 0, service_tier="priority")
-        assert fast == priority == pytest.approx(0.40)
+        # 100K tokens stays below Luna's fast long-context threshold (272K).
+        fast = calculate_cost("gpt-5.6-luna", 100_000, 0, service_tier="fast")
+        priority = calculate_cost("gpt-5.6-luna", 100_000, 0, service_tier="priority")
+        assert fast == priority == pytest.approx(0.04)
         assert {"fast", "priority"} == FAST_SERVICE_TIERS
 
     def test_other_service_tiers_bill_standard(self):
@@ -875,11 +879,20 @@ class TestModelPricing:
         standard = calculate_cost("gpt-5.5-pro", 1_000_000, 0)
         assert calculate_cost("gpt-5.5-pro", 1_000_000, 0, service_tier="priority") == standard
 
-    def test_fast_tier_ignores_the_long_context_split(self):
-        """The Fast-mode tab publishes one rate per model, so a >272K fast prompt bills the
-        flat fast rate, not the long-context tier."""
-        cost = calculate_cost("gpt-5.6-sol", 300_000, 0, service_tier="priority")
-        assert cost == pytest.approx(300_000 / 1_000_000 * 8.00)
+    def test_fast_tier_uses_the_fast_long_context_tier_where_published(self):
+        """The Fast tab prices >272K prompts at 2x the long-context rates for the GPT-5.6
+        trio and GPT-6 Astra, so a fast long prompt bills that tier, not the flat fast rate
+        and not the standard long-context tier."""
+        cost = calculate_cost("gpt-5.6-sol", 300_000, 1_000, service_tier="priority")
+        assert cost == pytest.approx(300_000 / 1_000_000 * 16.00 + 1_000 / 1_000_000 * 60.00)
+        assert calculate_cost("gpt-5.6-sol", 272_000, 0, service_tier="fast") == pytest.approx(
+            272_000 / 1_000_000 * 8.00
+        )
+
+    def test_fast_tier_stays_flat_without_a_fast_long_context_tier(self):
+        """Models whose fast row publishes no long-context split bill the flat fast rate."""
+        cost = calculate_cost("gpt-5.5", 300_000, 0, service_tier="priority")
+        assert cost == pytest.approx(300_000 / 1_000_000 * 12.50)
 
     def test_fast_tier_without_cached_rate_falls_back_to_half_fast_input(self):
         tier_without_cached = {
@@ -908,6 +921,7 @@ class TestModelPricing:
     # against the official pricing page 2026-08-18.
     CACHED_DISCOUNT_BY_MODEL: ClassVar[dict[str, float]] = {
         # gpt-5 family and newer: 90% off
+        "gpt-6-astra": 0.10,
         "gpt-5.6-sol": 0.10,
         "gpt-5.6-terra": 0.10,
         "gpt-5.6-luna": 0.10,
@@ -1345,6 +1359,7 @@ class TestSupportedReasoningEfforts:
     # Probed with the bot's Responses payload, max_output_tokens=16, one call per
     # effort: 2026-07-13 (5.6 minimal) and 2026-08-28 (everything else).
     PROBED: ClassVar[dict[str, set[str]]] = {
+        "gpt-6-astra": {"low", "medium", "high", "xhigh", "max"},  # 2026-09-15
         "gpt-5.6-sol": {"none", "low", "medium", "high", "xhigh", "max"},
         "gpt-5.6-terra": {"none", "low", "medium", "high", "xhigh", "max"},
         "gpt-5.6-luna": {"none", "low", "medium", "high", "xhigh", "max"},
@@ -1377,7 +1392,14 @@ class TestSupportedReasoningEfforts:
 
     @pytest.mark.parametrize(
         "model,effort",
-        [("gpt-5.6-sol", "minimal"), ("gpt-5", "none"), ("gpt-5.5", "max"), ("o3", "xhigh")],
+        [
+            ("gpt-6-astra", "none"),
+            ("gpt-6-astra", "minimal"),
+            ("gpt-5.6-sol", "minimal"),
+            ("gpt-5", "none"),
+            ("gpt-5.5", "max"),
+            ("o3", "xhigh"),
+        ],
     )
     def test_rejects_unsupported_combination(self, model, effort):
         error = reasoning_effort_error(model, effort)
@@ -1408,7 +1430,7 @@ class TestSupportedReasoningEfforts:
 class TestReasoningModeError:
     """Pin the pro-mode model set and the chat-path gate built on it."""
 
-    PRO_IDS: ClassVar[set[str]] = {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+    PRO_IDS: ClassVar[set[str]] = {"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
 
     def test_pro_mode_models_match_probed_results(self):
         """Exact pin (probed 2026-08-28): gpt-5.5 400s on reasoning.mode, 5.5-pro is a no-op."""
@@ -1619,3 +1641,76 @@ class TestServiceTierError:
     def test_unknown_tiers_are_refused(self):
         error = service_tier_error("gpt-5.6-sol", "ultrafast")
         assert error is not None and "`ultrafast`" in error
+
+
+class TestGpt6AstraRequestShape:
+    """gpt-6-astra rejects temperature/top_p outright (probed 2026-09-15)."""
+
+    def test_sampling_parameters_are_dropped(self):
+        params = ResponseParameters(model="gpt-6-astra", temperature=0.7, top_p=0.9)
+        assert params.temperature is None
+        assert params.top_p is None
+        payload = params.to_dict()
+        assert "temperature" not in payload
+        assert "top_p" not in payload
+
+    def test_reasoning_and_pro_mode_pass_through(self):
+        params = ResponseParameters(
+            model="gpt-6-astra", reasoning={"effort": "low", "mode": "pro", "summary": "auto"}
+        )
+        assert params.to_dict()["reasoning"] == {"effort": "low", "mode": "pro", "summary": "auto"}
+        assert reasoning_mode_error("gpt-6-astra", "pro") is None
+
+
+class TestImageCostFromUsage:
+    """Images API responses carry token usage; billing from it is exact."""
+
+    @staticmethod
+    def _usage(text_in: int, image_in: int, image_out: int):
+        return SimpleNamespace(
+            input_tokens=text_in + image_in,
+            input_tokens_details=SimpleNamespace(text_tokens=text_in, image_tokens=image_in),
+            output_tokens=image_out,
+            output_tokens_details=SimpleNamespace(image_tokens=image_out, text_tokens=0),
+        )
+
+    def test_bills_text_image_input_and_image_output_tokens(self):
+        # 2026-09-15 probe: gpt-image-2.5-flare medium 1024x1024 = 14 text in, 439 image out.
+        cost = calculate_image_cost_from_usage("gpt-image-2.5-flare", self._usage(14, 0, 439))
+        assert cost == pytest.approx((14 * 5.00 + 439 * 30.00) / 1_000_000)
+        cost = calculate_image_cost_from_usage("gpt-image-1", self._usage(10, 1_000, 2_000))
+        assert cost == pytest.approx((10 * 5.00 + 1_000 * 10.00 + 2_000 * 40.00) / 1_000_000)
+
+    def test_auto_requests_no_longer_bill_the_flat_default(self):
+        # An `auto` request served at low quality (215 image tokens) costs about
+        # $0.0065, not the $0.013 medium-square default the table would charge.
+        cost = calculate_image_cost_from_usage("gpt-image-2.5-sunburst", self._usage(14, 0, 215))
+        assert cost == pytest.approx(0.00652)
+        assert cost < calculate_image_cost("gpt-image-2.5-sunburst", "auto", "auto")
+
+    def test_returns_none_without_rates_or_usage(self):
+        assert calculate_image_cost_from_usage("unknown-model", self._usage(1, 0, 100)) is None
+        assert calculate_image_cost_from_usage("gpt-image-2", None) is None
+        assert calculate_image_cost_from_usage("gpt-image-2", self._usage(0, 0, 0)) is None
+        assert calculate_image_cost_from_usage("gpt-image-2", SimpleNamespace()) is None
+
+
+class TestImageQualityGate:
+    """xhigh / max are GPT Image 2.5 only; older models 400 on them."""
+
+    @pytest.mark.parametrize("model", ["gpt-image-2.5-sunburst", "gpt-image-2.5-flare"])
+    @pytest.mark.parametrize("quality", ["xhigh", "max"])
+    def test_extended_qualities_pass_on_gpt_image_2_5(self, model, quality):
+        assert image_quality_error(model, quality) is None
+
+    @pytest.mark.parametrize("model", ["gpt-image-2", "gpt-image-1.5", "gpt-image-1-mini"])
+    def test_extended_qualities_are_refused_elsewhere(self, model):
+        error = image_quality_error(model, "xhigh")
+        assert error is not None
+        assert "`xhigh`" in error
+        assert f"`{model}`" in error
+        assert "`gpt-image-2.5-sunburst`" in error
+
+    @pytest.mark.parametrize("quality", [None, "auto", "low", "medium", "high"])
+    def test_standard_qualities_pass_everywhere(self, quality):
+        assert image_quality_error("gpt-image-1", quality) is None
