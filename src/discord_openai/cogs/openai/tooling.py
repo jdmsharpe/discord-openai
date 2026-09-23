@@ -1,6 +1,6 @@
 from typing import Any, TypedDict
 
-from ...config.mcp import build_mcp_tool, resolve_mcp_presets
+from ...config.mcp import build_mcp_tool, mcp_connector_error, resolve_mcp_presets
 from .tool_registry import (
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
@@ -80,6 +80,9 @@ def resolve_selected_tools(
     mcp_presets, mcp_error = resolve_mcp_presets(mcp_preset_names or [])
     if mcp_error:
         return [], mcp_error
+    connector_error = mcp_connector_error(model, mcp_presets)
+    if connector_error:
+        return [], connector_error
     tools.extend(build_mcp_tool(preset) for preset in mcp_presets)
 
     return tools, None

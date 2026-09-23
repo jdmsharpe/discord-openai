@@ -39,9 +39,6 @@ from .command_options import (
     TTS_RESPONSE_FORMAT_CHOICES,
     TTS_VOICE_CHOICES,
     VERBOSITY_CHOICES,
-    VIDEO_MODEL_CHOICES,
-    VIDEO_SECONDS_CHOICES,
-    VIDEO_SIZE_CHOICES,
 )
 from .image import run_image_command
 from .research import run_research_command
@@ -61,14 +58,13 @@ from .state import (
     handle_tools_changed as apply_tool_changes,
 )
 from .tooling import ToolInfo, resolve_selected_tools
-from .video import run_video_command
 
 
 class OpenAICog(commands.Cog):
     openai = SlashCommandGroup("openai", "OpenAI commands", guild_ids=GUILD_IDS)
     openai_media = SlashCommandGroup(
         "openai-media",
-        "OpenAI image and video commands",
+        "OpenAI image commands",
         guild_ids=GUILD_IDS,
     )
     openai_tools = SlashCommandGroup(
@@ -293,7 +289,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "reasoning_mode",
-        description="(Advanced) Pro mode: GPT-6 Astra / GPT-5.6 only; much more cost, slower. (default: not set)",
+        description="(Advanced) Pro mode: GPT-6 / GPT-5.6 only; much more cost, slower. (default: not set)",
         required=False,
         type=str,
         choices=REASONING_MODE_CHOICES,
@@ -332,7 +328,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "shell",
-        description="Enable hosted shell command execution (GPT-5 models). (default: false)",
+        description="Enable hosted shell command execution (GPT-5 and GPT-6 models). (default: false)",
         required=False,
         type=bool,
     )
@@ -521,47 +517,6 @@ class OpenAICog(commands.Cog):
         action: str = "transcription",
     ):
         await run_stt_command(self, ctx, attachment, model, action)
-
-    @openai_media.command(
-        name="video",
-        description="Generates a video based on a prompt using Sora.",
-    )
-    @option(
-        "prompt",
-        description="Prompt for video generation (describe shot type, subject, action, setting, lighting).",
-        required=True,
-        type=str,
-    )
-    @option(
-        "model",
-        description="Choose Sora model for video generation. (default: Sora 2)",
-        required=False,
-        type=str,
-        choices=VIDEO_MODEL_CHOICES,
-    )
-    @option(
-        "size",
-        description="Resolution of the generated video. (default: 1280x720)",
-        required=False,
-        type=str,
-        choices=VIDEO_SIZE_CHOICES,
-    )
-    @option(
-        "seconds",
-        description="Duration of the video in seconds. (default: 8)",
-        required=False,
-        type=str,
-        choices=VIDEO_SECONDS_CHOICES,
-    )
-    async def video(
-        self,
-        ctx: ApplicationContext,
-        prompt: str,
-        model: str = "sora-2",
-        size: str = "1280x720",
-        seconds: str = "8",
-    ):
-        await run_video_command(self, ctx, prompt, model, size, seconds)
 
     # ------------------------------------------------------------------
     # /openai-tools research — Deep Research via background Responses API

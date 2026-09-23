@@ -224,6 +224,30 @@ def resolve_mcp_presets(
     return presets, None
 
 
+# Models that reject an `mcp` tool carrying `connector_id` with a 400 ("Built-in MCP
+# connector ... is not supported with this model"). Remote MCP presets (`server_url`)
+# are unaffected.
+CONNECTOR_UNSUPPORTED_MODELS = frozenset({"gpt-6-astra", "gpt-6-sol", "gpt-6-luna"})
+
+
+def mcp_connector_error(model: str, presets: list[OpenAIMcpPreset]) -> str | None:
+    """Return a user-facing error when ``model`` rejects a connector preset, else None.
+
+    Follows ``reasoning_mode_error``: the combination is refused before the request
+    instead of surfacing the API's 400.
+    """
+    if model not in CONNECTOR_UNSUPPORTED_MODELS:
+        return None
+    for preset in presets:
+        if preset.kind == "connector":
+            return (
+                f"MCP preset `{preset.name}` uses an OpenAI connector (`connector_id`), "
+                f"which `{model}` does not support. Use a `remote_mcp` preset with a "
+                "`server_url`, or choose a GPT-5.6 or earlier model."
+            )
+    return None
+
+
 def build_mcp_tool(preset: OpenAIMcpPreset) -> dict[str, object]:
     tool: dict[str, object] = {
         "type": "mcp",
@@ -257,10 +281,12 @@ __all__ = [
     "APPROVAL_ALWAYS",
     "APPROVAL_NEVER",
     "APPROVAL_SELECTIVE",
+    "CONNECTOR_UNSUPPORTED_MODELS",
     "OPENAI_MCP_PRESETS",
     "OpenAIMcpPreset",
     "build_mcp_tool",
     "load_openai_mcp_presets",
+    "mcp_connector_error",
     "parse_mcp_preset_names",
     "resolve_mcp_presets",
 ]

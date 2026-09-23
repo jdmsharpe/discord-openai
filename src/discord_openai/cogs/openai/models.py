@@ -5,7 +5,6 @@ from ...util import (
     ResearchParameters,
     ResponseParameters,
     TextToSpeechParameters,
-    VideoGenerationParameters,
 )
 
 
@@ -19,5 +18,4 @@ __all__ = [
     "ResearchParameters",
     "ResponseParameters",
     "TextToSpeechParameters",
-    "VideoGenerationParameters",
 ]

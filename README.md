@@ -14,18 +14,17 @@
 
 ## Overview
 
-A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, speech-to-text capabilities, autonomous research, and video generation through modern slash commands.
+A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, speech-to-text capabilities, and autonomous research through modern slash commands.
 
 ## Features
 
 - **Conversational AI:** Engage in interactive, multi-turn conversations with a wide variety of OpenAI models (GPT-5 series, o-series, GPT-4o, etc.). Maintains full context for follow-up replies in the same channel.
 - **Multimodal Input:** Attach images, PDFs, documents, spreadsheets, and code files.
 - **Reasoning Display:** Model thinking processes (for o-series and reasoning-effort models) are displayed in spoilered "Thinking" embeds.
-- **Built-in Tools:** Supports `web_search`, `code_interpreter`, `file_search` (with citation embeds), and `shell` (GPT-5 series only).
+- **Built-in Tools:** Supports `web_search`, `code_interpreter`, `file_search` (with citation embeds), and `shell` (GPT-5 and GPT-6 series).
 - **Remote MCP & Connectors:** Enable trusted remote MCP servers and OpenAI connectors via named presets with optional tool allow-lists and approval policies. Features a seamless Discord UI approval loop for actions.
 - **Media Generation:**
   - **Images:** Create images using GPT Image models with quality and aspect ratio controls.
-  - **Video:** Generate videos using Sora models with customizable duration and resolution.
   - **Text-to-Speech:** Convert text into lifelike audio using `gpt-4o-mini-tts`, `tts-1`, or `tts-1-hd` models with 13 distinct voices.
   - **Speech-to-Text:** Transform audio attachments into verbatim transcriptions or English translations, complete with optional speaker diarization.
 - **Deep Research:** Run autonomous agents that search the web, read pages, and synthesize detailed reports with inline citations.
@@ -37,12 +36,12 @@ A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings toge
 
 Start an interactive thread with an OpenAI model.
 
-- **Models:** GPT-6 Astra (default), GPT-5.6 Sol / Terra / Luna, GPT-5 series (incl. 5.5 / 5.5 Pro and 5.4 / 5.2 / 5.1 / 5 variants), GPT-4.1 / 4.1 Mini, o3 / o3 Pro, and GPT-4o Mini.
-- **Tuning Options:** Adjust temperature, `top_p` (dropped on GPT-6 Astra and GPT-5 / 5 Mini / 5 Nano, which reject them), reasoning effort, and verbosity. Effort support is per model — `minimal` is GPT-5 / 5 Mini / 5 Nano only; `none` is rejected by GPT-6 Astra, those three, the Pro tiers, and the o-series; `xhigh` needs GPT-5.2 or newer; `max` is GPT-6 Astra and GPT-5.6 only; the Pro tiers accept `medium` / `high` / `xhigh` and GPT-5 Pro `high` only — and an unsupported combination is refused with a clear error before any request is sent. Reasoning **mode** is a separate opt-in for GPT-6 Astra and GPT-5.6 Sol / Terra / Luna: `pro` is independent of effort and is billed at the model's standard token rates but on substantially more tokens — a fixed ~1.5k-token input overhead per call plus roughly 4–6x per turn, with tool schemas and conversation history multiplied — and it is refused before any request is sent on every other model.
-- **Fast mode:** the `service_tier` option (`fast`) opts a conversation into OpenAI's Fast mode — faster processing at the pricing page's Fast-mode rates (2x the token price on GPT-6 Astra and GPT-5.6 Sol / Terra / Luna, including their long-context tiers above 272K input tokens). Offered only for the models the page lists a Fast-mode rate for (GPT-6 Astra, the GPT-5.6 trio, GPT-5.5 / 5.4 / 5.4 Mini / 5.2 / 5.1 / 5 / 5 Mini, GPT-4.1 family, o3, o4-mini, GPT-4o / 4o Mini); the Pro tiers reject it before any request is sent. The cost embed labels fast-mode replies and bills them at the fast rate the response reports.
-- **Cost Embeds:** Each reply shows its cost and token split (input, cached, cache-write on GPT-6 Astra and GPT-5.6, output, thinking, tools) plus a running daily total. GPT-6 Astra and GPT-5.6 cache writes are billed at OpenAI's published 1.25x input surcharge; GPT-5.6 Sol is priced at its promotional rate (guaranteed through 2026-11-21).
+- **Models:** GPT-6 Astra (default), GPT-6 Sol / Luna, GPT-5.6 Sol / Terra / Luna, GPT-5 series (incl. 5.5 / 5.5 Pro and 5.4 / 5.2 / 5.1 / 5 variants), GPT-4.1 / 4.1 Mini, o3 / o3 Pro, and GPT-4o Mini.
+- **Tuning Options:** Adjust temperature, `top_p` (dropped on GPT-6 Astra, GPT-5 / 5 Mini / 5 Nano and the Pro tiers, which reject them, and on GPT-6 Sol / Luna, GPT-5.6 and GPT-5.5 unless reasoning effort is `none`), reasoning effort, and verbosity. Effort support is per model — `minimal` is GPT-5 / 5 Mini / 5 Nano only; `none` is rejected by GPT-6 Astra, those three, the Pro tiers, and the o-series; `xhigh` needs GPT-5.2 or newer; `max` is GPT-6 and GPT-5.6 only; the Pro tiers accept `medium` / `high` / `xhigh` and GPT-5 Pro `high` only — and an unsupported combination is refused with a clear error before any request is sent. Reasoning **mode** is a separate opt-in for GPT-6 Astra / Sol / Luna and GPT-5.6 Sol / Terra / Luna: `pro` is independent of effort and is billed at the model's standard token rates but on substantially more tokens — a fixed ~1.5k-token input overhead per call plus roughly 4–6x per turn, with tool schemas and conversation history multiplied — and it is refused before any request is sent on every other model.
+- **Fast mode:** the `service_tier` option (`fast`) opts a conversation into OpenAI's Fast mode — faster processing at the pricing page's Fast-mode rates (2x the token price on GPT-6 Astra / Sol / Luna and GPT-5.6 Sol / Terra / Luna, including their long-context tiers above 272K input tokens). Offered only for the models the page lists a Fast-mode rate for (GPT-6 Astra / Sol / Luna, the GPT-5.6 trio, GPT-5.5 / 5.4 / 5.4 Mini / 5.2 / 5.1 / 5 / 5 Mini, GPT-4.1 family, o3, o4-mini, GPT-4o / 4o Mini); the Pro tiers reject it before any request is sent. The cost embed labels fast-mode replies and bills them at the fast rate the response reports.
+- **Cost Embeds:** Each reply shows its cost and token split (input, cached, cache-write on GPT-6 and GPT-5.6, output, thinking, tools) plus a running daily total. GPT-6 and GPT-5.6 cache writes are billed at OpenAI's published 1.25x input surcharge; GPT-5.6 Sol is priced at its promotional rate (guaranteed through 2026-11-21).
 - **Tools:** `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), `shell`.
-- **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors.
+- **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors. Connector presets are refused on the GPT-6 models, which do not support `connector_id`; use a remote MCP preset or a GPT-5.6 or earlier model for them.
 
 ### `/openai-media image`
 
@@ -51,15 +50,9 @@ Create images using GPT Image models (`gpt-image-2.5-sunburst` (default), `gpt-i
 - Features quality presets (low, medium, high, auto; `xhigh` and `max` on GPT Image 2.5 only) and multiple sizes (portrait, landscape, square). Cost is billed from the token usage each response reports, so an `auto` request costs what the API actually served.
 - `background`: `auto` (default), `opaque`, or `transparent` — transparent returns an alpha PNG (GA on GPT Image 2.5, in preview on GPT Image 2; works on every listed model) for both generation and edits.
 
-### `/openai-media video`
-
-Generate videos from text prompts using OpenAI's Sora models (`sora-2`, `sora-2-pro`).
-
-- Features customizable size options (up to 1080p for Pro) and duration (4–20 seconds).
-
 ### `/openai-tools research`
 
-Run a deep research task using `gpt-6-astra` (default), `gpt-5.6-sol`, `gpt-5.5`, or `gpt-5.5-pro`.
+Run a deep research task using `gpt-6-astra` (default), `gpt-6-sol`, `gpt-5.6-sol`, `gpt-5.5`, or `gpt-5.5-pro`.
 
 - Autonomously searches the web and synthesizes cited reports. Optionally enable `file_search` or `code_interpreter` to enhance analysis.
 
@@ -155,6 +148,8 @@ Configure trusted MCP presets via JSON. Example schema:
   }
 }
 ```
+
+Connector presets (`kind: "connector"`) send a `connector_id`, which the GPT-6 models reject; the bot refuses them on those models before sending the request. Use a `remote_mcp` preset with a `server_url` there, or run the connector on a GPT-5.6 or earlier model.
 
 ### Running the Bot
 

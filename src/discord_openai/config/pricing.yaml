@@ -2,7 +2,7 @@
 #
 # Canonical source: https://developers.openai.com/api/docs/pricing
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-09-15
+# Last-verified: 2026-09-22
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
 # billed at cached_input_per_million when present, else at 50% of input.
@@ -22,11 +22,11 @@
 # cache_write_per_million: GPT-5.6+ bills the tokens WRITTEN to the prompt cache
 # (usage.input_tokens_details.cache_write_tokens) at 1.25x the uncached input
 # rate — the pricing table's "Cache writes" column. Every other row prints "-"
-# there (no surcharge), so only the gpt-5.6 rows declare it; a model without the
-# field bills cache-write tokens as ordinary input.
+# there (no surcharge), so only the gpt-6 and gpt-5.6 rows declare it; a model
+# without the field bills cache-write tokens as ordinary input.
 # `test_gpt_5_6_cache_write_rates_are_125_percent_of_input` pins the ratio.
 #
-# long_context: GPT-5.4 / 5.4 Pro / 5.5 / 5.5 Pro and the GPT-5.6 trio carry a
+# long_context: GPT-5.4 / 5.4 Pro / 5.5 / 5.5 Pro, GPT-5.6 and GPT-6 carry a
 # second tier once a request's prompt exceeds 272K input tokens (pricing page:
 # "Short context <=272K input tokens" / "Long context >272K"; model pages:
 # "prompts with >272K input tokens are priced at 2x input and 1.5x output for
@@ -40,9 +40,9 @@
 # fast: Fast mode (formerly "Priority processing", renamed 2026-07-30) is opted
 # into per request with service_tier "fast" (or "priority"; the response echoes
 # "priority") and bills every bucket at the rates on the pricing page's "Fast
-# mode" tab — 2x standard for the GPT-5.6 trio, other multiples elsewhere.
+# mode" tab — 2x standard for GPT-6 and GPT-5.6, other multiples elsewhere.
 # The tab publishes one rate per model (the GPT-5.5 / 5.4 rows are labelled
-# "<272K context length" ; the GPT-5.6 trio and GPT-6 Astra also publish
+# "<272K context length" ; the GPT-5.6 trio and the GPT-6 models also publish
 # fast long-context rates, nested under `fast.long_context`), so a fast
 # request bills these rates at any prompt size and the long_context block is
 # ignored for it. Rows without the block cannot be requested with Fast mode
@@ -68,6 +68,31 @@ models:
       cached_input_per_million: 2.00
       cache_write_per_million: 25.00
       long_context: { threshold_tokens: 272001, input_per_million: 40.00, output_per_million: 150.00, cached_input_per_million: 4.00, cache_write_per_million: 50.00 }
+  # gpt-6-sol / gpt-6-luna: same tier structure as gpt-6-astra.
+  gpt-6-sol:
+    input_per_million: 2.00
+    output_per_million: 10.00
+    cached_input_per_million: 0.20
+    cache_write_per_million: 2.50
+    long_context: { threshold_tokens: 272001, input_per_million: 4.00, output_per_million: 15.00, cached_input_per_million: 0.40, cache_write_per_million: 5.00 }
+    fast:
+      input_per_million: 4.00
+      output_per_million: 20.00
+      cached_input_per_million: 0.40
+      cache_write_per_million: 5.00
+      long_context: { threshold_tokens: 272001, input_per_million: 8.00, output_per_million: 30.00, cached_input_per_million: 0.80, cache_write_per_million: 10.00 }
+  gpt-6-luna:
+    input_per_million: 0.10
+    output_per_million: 0.50
+    cached_input_per_million: 0.01
+    cache_write_per_million: 0.125
+    long_context: { threshold_tokens: 272001, input_per_million: 0.20, output_per_million: 0.75, cached_input_per_million: 0.02, cache_write_per_million: 0.25 }
+    fast:
+      input_per_million: 0.20
+      output_per_million: 1.00
+      cached_input_per_million: 0.02
+      cache_write_per_million: 0.25
+      long_context: { threshold_tokens: 272001, input_per_million: 0.40, output_per_million: 1.50, cached_input_per_million: 0.04, cache_write_per_million: 0.50 }
   # gpt-5.6-sol: promotional rate, guaranteed at least through 2026-11-21 (changelog 2026-08-21) - re-verify after that date
   gpt-5.6-sol:
     input_per_million: 4.00
@@ -341,22 +366,9 @@ speech_to_text:
   gpt-4o-mini-transcribe:     { per_minute: 0.003 }
   whisper-1:                  { per_minute: 0.006 }
 
-# Video pricing is per second of generated output, tiered by resolution.
-# "default" is the rate charged when no size reaches the cost helper (the API
-# default is 1280x720). sora-2 is flat across every size it supports; only
-# sora-2-pro is tiered, and 1080p is Pro-only.
-# Video rows re-verified against OpenAI's pricing page 2026-07-24
-# (sora-2-pro is tiered by resolution; sora-2 is flat).
-video_generation:
-  sora-2:
-    per_second_by_resolution: { default: 0.10, 720p: 0.10, 1024p: 0.10, 1080p: 0.10 }
-  sora-2-pro:
-    per_second_by_resolution: { default: 0.30, 720p: 0.30, 1024p: 0.50, 1080p: 0.70 }
-
 # Fallbacks used when calculate_*() receives an unknown model id.
 fallbacks:
   unknown_chat_model:   { input_per_million: 2.50, output_per_million: 10.00 }
   unknown_image_model:  { per_image: 0.034 }
   unknown_tts_model:    { per_character: 0.000015 }
   unknown_stt_model:    { per_minute: 0.006 }
-  unknown_video_model:  { per_second: 0.10 }

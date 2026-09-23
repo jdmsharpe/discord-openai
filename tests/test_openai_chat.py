@@ -10,6 +10,8 @@ from discord_openai.cogs.openai.chat import (
     handle_on_message,
     run_chat_command,
 )
+from discord_openai.cogs.openai.tooling import resolve_selected_tools
+from discord_openai.config.mcp import OpenAIMcpPreset
 from discord_openai.util import ResponseParameters
 
 
@@ -216,6 +218,63 @@ class TestRunChatCommand:
         assert "`pro`" in embeds[0].description
         assert "`gpt-5.5`" in embeds[0].description
         assert "`gpt-5.6-sol`" in embeds[0].description
+
+    @pytest.mark.asyncio
+    async def test_chat_command_rejects_connector_preset_on_default_model_before_request(self):
+        """The GPT-6 models 400 on an `mcp` tool carrying `connector_id`."""
+        create = AsyncMock()
+        cog = SimpleNamespace(
+            conversation_histories={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=resolve_selected_tools,
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(),
+        )
+        connector = OpenAIMcpPreset(
+            name="dropbox",
+            kind="connector",
+            server_label="Dropbox",
+            connector_id="connector_dropbox",
+        )
+
+        with patch.dict(
+            "discord_openai.config.mcp.OPENAI_MCP_PRESETS", {"dropbox": connector}, clear=True
+        ):
+            await run_chat_command(
+                cog,
+                ctx,
+                prompt="hi",
+                persona="You are helpful.",
+                model="gpt-6-astra",
+                attachment=None,
+                temperature=None,
+                top_p=None,
+                reasoning_effort=None,
+                verbosity=None,
+                web_search=False,
+                code_interpreter=False,
+                file_search=False,
+                shell=False,
+                mcp="dropbox",
+            )
+
+        create.assert_not_awaited()
+        assert 789 not in cog.conversation_histories
+        ctx.send_followup.assert_awaited_once()
+        kwargs = ctx.send_followup.await_args.kwargs
+        embeds = kwargs.get("embeds") or [kwargs["embed"]]
+        assert embeds[0].title == "Error"
+        assert "`dropbox`" in embeds[0].description
+        assert "`gpt-6-astra`" in embeds[0].description
+        assert "`remote_mcp`" in embeds[0].description
 
     @pytest.mark.asyncio
     async def test_chat_command_rejects_fast_mode_on_unpriced_model_before_request(self):

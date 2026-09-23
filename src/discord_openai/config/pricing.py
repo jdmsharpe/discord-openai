@@ -36,7 +36,6 @@ _TOOLS: dict[str, dict[str, Any]] = _RAW.get("tools") or {}
 _IMAGE: dict[str, dict[str, Any]] = _RAW.get("image_generation") or {}
 _TTS: dict[str, dict[str, Any]] = _RAW.get("text_to_speech") or {}
 _STT: dict[str, dict[str, Any]] = _RAW.get("speech_to_text") or {}
-_VIDEO: dict[str, dict[str, Any]] = _RAW.get("video_generation") or {}
 _FALLBACKS: dict[str, dict[str, Any]] = _RAW.get("fallbacks") or {}
 
 
@@ -101,7 +100,7 @@ def _long_context_tier(cfg: dict[str, Any]) -> LongContextTier:
     }
 
 
-# Long-context tiers (GPT-5.4 / 5.5 / 5.6 families: prompts over 272K input tokens
+# Long-context tiers (GPT-5.4 / 5.5 / 5.6 / 6 families: prompts over 272K input tokens
 # bill the whole request at the tier rates). Models absent here bill flat.
 LONG_CONTEXT_PRICING: dict[str, LongContextTier] = {
     model_id: _long_context_tier(cfg["long_context"])
@@ -113,7 +112,7 @@ LONG_CONTEXT_PRICING: dict[str, LongContextTier] = {
 class FastTier(TypedDict):
     """Fast-mode rates a model bills at when the request ran under
     ``service_tier`` "fast" / "priority". ``long_context`` is the fast-mode
-    long-context tier where the page publishes one (GPT-5.6 trio, GPT-6 Astra);
+    long-context tier where the page publishes one (GPT-5.6 trio, GPT-6 models);
     None means the fast rate is flat at any prompt size."""
 
     input_per_million: float
@@ -198,16 +197,6 @@ STT_PRICING_PER_MINUTE: dict[str, float] = {
     model_id: float(cfg["per_minute"]) for model_id, cfg in _STT.items()
 }
 
-# Per-second video rates nested per model → resolution tier ("720p", "1024p",
-# "1080p"), with "default" used when the caller has no size to map.
-VIDEO_PRICING_PER_SECOND: dict[str, dict[str, float]] = {
-    model_id: {
-        resolution: float(price)
-        for resolution, price in (cfg.get("per_second_by_resolution") or {}).items()
-    }
-    for model_id, cfg in _VIDEO.items()
-}
-
 
 def _fallback(key: str, field: str, default: float) -> float:
     value = (_FALLBACKS.get(key) or {}).get(field)
@@ -221,7 +210,6 @@ UNKNOWN_CHAT_MODEL_PRICING: tuple[float, float] = (
 UNKNOWN_IMAGE_MODEL_PRICING: float = _fallback("unknown_image_model", "per_image", 0.034)
 UNKNOWN_TTS_MODEL_PRICING: float = _fallback("unknown_tts_model", "per_character", 0.000015)
 UNKNOWN_STT_MODEL_PRICING: float = _fallback("unknown_stt_model", "per_minute", 0.006)
-UNKNOWN_VIDEO_MODEL_PRICING: float = _fallback("unknown_video_model", "per_second", 0.10)
 
 
 __all__ = [
@@ -239,7 +227,5 @@ __all__ = [
     "UNKNOWN_IMAGE_MODEL_PRICING",
     "UNKNOWN_STT_MODEL_PRICING",
     "UNKNOWN_TTS_MODEL_PRICING",
-    "UNKNOWN_VIDEO_MODEL_PRICING",
-    "VIDEO_PRICING_PER_SECOND",
     "LongContextTier",
 ]

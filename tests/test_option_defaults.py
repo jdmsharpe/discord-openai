@@ -55,7 +55,7 @@ from discord_openai.cogs.openai.cog import OpenAICog
 #: Matches the ``(default: X)`` clause conventionally used in option descriptions.
 DEFAULT_CLAIM_RE = re.compile(r"\(default:\s*([^)]+)\)", re.I)
 
-#: Strips a trailing parenthetical: ``"Sora 2 (Fast)"`` -> ``"Sora 2"``.
+#: Strips a trailing parenthetical: ``"Translation (into English)"`` -> ``"Translation"``.
 PARENTHETICAL_RE = re.compile(r"\s*\(.*")
 
 #: Anchors every match so the claim may not CONTINUE the matched text into a longer
@@ -249,7 +249,7 @@ DEFAULT_CLAIMS, UNASSERTABLE_OPTIONS = _discover_default_claims()
 #: two things — a real change to the command surface, or a discovery regression — and both
 #: deserve a human look before the number moves. Never "fix" a mismatch by relaxing the
 #: comparison back to an inequality.
-EXPECTED_ASSERTABLE_OPTIONS = 14
+EXPECTED_ASSERTABLE_OPTIONS = 11
 EXPECTED_UNASSERTABLE_OPTIONS = 0
 
 

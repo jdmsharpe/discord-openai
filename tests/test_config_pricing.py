@@ -49,11 +49,24 @@ class TestPricingLoader:
             "cache_write_per_million": 25.00,
         }
 
+    def test_gpt_6_sol_and_luna_rates_are_pinned(self):
+        """gpt-6-sol: $2 / $0.20 cached / $2.50 cache write / $10; gpt-6-luna: $0.10 /
+        $0.01 / $0.125 / $0.50."""
+        pricing = _reload_pricing()
+        assert pricing.MODEL_PRICING["gpt-6-sol"] == (2.00, 10.00)
+        assert pricing.CACHED_INPUT_PRICING["gpt-6-sol"] == 0.20
+        assert pricing.CACHE_WRITE_PRICING["gpt-6-sol"] == 2.50
+        assert pricing.MODEL_PRICING["gpt-6-luna"] == (0.10, 0.50)
+        assert pricing.CACHED_INPUT_PRICING["gpt-6-luna"] == 0.01
+        assert pricing.CACHE_WRITE_PRICING["gpt-6-luna"] == 0.125
+
     def test_gpt_5_6_cache_write_rates_are_pinned(self):
-        """Cache writes (1.25x input) are declared on gpt-6-astra and the three gpt-5.6 rows only."""
+        """Cache writes (1.25x input) are declared on the GPT-6 and GPT-5.6 rows only."""
         pricing = _reload_pricing()
         assert pricing.CACHE_WRITE_PRICING == {
             "gpt-6-astra": 12.50,
+            "gpt-6-sol": 2.50,
+            "gpt-6-luna": 0.125,
             "gpt-5.6-sol": 5.00,
             "gpt-5.6-terra": 2.50,
             "gpt-5.6-luna": 0.25,
@@ -62,7 +75,7 @@ class TestPricingLoader:
     def test_long_context_tiers_are_pinned(self):
         """Prompts over 272K input tokens bill 2x input / 1.5x output for the whole request.
 
-        Published for the GPT-5.4 / 5.5 / 5.6 families only (pricing page tooltips
+        Published for the GPT-5.4 / 5.5 / 5.6 / 6 families only (pricing page tooltips
         "Short context <=272K" / "Long context >272K"; model pages: "for the full
         session"). Cache writes double with the input rate; the Pro tiers publish no
         cached rate at either tier.
@@ -70,6 +83,8 @@ class TestPricingLoader:
         pricing = _reload_pricing()
         assert set(pricing.LONG_CONTEXT_PRICING) == {
             "gpt-6-astra",
+            "gpt-6-sol",
+            "gpt-6-luna",
             "gpt-5.6-sol",
             "gpt-5.6-terra",
             "gpt-5.6-luna",
@@ -77,6 +92,20 @@ class TestPricingLoader:
             "gpt-5.5-pro",
             "gpt-5.4",
             "gpt-5.4-pro",
+        }
+        assert pricing.LONG_CONTEXT_PRICING["gpt-6-sol"] == {
+            "threshold_tokens": 272001,
+            "input_per_million": 4.00,
+            "output_per_million": 15.00,
+            "cached_input_per_million": 0.40,
+            "cache_write_per_million": 5.00,
+        }
+        assert pricing.LONG_CONTEXT_PRICING["gpt-6-luna"] == {
+            "threshold_tokens": 272001,
+            "input_per_million": 0.20,
+            "output_per_million": 0.75,
+            "cached_input_per_million": 0.02,
+            "cache_write_per_million": 0.25,
         }
         assert pricing.LONG_CONTEXT_PRICING["gpt-5.6-sol"] == {
             "threshold_tokens": 272001,
@@ -166,22 +195,10 @@ class TestPricingLoader:
         assert pricing.IMAGE_PRICING_DEFAULTS["gpt-image-2"] == 0.053
         assert pricing.IMAGE_PRICING_DEFAULTS["gpt-image-1.5"] == 0.034
 
-    def test_bundled_yaml_loads_tts_stt_video(self):
+    def test_bundled_yaml_loads_tts_stt(self):
         pricing = _reload_pricing()
         assert pricing.TTS_PRICING_PER_CHAR["tts-1"] == 0.000015
         assert pricing.STT_PRICING_PER_MINUTE["whisper-1"] == 0.006
-        assert pricing.VIDEO_PRICING_PER_SECOND["sora-2"] == {
-            "default": 0.10,
-            "720p": 0.10,
-            "1024p": 0.10,
-            "1080p": 0.10,
-        }
-        assert pricing.VIDEO_PRICING_PER_SECOND["sora-2-pro"] == {
-            "default": 0.30,
-            "720p": 0.30,
-            "1024p": 0.50,
-            "1080p": 0.70,
-        }
 
     def test_fallback_constants_loaded(self):
         pricing = _reload_pricing()
@@ -189,7 +206,6 @@ class TestPricingLoader:
         assert pricing.UNKNOWN_IMAGE_MODEL_PRICING == 0.034
         assert pricing.UNKNOWN_TTS_MODEL_PRICING == 0.000015
         assert pricing.UNKNOWN_STT_MODEL_PRICING == 0.006
-        assert pricing.UNKNOWN_VIDEO_MODEL_PRICING == 0.10
 
     def test_env_var_override_path(self, monkeypatch, tmp_path: Path):
         custom_yaml = tmp_path / "custom-pricing.yaml"
@@ -216,15 +232,11 @@ class TestPricingLoader:
                 speech_to_text:
                   fake-stt:
                     per_minute: 0.02
-                video_generation:
-                  fake-video:
-                    per_second_by_resolution: { default: 0.5, 1080p: 0.9 }
                 fallbacks:
                   unknown_chat_model: { input_per_million: 42.0, output_per_million: 100.0 }
                   unknown_image_model: { per_image: 0.5 }
                   unknown_tts_model: { per_character: 0.0005 }
                   unknown_stt_model: { per_minute: 0.1 }
-                  unknown_video_model: { per_second: 1.0 }
                 """
             ).strip()
         )
@@ -239,20 +251,20 @@ class TestPricingLoader:
         assert pricing.IMAGE_PRICING[("fake-image", "high", "1024x1024")] == 1.23
         assert pricing.IMAGE_PRICING_DEFAULTS == {"fake-image": 0.99}
         assert pricing.UNKNOWN_CHAT_MODEL_PRICING == (42.0, 100.0)
-        assert pricing.VIDEO_PRICING_PER_SECOND == {"fake-video": {"default": 0.5, "1080p": 0.9}}
-        assert pricing.UNKNOWN_VIDEO_MODEL_PRICING == 1.0
 
 
 class TestFastTiers:
     """Fast mode (`service_tier: "fast"` / "priority") rates from the pricing page's
     "Fast mode" tab, 2026-09-15. One flat rate per model, except the GPT-5.6 trio and
-    GPT-6 Astra, whose fast rows carry their own long-context tier."""
+    the GPT-6 models, whose fast rows carry their own long-context tier."""
 
     def test_fast_tiers_are_pinned(self):
         pricing = _reload_pricing()
         expected = {
             # model: (input, output, cached input, cache write)
             "gpt-6-astra": (20.00, 100.00, 2.00, 25.00),
+            "gpt-6-sol": (4.00, 20.00, 0.40, 5.00),
+            "gpt-6-luna": (0.20, 1.00, 0.02, 0.25),
             "gpt-5.6-sol": (8.00, 40.00, 0.80, 10.00),
             "gpt-5.6-terra": (4.00, 24.00, 0.40, 5.00),
             "gpt-5.6-luna": (0.40, 2.40, 0.04, 0.50),
@@ -285,6 +297,8 @@ class TestFastTiers:
         expected = {
             # model: (input, output, cached input, cache write)
             "gpt-6-astra": (40.00, 150.00, 4.00, 50.00),
+            "gpt-6-sol": (8.00, 30.00, 0.80, 10.00),
+            "gpt-6-luna": (0.40, 1.50, 0.04, 0.50),
             "gpt-5.6-sol": (16.00, 60.00, 1.60, 20.00),
             "gpt-5.6-terra": (8.00, 36.00, 0.80, 10.00),
             "gpt-5.6-luna": (0.80, 3.60, 0.08, 1.00),

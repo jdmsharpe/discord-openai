@@ -2,6 +2,8 @@ from discord.commands import OptionChoice
 
 CHAT_MODEL_CHOICES = [
     OptionChoice(name="GPT-6 Astra", value="gpt-6-astra"),
+    OptionChoice(name="GPT-6 Sol", value="gpt-6-sol"),
+    OptionChoice(name="GPT-6 Luna", value="gpt-6-luna"),
     OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
     OptionChoice(name="GPT-5.6 Terra", value="gpt-5.6-terra"),
     OptionChoice(name="GPT-5.6 Luna", value="gpt-5.6-luna"),
@@ -35,13 +37,13 @@ REASONING_EFFORT_CHOICES = [
     OptionChoice(name="Medium", value="medium"),
     OptionChoice(name="High", value="high"),
     OptionChoice(name="Extra High (GPT-5.2 and newer)", value="xhigh"),
-    OptionChoice(name="Max (deepest; GPT-6 Astra and GPT-5.6)", value="max"),
+    OptionChoice(name="Max (deepest; GPT-6 and GPT-5.6)", value="max"),
 ]
 
 REASONING_MODE_CHOICES = [
     OptionChoice(name="Standard (default)", value="standard"),
     OptionChoice(
-        name="Pro (GPT-6 Astra / GPT-5.6 only; several times the tokens and cost, slower)",
+        name="Pro (GPT-6 / GPT-5.6 only; several times the tokens and cost, slower)",
         value="pro",
     ),
 ]
@@ -134,30 +136,9 @@ STT_ACTION_CHOICES = [
     OptionChoice(name="Translation (into English)", value="translation"),
 ]
 
-VIDEO_MODEL_CHOICES = [
-    OptionChoice(name="Sora 2 (Fast)", value="sora-2"),
-    OptionChoice(name="Sora 2 Pro (High Quality)", value="sora-2-pro"),
-]
-
-VIDEO_SIZE_CHOICES = [
-    OptionChoice(name="Landscape (1280x720)", value="1280x720"),
-    OptionChoice(name="Portrait (720x1280)", value="720x1280"),
-    OptionChoice(name="Wide Landscape (1792x1024)", value="1792x1024"),
-    OptionChoice(name="Tall Portrait (1024x1792)", value="1024x1792"),
-    OptionChoice(name="1080p Landscape (1920x1080, Pro only)", value="1920x1080"),
-    OptionChoice(name="1080p Portrait (1080x1920, Pro only)", value="1080x1920"),
-]
-
-VIDEO_SECONDS_CHOICES = [
-    OptionChoice(name="4 seconds", value="4"),
-    OptionChoice(name="8 seconds", value="8"),
-    OptionChoice(name="12 seconds", value="12"),
-    OptionChoice(name="16 seconds", value="16"),
-    OptionChoice(name="20 seconds", value="20"),
-]
-
 RESEARCH_MODEL_CHOICES = [
     OptionChoice(name="GPT-6 Astra", value="gpt-6-astra"),
+    OptionChoice(name="GPT-6 Sol", value="gpt-6-sol"),
     OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
     OptionChoice(name="GPT-5.5", value="gpt-5.5"),
     OptionChoice(name="GPT-5.5 Pro", value="gpt-5.5-pro"),

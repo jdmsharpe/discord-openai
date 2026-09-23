@@ -17,10 +17,10 @@ from discord_openai.cogs.openai.command_options import (
     STT_MODEL_CHOICES,
     TTS_MODEL_CHOICES,
     TTS_VOICE_CHOICES,
-    VIDEO_MODEL_CHOICES,
 )
 from discord_openai.config.pricing import TTS_PRICING_PER_CHAR
 from discord_openai.util import (
+    DEEP_RESEARCH_MODELS,
     MODEL_SUPPORTED_TTS_VOICES,
     PRO_MODE_MODELS,
     REASONING_MODELS,
@@ -85,6 +85,14 @@ class TestOpenAICog:
         tools, error = cog.resolve_selected_tools(["shell"], "gpt-5.2")
         assert error is None
         assert tools[0]["type"] == "shell"
+
+    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"])
+    async def test_resolve_selected_tools_allows_shell_on_gpt_6_models(self, model):
+        """The hosted shell tool is accepted on the GPT-6 models, the chat default included."""
+        cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
+        tools, error = cog.resolve_selected_tools(["shell"], model)
+        assert error is None
+        assert tools == [{"type": "shell", "environment": {"type": "container_auto"}}]
 
     async def test_on_ready_logs_bot_user_id_instead_of_owner_id(self):
         cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
@@ -156,7 +164,6 @@ class TestOpenAICog:
         )
         assert OpenAICog.tts.callback.__defaults__ == ("gpt-4o-mini-tts", "marin", "", "mp3", 1.0)
         assert OpenAICog.stt.callback.__defaults__ == ("gpt-transcribe", "transcription")
-        assert OpenAICog.video.callback.__defaults__ == ("sora-2", "1280x720", "8")
         assert OpenAICog.research.callback.__defaults__ == ("gpt-6-astra", False, False)
 
     def test_registered_command_groups_fit_discord_size_limit(self):
@@ -172,7 +179,6 @@ class TestOpenAICog:
         ]
         assert [command.name for command in commands_by_name["openai-media"].subcommands] == [
             "image",
-            "video",
         ]
         assert [command.name for command in commands_by_name["openai-tools"].subcommands] == [
             "tts",
@@ -196,17 +202,20 @@ class TestOpenAICog:
 
     def test_critical_choice_values_present(self):
         assert any(choice.value == "gpt-6-astra" for choice in CHAT_MODEL_CHOICES)
+        assert any(choice.value == "gpt-6-sol" for choice in CHAT_MODEL_CHOICES)
+        assert any(choice.value == "gpt-6-luna" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.6-sol" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-2.5-sunburst" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-2.5-flare" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-astra" for choice in RESEARCH_MODEL_CHOICES)
+        assert any(choice.value == "gpt-6-sol" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.4" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-1.5" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "marin" for choice in TTS_VOICE_CHOICES)
         assert any(choice.value == "gpt-transcribe" for choice in STT_MODEL_CHOICES)
-        assert any(choice.value == "sora-2" for choice in VIDEO_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.6-sol" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.5" for choice in RESEARCH_MODEL_CHOICES)
+        assert [choice.value for choice in RESEARCH_MODEL_CHOICES] == DEEP_RESEARCH_MODELS
 
     def test_reasoning_effort_choice_set(self):
         values = {choice.value for choice in REASONING_EFFORT_CHOICES}

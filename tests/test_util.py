@@ -6,7 +6,6 @@ import httpx2
 import pytest
 from openai import APIError
 
-from discord_openai.cogs.openai.command_options import VIDEO_SIZE_CHOICES
 from discord_openai.cogs.openai.tooling import (
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
@@ -26,21 +25,20 @@ from discord_openai.util import (
     INPUT_IMAGE_TYPE,
     INPUT_TEXT_TYPE,
     MODEL_PRICING,
+    NO_SAMPLING_MODELS,
     PRO_MODE_MODELS,
     PROMPT_CACHE_RETENTION,
+    REASONING_BY_DEFAULT_MODELS,
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
     REASONING_EFFORT_ORDER,
     STT_PRICING_PER_MINUTE,
     SUPPORTED_REASONING_EFFORTS,
     TTS_PRICING_PER_CHAR,
-    VIDEO_PRICING_PER_SECOND,
-    VIDEO_SIZE_RESOLUTIONS,
     ImageGenerationParameters,
     ResearchParameters,
     ResponseParameters,
     TextToSpeechParameters,
-    VideoGenerationParameters,
     _extract_response_error_info,
     _parse_error_payload,
     build_attachment_content_block,
@@ -51,7 +49,6 @@ from discord_openai.util import (
     calculate_stt_cost,
     calculate_tool_cost,
     calculate_tts_cost,
-    calculate_video_cost,
     chunk_text,
     estimate_audio_duration_seconds,
     extract_usage,
@@ -478,65 +475,6 @@ class TestTextToSpeechParameters:
         assert params.instructions == "whisper tone"
 
 
-class TestVideoGenerationParameters:
-    def test_to_dict(self):
-        params = VideoGenerationParameters(
-            prompt="A cat playing piano",
-            model="sora-2",
-            size="1280x720",
-            seconds="8",
-        )
-        result = params.to_dict()
-        assert result["prompt"] == "A cat playing piano"
-        assert result["model"] == "sora-2"
-        assert result["size"] == "1280x720"
-        assert result["seconds"] == "8"
-
-    def test_defaults(self):
-        params = VideoGenerationParameters(prompt="Test video")
-        result = params.to_dict()
-        assert result["prompt"] == "Test video"
-        assert result["model"] == "sora-2"
-        assert result["size"] == "1280x720"
-        assert result["seconds"] == "8"
-
-    def test_sora_pro_model(self):
-        params = VideoGenerationParameters(
-            prompt="High quality video",
-            model="sora-2-pro",
-            size="1792x1024",
-            seconds="12",
-        )
-        result = params.to_dict()
-        assert result["model"] == "sora-2-pro"
-        assert result["size"] == "1792x1024"
-        assert result["seconds"] == "12"
-
-    def test_portrait_size(self):
-        params = VideoGenerationParameters(
-            prompt="Portrait video",
-            size="720x1280",
-        )
-        result = params.to_dict()
-        assert result["size"] == "720x1280"
-
-    def test_tall_portrait_size(self):
-        params = VideoGenerationParameters(
-            prompt="Tall portrait video",
-            size="1024x1792",
-        )
-        result = params.to_dict()
-        assert result["size"] == "1024x1792"
-
-    def test_four_seconds(self):
-        params = VideoGenerationParameters(
-            prompt="Short video",
-            seconds="4",
-        )
-        result = params.to_dict()
-        assert result["seconds"] == "4"
-
-
 class TestResearchParameters:
     def test_defaults(self):
         params = ResearchParameters(prompt="Test research")
@@ -568,10 +506,13 @@ class TestResearchParameters:
         assert result["background"] is True
 
     def test_deep_research_models_constant(self):
-        assert DEEP_RESEARCH_MODELS[0] == "gpt-6-astra"
-        assert "gpt-5.6-sol" in DEEP_RESEARCH_MODELS
-        assert "gpt-5.5" in DEEP_RESEARCH_MODELS
-        assert "gpt-5.5-pro" in DEEP_RESEARCH_MODELS
+        assert DEEP_RESEARCH_MODELS == [
+            "gpt-6-astra",
+            "gpt-6-sol",
+            "gpt-5.6-sol",
+            "gpt-5.5",
+            "gpt-5.5-pro",
+        ]
 
     def test_deep_research_models_have_pricing(self):
         for model in DEEP_RESEARCH_MODELS:
@@ -922,6 +863,8 @@ class TestModelPricing:
     CACHED_DISCOUNT_BY_MODEL: ClassVar[dict[str, float]] = {
         # gpt-5 family and newer: 90% off
         "gpt-6-astra": 0.10,
+        "gpt-6-sol": 0.10,
+        "gpt-6-luna": 0.10,
         "gpt-5.6-sol": 0.10,
         "gpt-5.6-terra": 0.10,
         "gpt-5.6-luna": 0.10,
@@ -1086,73 +1029,6 @@ class TestSttPricing:
         # Falls back to compressed rate
         duration = estimate_audio_duration_seconds(160_000, "audio.ogg")
         assert duration == pytest.approx(10.0)
-
-
-class TestVideoPricing:
-    def test_all_models_have_pricing(self):
-        """Derived from the menu, not a hardcoded list.
-
-        The size guard below iterates VIDEO_SIZE_CHOICES; keeping the model
-        guard symmetric means a new video model added to the menu without a
-        pricing row fails here instead of silently billing the fail-open
-        UNKNOWN_VIDEO_MODEL_PRICING rate — the same defect class as the
-        flat-rate sora-2-pro under-billing this release fixes.
-        """
-        from discord_openai.cogs.openai.command_options import VIDEO_MODEL_CHOICES
-
-        for choice in VIDEO_MODEL_CHOICES:
-            assert choice.value in VIDEO_PRICING_PER_SECOND
-
-    @pytest.mark.parametrize(
-        "size",
-        ["1280x720", "720x1280", "1792x1024", "1024x1792", "1920x1080", "1080x1920"],
-    )
-    def test_calculate_sora_2_is_flat_across_resolutions(self, size):
-        # sora-2 is $0.10/sec at every size; only Pro is tiered.
-        cost = calculate_video_cost("sora-2", 8, size)
-        assert cost == pytest.approx(0.80)
-
-    @pytest.mark.parametrize(
-        "size,per_second",
-        [
-            ("1280x720", 0.30),
-            ("720x1280", 0.30),
-            ("1792x1024", 0.50),
-            ("1024x1792", 0.50),
-            ("1920x1080", 0.70),
-            ("1080x1920", 0.70),
-        ],
-    )
-    def test_calculate_sora_2_pro_tiers(self, size, per_second):
-        cost = calculate_video_cost("sora-2-pro", 20, size)
-        assert cost == pytest.approx(20 * per_second)
-
-    def test_worst_case_pro_1080p_is_not_under_reported(self):
-        # 20s of 1080p Pro is the most expensive request the slash command can
-        # place: $14.00, not the $4.00 the old flat $0.20/sec rate reported.
-        assert calculate_video_cost("sora-2-pro", 20, "1920x1080") == pytest.approx(14.00)
-
-    def test_omitted_size_uses_default_rate(self):
-        assert calculate_video_cost("sora-2", 8) == pytest.approx(0.80)
-        assert calculate_video_cost("sora-2-pro", 8) == pytest.approx(2.40)
-
-    def test_unknown_size_fails_safe_to_priciest_tier(self):
-        # An unpriced size must over-report, never silently under-bill.
-        assert calculate_video_cost("sora-2-pro", 10, "3840x2160") == pytest.approx(7.00)
-        assert calculate_video_cost("sora-2", 10, "3840x2160") == pytest.approx(1.00)
-
-    def test_every_size_choice_is_priced(self):
-        # Guard: a size offered by the slash command but missing from the tier
-        # map would bill at the fail-safe rate instead of its real price.
-        for choice in VIDEO_SIZE_CHOICES:
-            assert choice.value in VIDEO_SIZE_RESOLUTIONS
-            resolution = VIDEO_SIZE_RESOLUTIONS[choice.value]
-            for model in ["sora-2", "sora-2-pro"]:
-                assert resolution in VIDEO_PRICING_PER_SECOND[model]
-
-    def test_calculate_unknown_model(self):
-        cost = calculate_video_cost("unknown-video", 10)
-        assert cost == pytest.approx(1.00)  # default $0.10/sec
 
 
 class TestFormatOpenAIError:
@@ -1360,6 +1236,8 @@ class TestSupportedReasoningEfforts:
     # effort: 2026-07-13 (5.6 minimal) and 2026-08-28 (everything else).
     PROBED: ClassVar[dict[str, set[str]]] = {
         "gpt-6-astra": {"low", "medium", "high", "xhigh", "max"},  # 2026-09-15
+        "gpt-6-sol": {"none", "low", "medium", "high", "xhigh", "max"},  # 2026-09-22
+        "gpt-6-luna": {"none", "low", "medium", "high", "xhigh", "max"},  # 2026-09-22
         "gpt-5.6-sol": {"none", "low", "medium", "high", "xhigh", "max"},
         "gpt-5.6-terra": {"none", "low", "medium", "high", "xhigh", "max"},
         "gpt-5.6-luna": {"none", "low", "medium", "high", "xhigh", "max"},
@@ -1395,6 +1273,8 @@ class TestSupportedReasoningEfforts:
         [
             ("gpt-6-astra", "none"),
             ("gpt-6-astra", "minimal"),
+            ("gpt-6-sol", "minimal"),
+            ("gpt-6-luna", "minimal"),
             ("gpt-5.6-sol", "minimal"),
             ("gpt-5", "none"),
             ("gpt-5.5", "max"),
@@ -1407,7 +1287,10 @@ class TestSupportedReasoningEfforts:
         assert f"`{effort}`" in error
         assert f"`{model}`" in error
 
-    @pytest.mark.parametrize("model,effort", [("gpt-5.6-sol", "max"), ("gpt-5.1", "none")])
+    @pytest.mark.parametrize(
+        "model,effort",
+        [("gpt-5.6-sol", "max"), ("gpt-5.1", "none"), ("gpt-6-sol", "none"), ("gpt-6-luna", "max")],
+    )
     def test_accepts_supported_combination(self, model, effort):
         assert reasoning_effort_error(model, effort) is None
 
@@ -1430,7 +1313,14 @@ class TestSupportedReasoningEfforts:
 class TestReasoningModeError:
     """Pin the pro-mode model set and the chat-path gate built on it."""
 
-    PRO_IDS: ClassVar[set[str]] = {"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+    PRO_IDS: ClassVar[set[str]] = {
+        "gpt-6-astra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+    }
 
     def test_pro_mode_models_match_probed_results(self):
         """Exact pin (probed 2026-08-28): gpt-5.5 400s on reasoning.mode, 5.5-pro is a no-op."""
@@ -1660,6 +1550,81 @@ class TestGpt6AstraRequestShape:
         )
         assert params.to_dict()["reasoning"] == {"effort": "low", "mode": "pro", "summary": "auto"}
         assert reasoning_mode_error("gpt-6-astra", "pro") is None
+
+
+class TestSamplingParametersWithoutEffort:
+    """temperature/top_p on models that reason when the request sends no effort.
+
+    The Pro tiers have no `none` effort, so they never accept temperature/top_p. GPT-6
+    Sol/Luna, the GPT-5.6 trio and GPT-5.5 reason at medium when no effort is sent and
+    accept them only at an explicit effort `none`. GPT-5.4 and older accept them with
+    no effort.
+    """
+
+    REASONING_BY_DEFAULT: ClassVar[set[str]] = {
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5",
+    }
+    PRO_TIERS: ClassVar[set[str]] = {"gpt-5.5-pro", "gpt-5.4-pro", "gpt-5.2-pro", "gpt-5-pro"}
+    ACCEPTS_WITHOUT_EFFORT: ClassVar[set[str]] = {
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "gpt-5.4-nano",
+        "gpt-5.2",
+        "gpt-5.1",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4o-mini",
+    }
+
+    def test_model_sets_are_pinned(self):
+        assert set(REASONING_BY_DEFAULT_MODELS) == self.REASONING_BY_DEFAULT
+        assert self.PRO_TIERS <= NO_SAMPLING_MODELS
+        assert not REASONING_BY_DEFAULT_MODELS & NO_SAMPLING_MODELS
+        assert not self.ACCEPTS_WITHOUT_EFFORT & (REASONING_BY_DEFAULT_MODELS | NO_SAMPLING_MODELS)
+
+    @pytest.mark.parametrize("model", sorted(REASONING_BY_DEFAULT))
+    def test_no_effort_drops_sampling(self, model):
+        payload = ResponseParameters(model=model, temperature=0.5, top_p=0.9).to_dict()
+        assert "temperature" not in payload
+        assert "top_p" not in payload
+        assert "reasoning" not in payload
+
+    @pytest.mark.parametrize("model", sorted(REASONING_BY_DEFAULT))
+    def test_effort_none_keeps_sampling(self, model):
+        payload = ResponseParameters(
+            model=model,
+            temperature=0.5,
+            top_p=0.9,
+            reasoning={"effort": "none", "summary": "auto"},
+        ).to_dict()
+        assert payload["temperature"] == 0.5
+        assert payload["top_p"] == 0.9
+
+    def test_explicit_effort_above_none_drops_sampling(self):
+        payload = ResponseParameters(
+            model="gpt-5.6-luna", temperature=0.5, reasoning={"effort": "medium", "summary": "auto"}
+        ).to_dict()
+        assert "temperature" not in payload
+
+    @pytest.mark.parametrize("model", sorted(PRO_TIERS))
+    @pytest.mark.parametrize("reasoning", [None, {"effort": "high", "summary": "auto"}])
+    def test_pro_tiers_never_send_sampling(self, model, reasoning):
+        payload = ResponseParameters(
+            model=model, temperature=0.5, top_p=0.9, reasoning=reasoning
+        ).to_dict()
+        assert "temperature" not in payload
+        assert "top_p" not in payload
+
+    @pytest.mark.parametrize("model", sorted(ACCEPTS_WITHOUT_EFFORT))
+    def test_older_models_keep_sampling_without_effort(self, model):
+        payload = ResponseParameters(model=model, temperature=0.5, top_p=0.9).to_dict()
+        assert payload["temperature"] == 0.5
+        assert payload["top_p"] == 0.9
 
 
 class TestImageCostFromUsage:

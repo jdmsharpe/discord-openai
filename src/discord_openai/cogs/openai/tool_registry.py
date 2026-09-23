@@ -42,8 +42,8 @@ def _file_search_availability(_: str) -> str | None:
 
 
 def _shell_availability(model: str) -> str | None:
-    if not model.startswith("gpt-5"):
-        return "Shell currently requires a GPT-5 series model in this bot configuration."
+    if not model.startswith(("gpt-5", "gpt-6")):
+        return "Shell requires a GPT-5 or GPT-6 series model."
     return None
 
 

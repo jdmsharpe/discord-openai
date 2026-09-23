@@ -216,6 +216,26 @@ class TestResolveSelectedTools:
             {"type": "mcp", "server_label": "GitHub"},
         ]
 
+    def test_resolve_selected_tools_refuses_connector_preset_on_gpt_6(self):
+        connector = OpenAIMcpPreset(
+            name="dropbox",
+            kind="connector",
+            server_label="Dropbox",
+            connector_id="connector_dropbox",
+        )
+        with patch.dict(
+            "discord_openai.config.mcp.OPENAI_MCP_PRESETS", {"dropbox": connector}, clear=True
+        ):
+            tools, error = resolve_selected_tools(["web_search"], "gpt-6-astra", ["dropbox"])
+            assert tools == []
+            assert error is not None
+            assert "`dropbox`" in error
+            assert "`remote_mcp`" in error
+
+            tools, error = resolve_selected_tools(["web_search"], "gpt-5.6-sol", ["dropbox"])
+            assert error is None
+            assert tools[-1]["connector_id"] == "connector_dropbox"
+
 
 class TestToolRegistrySync:
     def test_tool_select_options_match_registry_keys(self):

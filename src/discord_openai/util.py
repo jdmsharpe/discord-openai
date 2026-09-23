@@ -24,8 +24,6 @@ from discord_openai.config.pricing import (
     UNKNOWN_IMAGE_MODEL_PRICING,
     UNKNOWN_STT_MODEL_PRICING,
     UNKNOWN_TTS_MODEL_PRICING,
-    UNKNOWN_VIDEO_MODEL_PRICING,
-    VIDEO_PRICING_PER_SECOND,
 )
 
 CHUNK_TEXT_SIZE = 3500  # Maximum number of characters in each text chunk.
@@ -130,7 +128,7 @@ def calculate_cost(
     "priority" bills every bucket at the model's Fast-mode rates (``FAST_TIER_PRICING``),
     falling back to the standard rates for a model without a fast row; anything else
     (None, "default", "flex", ...) bills standard. A fast row with its own
-    ``long_context`` tier (GPT-5.6 trio, GPT-6 Astra) bills that tier once the prompt
+    ``long_context`` tier (GPT-5.6 trio, GPT-6 models) bills that tier once the prompt
     reaches its threshold; other fast rows are flat at any prompt size.
 
     Cached input tokens are billed at the model's cached_input_per_million rate
@@ -140,7 +138,7 @@ def calculate_cost(
     input = input_tokens - cached_tokens - cache_write_tokens (never negative).
     Reasoning tokens are already included in output_tokens at the standard output price.
 
-    Models with a ``long_context`` block in pricing.yaml (GPT-5.4 / 5.5 / 5.6 families)
+    Models with a ``long_context`` block in pricing.yaml (GPT-5.4 / 5.5 / 5.6 / 6 families)
     bill EVERY bucket at the tier rates once the request's prompt (``input_tokens``,
     cached and cache-write tokens included) reaches ``threshold_tokens`` — the page
     prices the tier "for the full request", not just the overflow. A tier without a
@@ -277,35 +275,8 @@ def calculate_stt_cost(model: str, duration_seconds: float) -> float:
     return per_minute * (duration_seconds / 60.0)
 
 
-# Sora bills per second at a resolution tier; both orientations of a resolution
-# bill the same. Keys mirror VIDEO_SIZE_CHOICES in command_options.py.
-VIDEO_SIZE_RESOLUTIONS: dict[str, str] = {
-    "1280x720": "720p",
-    "720x1280": "720p",
-    "1792x1024": "1024p",
-    "1024x1792": "1024p",
-    "1920x1080": "1080p",
-    "1080x1920": "1080p",
-}
-
-
-def calculate_video_cost(model: str, seconds: int, size: str | None = None) -> float:
-    """Calculate cost for video generation at the requested resolution."""
-    by_resolution = VIDEO_PRICING_PER_SECOND.get(model)
-    if not by_resolution:
-        return UNKNOWN_VIDEO_MODEL_PRICING * seconds
-    if size is None:
-        per_second = by_resolution.get("default", max(by_resolution.values()))
-    else:
-        # An unmapped size bills at the model's most expensive tier so a newly
-        # added resolution over-reports instead of silently under-billing.
-        resolution = VIDEO_SIZE_RESOLUTIONS.get(size, "")
-        per_second = by_resolution.get(resolution, max(by_resolution.values()))
-    return per_second * seconds
-
-
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
-DEEP_RESEARCH_MODELS = ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.5", "gpt-5.5-pro"]
+DEEP_RESEARCH_MODELS = ["gpt-6-astra", "gpt-6-sol", "gpt-5.6-sol", "gpt-5.5", "gpt-5.5-pro"]
 
 # Server-side compaction: automatically compress context when it exceeds this
 # token threshold, preventing context-window overflow in long conversations.
@@ -373,6 +344,7 @@ REASONING_EFFORT_ORDER = (
 # status=incomplete, = accepted. Probed 2026-07-13 (5.6 minimal), 2026-08-28 and
 # 2026-09-15 (gpt-6-astra):
 #   gpt-6-astra                      low/medium/high/xhigh/max       (reject none, minimal)
+#   gpt-6-sol/-luna                  none/low/medium/high/xhigh/max  (reject minimal)
 #   gpt-5.6-sol/-terra/-luna         none/low/medium/high/xhigh/max  (reject minimal)
 #   gpt-5.5, gpt-5.4, gpt-5.4-mini,
 #   gpt-5.4-nano, gpt-5.2            none/low/medium/high/xhigh      (reject minimal, max)
@@ -384,17 +356,19 @@ REASONING_EFFORT_ORDER = (
 #   o3, o3-pro                       low/medium/high
 # Non-reasoning menu models (gpt-4.1*, gpt-4o-mini) and un-probed ids are absent;
 # an explicit effort is rejected locally for those models rather than sent to the API.
-_EFFORTS_GPT_6 = frozenset({"low", "medium", "high", "xhigh", "max"})
-_EFFORTS_GPT_5_6 = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
+_EFFORTS_GPT_6_ASTRA = frozenset({"low", "medium", "high", "xhigh", "max"})
+_EFFORTS_NONE_TO_MAX = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
 _EFFORTS_GPT_5_2_TO_5_5 = frozenset({"none", "low", "medium", "high", "xhigh"})
 _EFFORTS_PRO = frozenset({"medium", "high", "xhigh"})
 _EFFORTS_GPT_5_BASE = frozenset({"minimal", "low", "medium", "high"})
 _EFFORTS_O_SERIES = frozenset({"low", "medium", "high"})
 SUPPORTED_REASONING_EFFORTS: dict[str, frozenset[str]] = {
-    "gpt-6-astra": _EFFORTS_GPT_6,
-    "gpt-5.6-sol": _EFFORTS_GPT_5_6,
-    "gpt-5.6-terra": _EFFORTS_GPT_5_6,
-    "gpt-5.6-luna": _EFFORTS_GPT_5_6,
+    "gpt-6-astra": _EFFORTS_GPT_6_ASTRA,
+    "gpt-6-sol": _EFFORTS_NONE_TO_MAX,
+    "gpt-6-luna": _EFFORTS_NONE_TO_MAX,
+    "gpt-5.6-sol": _EFFORTS_NONE_TO_MAX,
+    "gpt-5.6-terra": _EFFORTS_NONE_TO_MAX,
+    "gpt-5.6-luna": _EFFORTS_NONE_TO_MAX,
     "gpt-5.5-pro": _EFFORTS_PRO,
     "gpt-5.5": _EFFORTS_GPT_5_2_TO_5_5,
     "gpt-5.4-pro": _EFFORTS_PRO,
@@ -448,9 +422,11 @@ REASONING_MODE_PRO = "pro"
 # excluded on purpose. Mode and effort are independent. Pro bills at the model's
 # standard token rates but on far more tokens (~1.5k fixed input overhead per call,
 # roughly 4-6x per turn, tool schemas and history multiplied), so pricing.yaml needs
-# nothing: extract_usage already captures the inflated usage. gpt-6-astra accepts
-# pro as well.
-PRO_MODE_MODELS = frozenset({"gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"})
+# nothing: extract_usage already captures the inflated usage. The GPT-6 models
+# accept pro as well.
+PRO_MODE_MODELS = frozenset(
+    {"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+)
 
 
 def reasoning_mode_error(model: str, reasoning_mode: str | None) -> str | None:
@@ -470,10 +446,28 @@ def reasoning_mode_error(model: str, reasoning_mode: str | None) -> str | None:
     )
 
 
-# Models that reject temperature/top_p outright, whatever the reasoning effort: the
-# gpt-5 base trio, and gpt-6-astra (400 "Unsupported parameter: 'temperature'"; it
-# has no `none` effort to lift the restriction).
-NO_SAMPLING_MODELS = frozenset({"gpt-6-astra", "gpt-5", "gpt-5-mini", "gpt-5-nano"})
+# Models that reject temperature/top_p outright, whatever the reasoning effort (400
+# "Unsupported parameter: 'temperature'"): gpt-6-astra, the gpt-5 base trio and the
+# Pro tiers. None of them has a `none` effort to lift the restriction.
+NO_SAMPLING_MODELS = frozenset(
+    {
+        "gpt-6-astra",
+        "gpt-5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-5.5-pro",
+        "gpt-5.4-pro",
+        "gpt-5.2-pro",
+        "gpt-5-pro",
+    }
+)
+
+# Models that reason at the API's default effort (medium) when the request sends no
+# effort, and so reject temperature/top_p unless the effort is explicitly `none`.
+# gpt-5.4 and older accept temperature/top_p with no effort and are absent.
+REASONING_BY_DEFAULT_MODELS = frozenset(
+    {"gpt-6-sol", "gpt-6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"}
+)
 RICH_TTS_MODELS = ["gpt-4o-mini-tts"]
 
 RICH_TTS_VOICES = {"ballad", "verse", "marin", "cedar"}
@@ -537,19 +531,22 @@ class ResponseParameters:
                 reasoning if reasoning else {"effort": REASONING_EFFORT_MEDIUM, "summary": "auto"}
             )
         elif model in NO_SAMPLING_MODELS:
-            # gpt-6-astra and the gpt-5 base trio reject temperature/top_p outright.
+            # These models reject temperature/top_p at every effort.
             self.temperature = None
             self.top_p = None
             self.reasoning = reasoning
         else:
-            # GPT-5.6/5.5/5.4/5.2/5.1/5-pro, GPT-4.x, etc.
+            # GPT-6 Sol/Luna, GPT-5.6/5.5/5.4/5.2/5.1, GPT-4.x, etc.
             # temperature/top_p are not supported when reasoning effort is not "none".
-            # Pro mode with no explicit effort reasons at the API default (medium), so
-            # it drops them too (probed 2026-08-28: a 400 on temperature otherwise);
-            # pro with effort "none" still accepts them.
+            # With no explicit effort, pro mode and REASONING_BY_DEFAULT_MODELS reason
+            # at the API default (medium), so they drop them too; an explicit effort
+            # "none" keeps them.
             effort = reasoning.get("effort") if reasoning else None
             pro_mode = reasoning is not None and reasoning.get("mode") == REASONING_MODE_PRO
-            if (effort and effort != REASONING_EFFORT_NONE) or (pro_mode and not effort):
+            reasons_without_effort = pro_mode or model in REASONING_BY_DEFAULT_MODELS
+            if (effort and effort != REASONING_EFFORT_NONE) or (
+                not effort and reasons_without_effort
+            ):
                 self.temperature = None
                 self.top_p = None
             else:
@@ -673,31 +670,6 @@ class ImageGenerationParameters:
         if self.output_format is not None:
             payload["output_format"] = self.output_format
         return payload
-
-
-class VideoGenerationParameters:
-    """Parameters for OpenAI Video (Sora) API."""
-
-    def __init__(
-        self,
-        prompt: str = "",
-        model: str = "sora-2",
-        size: str = "1280x720",
-        seconds: str = "8",
-    ):
-        self.prompt = prompt
-        self.model = model
-        self.size = size
-        self.seconds = seconds
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for API calls."""
-        return {
-            "prompt": self.prompt,
-            "model": self.model,
-            "size": self.size,
-            "seconds": self.seconds,
-        }
 
 
 class ResearchParameters:
