@@ -6,6 +6,7 @@ from typing import Any
 from discord import ApplicationContext, Attachment, Colour, Embed, File
 
 from ...config.auth import SHOW_COST_EMBEDS
+from ...cost_line import count_label
 from ...util import (
     calculate_image_cost,
     calculate_image_cost_from_usage,
@@ -116,7 +117,8 @@ async def run_image_command(
         embeds = [embed]
         # Bill from the token usage the response reports (exact, covers `auto`
         # and non-standard sizes); the per-image table is the fallback.
-        usage_cost = calculate_image_cost_from_usage(model, getattr(response, "usage", None))
+        usage = getattr(response, "usage", None)
+        usage_cost = calculate_image_cost_from_usage(model, usage)
         image_cost = (
             usage_cost
             if usage_cost is not None
@@ -131,11 +133,18 @@ async def run_image_command(
             f" | background={image_params.background or 'auto'} | n={len(image_files)}",
         )
         if SHOW_COST_EMBEDS:
+            image_label = "edited image" if is_editing else "image"
             append_flat_pricing_embed(
                 embeds,
                 image_cost,
                 daily_cost,
-                f"{mode.lower()} · {effective_quality} · {effective_size} · {len(image_files)} image(s)",
+                [count_label(len(image_files), image_label), effective_quality, effective_size],
+                input_tokens=getattr(usage, "input_tokens", None)
+                if usage_cost is not None
+                else None,
+                output_tokens=(
+                    getattr(usage, "output_tokens", None) if usage_cost is not None else None
+                ),
             )
 
         await send_embed_batches(

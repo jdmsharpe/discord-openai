@@ -134,6 +134,33 @@ def _append_public_pricing_embed(
     )
 
 
+def _append_pending_approval_pricing_embed(
+    embeds: list[Embed],
+    *,
+    model: str,
+    pending: PendingMcpApproval,
+    service_tier: str | None,
+    daily_cost: float,
+) -> None:
+    """Append the cost line for the turn so far while it waits for an MCP approval.
+
+    ``pending`` holds the usage summed over every response in the turn, the same
+    totals the line shows after the approval.
+    """
+    _append_public_pricing_embed(
+        embeds,
+        model=model,
+        input_tokens=pending["input_tokens"],
+        output_tokens=pending["output_tokens"],
+        cached_tokens=pending["cached_tokens"],
+        reasoning_tokens=pending["reasoning_tokens"],
+        tool_call_counts=pending["tool_call_counts"],
+        daily_cost=daily_cost,
+        cache_write_tokens=pending["cache_write_tokens"],
+        service_tier=service_tier,
+    )
+
+
 def _resolve_conversation_tools(
     cog,
     conversation: ResponseParameters,
@@ -273,16 +300,13 @@ async def _run_followup_response(
                 pending=conversation.pending_mcp_approval,
                 response=response,
             )
-            if SHOW_COST_EMBEDS:
-                embeds.append(
-                    Embed(
-                        description=(
-                            "Usage for this pre-approval step has already been counted toward your daily total. "
-                            f"Current daily total: ${daily_cost:.2f}"
-                        ),
-                        color=Colour.blue(),
-                    )
-                )
+            _append_pending_approval_pricing_embed(
+                embeds,
+                model=conversation.model,
+                pending=conversation.pending_mcp_approval,
+                service_tier=usage["service_tier"],
+                daily_cost=daily_cost,
+            )
             reply_view = cog._create_mcp_approval_view(user_id, conversation_id)
             await _send_conversation_reply(
                 cog,
@@ -484,16 +508,13 @@ async def handle_mcp_approval_action(
                 pending=conversation.pending_mcp_approval,
                 response=response,
             )
-            if SHOW_COST_EMBEDS:
-                embeds.append(
-                    Embed(
-                        description=(
-                            "Another MCP approval is required before the assistant can continue. "
-                            f"Current daily total: ${daily_cost:.2f}"
-                        ),
-                        color=Colour.blue(),
-                    )
-                )
+            _append_pending_approval_pricing_embed(
+                embeds,
+                model=conversation.model,
+                pending=conversation.pending_mcp_approval,
+                service_tier=usage["service_tier"],
+                daily_cost=daily_cost,
+            )
             approval_view = cog._create_mcp_approval_view(
                 user_id,
                 conversation_id,
@@ -797,16 +818,13 @@ async def run_chat_command(
                     response=response,
                 )
             )
-            if SHOW_COST_EMBEDS:
-                embeds.append(
-                    Embed(
-                        description=(
-                            "Usage for this pre-approval step has already been counted toward your daily total. "
-                            f"Current daily total: ${daily_cost:.2f}"
-                        ),
-                        color=Colour.blue(),
-                    )
-                )
+            _append_pending_approval_pricing_embed(
+                embeds,
+                model=model,
+                pending=params.pending_mcp_approval,
+                service_tier=usage["service_tier"],
+                daily_cost=daily_cost,
+            )
             reply_view = cog._create_mcp_approval_view(author.id, interaction.id)
         else:
             params.previous_response_id = response.id

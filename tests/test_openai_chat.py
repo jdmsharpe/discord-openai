@@ -96,23 +96,24 @@ class TestRunChatCommand:
             send_followup=AsyncMock(return_value=reply_message),
         )
 
-        await run_chat_command(
-            cog,
-            ctx,
-            prompt="Open an issue",
-            persona="You are helpful.",
-            model="gpt-5.4",
-            attachment=None,
-            temperature=None,
-            top_p=None,
-            reasoning_effort=None,
-            verbosity=None,
-            web_search=True,
-            code_interpreter=False,
-            file_search=False,
-            shell=False,
-            mcp="github",
-        )
+        with patch("discord_openai.cogs.openai.chat.SHOW_COST_EMBEDS", True):
+            await run_chat_command(
+                cog,
+                ctx,
+                prompt="Open an issue",
+                persona="You are helpful.",
+                model="gpt-5.4",
+                attachment=None,
+                temperature=None,
+                top_p=None,
+                reasoning_effort=None,
+                verbosity=None,
+                web_search=True,
+                code_interpreter=False,
+                file_search=False,
+                shell=False,
+                mcp="github",
+            )
 
         conversation = cog.conversation_histories[789]
         assert conversation.pending_mcp_approval is not None
@@ -122,6 +123,9 @@ class TestRunChatCommand:
         assert conversation.mcp_preset_names == ["github"]
         ctx.send_followup.assert_awaited_once()
         assert ctx.send_followup.await_args.kwargs["view"] is approval_view
+        # The usage billed before the approval shows as the standard cost line.
+        sent_embeds = ctx.send_followup.await_args.kwargs["embeds"]
+        assert sent_embeds[-1].description == "$0.0006 · 100 in / 25 out · $1.23 today"
         assert cog.views[789][1] is approval_view
         assert cog.last_view_messages[789][1] is reply_message
 
@@ -750,10 +754,12 @@ class TestHandleMcpApprovalAction:
         ):
             await handle_mcp_approval_action(cog, interaction, conversation, approve=True)
 
-        # Cache-write tokens follow cached tokens through cost tracking and the embed.
+        # Cache-write tokens are billed in the cost; the line sums both responses' usage.
         assert cog._track_daily_cost.call_args.kwargs["cache_write_tokens"] == 4
         edited_embeds = message.edit.await_args.kwargs["embeds"]
-        assert any("7 cached, 11 cache-write" in (e.description or "") for e in edited_embeds)
+        assert edited_embeds[-1].description == (
+            "$0.0008 · 120 in (7 cached) / 35 out (4 thinking) · $2.34 today"
+        )
 
         request_payload = cog.openai_client.responses.create.await_args.kwargs
         assert request_payload["previous_response_id"] == "resp_pending"

@@ -1,6 +1,19 @@
+from collections.abc import Iterable
+
 from discord import Colour, Embed
 
+from ...cost_line import count_label, format_cost_line
 from ...util import FAST_SERVICE_TIERS, calculate_cost, calculate_tool_cost, chunk_text
+
+# Cost-line labels for the tool keys `extract_tool_info` counts, in display order:
+# (singular, plural). Tools not listed here show as "<name> call".
+_TOOL_COUNT_LABELS: dict[str, tuple[str, str | None]] = {
+    "web_search": ("search", "searches"),
+    "code_interpreter": ("code run", None),
+    "file_search": ("file search", "file searches"),
+    "mcp": ("MCP call", None),
+    "image_generation": ("image", None),
+}
 
 
 def _fit_markdown_sections(
@@ -125,6 +138,21 @@ def append_research_sources_embed(
     embeds.append(Embed(title="Sources", description=description, color=Colour.blue()))
 
 
+def _tool_count_details(tool_call_counts: dict[str, int]) -> list[str]:
+    """Describe tool calls as counts: tools in `_TOOL_COUNT_LABELS` in that order, then the rest by name."""
+    details = [
+        count_label(tool_call_counts[tool], singular, plural)
+        for tool, (singular, plural) in _TOOL_COUNT_LABELS.items()
+        if tool_call_counts.get(tool)
+    ]
+    details.extend(
+        count_label(count, f"{tool.replace('_', ' ').lower()} call")
+        for tool, count in sorted(tool_call_counts.items())
+        if tool not in _TOOL_COUNT_LABELS and count
+    )
+    return details
+
+
 def append_pricing_embed(
     embeds: list[Embed],
     model: str,
@@ -137,7 +165,12 @@ def append_pricing_embed(
     cache_write_tokens: int = 0,
     service_tier: str | None = None,
 ) -> None:
-    """Append a compact pricing embed showing model, cost, and token usage."""
+    """Append the one-line cost embed for a token-billed response.
+
+    ``input_tokens`` includes cached and cache-write tokens and ``output_tokens``
+    includes reasoning tokens, as the Responses API reports them. The cost includes
+    tool calls and cache writes; tools show only as counts.
+    """
     tool_cost = calculate_tool_cost(tool_call_counts) if tool_call_counts else 0.0
     cost = (
         calculate_cost(
@@ -150,42 +183,42 @@ def append_pricing_embed(
         )
         + tool_cost
     )
-    in_part = f"{input_tokens:,} in"
-    cache_parts = []
-    if cached_tokens:
-        cache_parts.append(f"{cached_tokens:,} cached")
-    if cache_write_tokens:
-        cache_parts.append(f"{cache_write_tokens:,} cache-write")
-    if cache_parts:
-        in_part += f" ({', '.join(cache_parts)})"
-    visible_tokens = output_tokens - reasoning_tokens
-    out_part = f"{visible_tokens:,} out"
-    if reasoning_tokens:
-        out_part += f" / {reasoning_tokens:,} thinking"
-    parts = [f"${cost:.4f}", f"{in_part} / {out_part}"]
+    details = _tool_count_details(tool_call_counts or {})
     if service_tier in FAST_SERVICE_TIERS:
-        parts.append("fast mode")
-    if tool_call_counts:
-        tool_str = " + ".join(
-            f"{tool.replace('_', ' ')} ×{count}" for tool, count in sorted(tool_call_counts.items())
-        )
-        parts.append(f"tools: {tool_str} (${tool_cost:.4f})")
-    parts.append(f"daily ${daily_cost:.2f}")
-    embeds.append(Embed(description=" · ".join(parts), color=Colour.blue()))
+        details.append("fast mode")
+    line = format_cost_line(
+        cost,
+        daily_cost,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cached_tokens=cached_tokens,
+        thinking_tokens=reasoning_tokens,
+        details=details,
+    )
+    embeds.append(Embed(description=line, color=Colour.blue()))
 
 
 def append_flat_pricing_embed(
     embeds: list[Embed],
     cost: float,
     daily_cost: float,
-    details: str = "",
+    details: Iterable[str] = (),
+    *,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
 ) -> None:
-    """Append a compact pricing embed for non-token-based commands."""
-    parts = [f"${cost:.4f}"]
-    if details:
-        parts.append(details)
-    parts.append(f"daily ${daily_cost:.2f}")
-    embeds.append(Embed(description=" · ".join(parts), color=Colour.blue()))
+    """Append the one-line cost embed for an image or speech command.
+
+    Pass token counts only when the cost was calculated from them.
+    """
+    line = format_cost_line(
+        cost,
+        daily_cost,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        details=details,
+    )
+    embeds.append(Embed(description=line, color=Colour.blue()))
 
 
 def error_embed(description: str) -> Embed:

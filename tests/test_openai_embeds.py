@@ -189,27 +189,57 @@ class TestAppendPricingEmbed:
         assert len(embeds) == 1
         assert embeds[0].color == Colour.blue()
 
-    def test_description_contains_tokens(self):
+    def test_description_is_one_cost_line(self):
         embeds = []
         append_pricing_embed(embeds, "gpt-4o", 1_234, 567, 0.42)
-        desc = embeds[0].description
-        assert "1,234 in" in desc
-        assert "567 out" in desc
+        assert embeds[0].description == "$0.0088 · 1.2k in / 567 out · $0.42 today"
 
-    def test_description_contains_daily_cost(self):
+    def test_output_count_includes_thinking_tokens(self):
+        """The Responses API counts reasoning inside output_tokens; the line does not subtract it."""
         embeds = []
-        append_pricing_embed(embeds, "gpt-4o", 100, 50, 1.23)
-        assert "daily $1.23" in embeds[0].description
+        append_pricing_embed(
+            embeds, "gpt-5.6-sol", 2_000, 900, 0.12, cached_tokens=1_500, reasoning_tokens=700
+        )
+        assert embeds[0].description == (
+            "$0.0206 · 2k in (1.5k cached) / 900 out (700 thinking) · $0.12 today"
+        )
 
-    def test_description_shows_cached_and_cache_write_tokens(self):
+    def test_cache_writes_are_billed_but_not_listed(self):
         embeds = []
         append_pricing_embed(
             embeds, "gpt-5.6-sol", 1_000, 500, 0.05, cached_tokens=100, cache_write_tokens=900
         )
-        desc = embeds[0].description
-        assert "1,000 in (100 cached, 900 cache-write)" in desc
         expected = calculate_cost("gpt-5.6-sol", 1_000, 500, 100, 900)
-        assert f"${expected:.4f}" in desc
+        assert f"${expected:.4f}" == "$0.0145"
+        assert embeds[0].description == "$0.0145 · 1k in (100 cached) / 500 out · $0.05 today"
+
+    def test_tools_show_as_counts_inside_the_cost(self):
+        embeds = []
+        append_pricing_embed(
+            embeds,
+            "gpt-4o",
+            3_000,
+            400,
+            1.5,
+            tool_call_counts={
+                "shell": 1,
+                "get_weather": 3,
+                "mcp": 1,
+                "code_interpreter": 1,
+                "web_search": 2,
+            },
+            service_tier="priority",
+        )
+        # $0.01955 of fast-mode tokens + $0.08 of tool calls.
+        assert embeds[0].description == (
+            "$0.0995 · 3k in / 400 out · 2 searches · 1 code run · 1 MCP call"
+            " · 3 get weather calls · 1 shell call · fast mode · $1.50 today"
+        )
+
+    def test_nonzero_cost_below_the_smallest_unit(self):
+        embeds = []
+        append_pricing_embed(embeds, "gpt-6-luna", 24, 21, 0.003)
+        assert embeds[0].description == "<$0.0001 · 24 in / 21 out · <$0.01 today"
 
     def test_appends_to_existing_embeds(self):
         embeds = [Embed(title="Response", description="Hello")]
@@ -228,26 +258,35 @@ class TestAppendFlatPricingEmbed:
     def test_description_contains_cost_and_daily(self):
         embeds = []
         append_flat_pricing_embed(embeds, 0.034, 1.23)
-        desc = embeds[0].description
-        assert "$0.0340" in desc
-        assert "daily $1.23" in desc
+        assert embeds[0].description == "$0.0340 · $1.23 today"
 
     def test_description_contains_details(self):
         embeds = []
-        append_flat_pricing_embed(embeds, 0.133, 0.50, "high · 1024x1024 · 1 image(s)")
-        desc = embeds[0].description
-        assert "high" in desc
-        assert "1024x1024" in desc
+        append_flat_pricing_embed(embeds, 0.133, 0.50, ["1 image", "high", "1024x1024"])
+        assert embeds[0].description == "$0.1330 · 1 image · high · 1024x1024 · $0.50 today"
+
+    def test_token_counts_show_when_passed(self):
+        embeds = []
+        append_flat_pricing_embed(
+            embeds,
+            0.0512,
+            0.50,
+            ["1 image", "medium", "1024x1024"],
+            input_tokens=48,
+            output_tokens=1_056,
+        )
+        assert embeds[0].description == (
+            "$0.0512 · 48 in / 1.1k out · 1 image · medium · 1024x1024 · $0.50 today"
+        )
 
     def test_no_details(self):
         embeds = []
         append_flat_pricing_embed(embeds, 0.01, 0.01)
-        desc = embeds[0].description
-        assert desc == "$0.0100 · daily $0.01"
+        assert embeds[0].description == "$0.0100 · $0.01 today"
 
     def test_appends_to_existing_embeds(self):
         embeds = [Embed(title="Image", description="A cat")]
-        append_flat_pricing_embed(embeds, 0.034, 0.05, "auto · auto")
+        append_flat_pricing_embed(embeds, 0.034, 0.05, ["auto", "auto"])
         assert len(embeds) == 2
         assert embeds[0].title == "Image"
         assert embeds[1].color == Colour.blue()

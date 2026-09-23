@@ -6,6 +6,7 @@ from typing import Any, cast
 from discord import ApplicationContext, Attachment, Colour, Embed, File
 
 from ...config.auth import SHOW_COST_EMBEDS
+from ...cost_line import count_label
 from ...util import (
     calculate_stt_cost,
     calculate_tts_cost,
@@ -72,7 +73,7 @@ async def run_tts_command(
                 embeds,
                 tts_cost,
                 daily_cost,
-                f"{len(input):,} chars · {params.voice}",
+                [count_label(len(input), "char"), params.voice],
             )
 
         await send_embed_batches(
@@ -161,7 +162,7 @@ async def run_stt_command(
                 embeds,
                 stt_cost,
                 daily_cost,
-                f"~{est_duration:.0f}s audio · {actual_model}",
+                [f"~{est_duration:.0f}s audio", actual_model],
             )
 
         await send_embed_batches(
