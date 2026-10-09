@@ -101,10 +101,15 @@ class TestOpenAIMcpConfig:
 
 
 class TestMcpConnectorError:
-    """The GPT-6 models 400 on an `mcp` tool carrying `connector_id`."""
+    """The GPT-6 models and GPT-6.1 Sol 400 on an `mcp` tool carrying `connector_id`."""
 
     def test_unsupported_model_set_is_pinned(self):
-        assert set(CONNECTOR_UNSUPPORTED_MODELS) == {"gpt-6-astra", "gpt-6-sol", "gpt-6-luna"}
+        assert set(CONNECTOR_UNSUPPORTED_MODELS) == {
+            "gpt-6-astra",
+            "gpt-6.1-sol",
+            "gpt-6-sol",
+            "gpt-6-luna",
+        }
 
     @pytest.mark.parametrize("model", sorted(CONNECTOR_UNSUPPORTED_MODELS))
     def test_connector_preset_is_refused_on_gpt_6(self, model):

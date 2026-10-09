@@ -35,8 +35,9 @@ class UsageInfo(TypedDict):
     cached_tokens: int
     cache_write_tokens: int
     reasoning_tokens: int
-    # The processing tier that actually served the response ("priority" for a
-    # Fast-mode request, whatever was asked for); None when the API omits it.
+    # The processing tier that actually served the response (a Fast-mode request
+    # reports "fast" on the GPT-6 models and "priority" on GPT-5.6 and earlier,
+    # whichever was asked for); None when the API omits it.
     service_tier: str | None
 
 
@@ -86,8 +87,10 @@ def extract_usage(response: Any) -> UsageInfo:
 
 # Fast mode (formerly "Priority processing", renamed 2026-07-30): request it
 # with `service_tier: "fast"` (or the legacy "priority"); the response reports
-# "priority" either way. Billed at FAST_TIER_PRICING. "ultrafast" is Sol-only,
-# access-controlled (limited preview since 2026-08-13) and unpriced — not offered.
+# "fast" on the GPT-6 models and "priority" on GPT-5.6 and earlier. Billed at
+# FAST_TIER_PRICING. "ultrafast" (6x standard, gpt-6-astra and gpt-6.1-sol only;
+# gpt-6-sol rejects it) is not offered, and pricing.yaml has no ultrafast block, so
+# a response reporting "ultrafast" is billed at standard rates.
 SERVICE_TIER_STANDARD = "standard"
 SERVICE_TIER_FAST = "fast"
 FAST_SERVICE_TIERS = frozenset({"fast", "priority"})
@@ -127,7 +130,7 @@ def calculate_cost(
     ``service_tier`` is the tier the RESPONSE reports (``extract_usage``): "fast" or
     "priority" bills every bucket at the model's Fast-mode rates (``FAST_TIER_PRICING``),
     falling back to the standard rates for a model without a fast row; anything else
-    (None, "default", "flex", ...) bills standard. A fast row with its own
+    (None, "default", "flex", "ultrafast", ...) bills standard. A fast row with its own
     ``long_context`` tier (GPT-5.6 trio, GPT-6 models) bills that tier once the prompt
     reaches its threshold; other fast rows are flat at any prompt size.
 
@@ -276,7 +279,14 @@ def calculate_stt_cost(model: str, duration_seconds: float) -> float:
 
 
 REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
-DEEP_RESEARCH_MODELS = ["gpt-6-astra", "gpt-6-sol", "gpt-5.6-sol", "gpt-5.5", "gpt-5.5-pro"]
+DEEP_RESEARCH_MODELS = [
+    "gpt-6-astra",
+    "gpt-6.1-sol",
+    "gpt-6-sol",
+    "gpt-5.6-sol",
+    "gpt-5.5",
+    "gpt-5.5-pro",
+]
 
 # Server-side compaction: automatically compress context when it exceeds this
 # token threshold, preventing context-window overflow in long conversations.
@@ -343,7 +353,7 @@ REASONING_EFFORT_ORDER = (
 # `unsupported_value` on reasoning.effort = rejected; any other outcome, including
 # status=incomplete, = accepted. Probed 2026-07-13 (5.6 minimal), 2026-08-28 and
 # 2026-09-15 (gpt-6-astra):
-#   gpt-6-astra                      low/medium/high/xhigh/max       (reject none, minimal)
+#   gpt-6-astra, gpt-6.1-sol         low/medium/high/xhigh/max       (reject none, minimal)
 #   gpt-6-sol/-luna                  none/low/medium/high/xhigh/max  (reject minimal)
 #   gpt-5.6-sol/-terra/-luna         none/low/medium/high/xhigh/max  (reject minimal)
 #   gpt-5.5, gpt-5.4, gpt-5.4-mini,
@@ -364,6 +374,7 @@ _EFFORTS_GPT_5_BASE = frozenset({"minimal", "low", "medium", "high"})
 _EFFORTS_O_SERIES = frozenset({"low", "medium", "high"})
 SUPPORTED_REASONING_EFFORTS: dict[str, frozenset[str]] = {
     "gpt-6-astra": _EFFORTS_GPT_6_ASTRA,
+    "gpt-6.1-sol": _EFFORTS_GPT_6_ASTRA,
     "gpt-6-sol": _EFFORTS_NONE_TO_MAX,
     "gpt-6-luna": _EFFORTS_NONE_TO_MAX,
     "gpt-5.6-sol": _EFFORTS_NONE_TO_MAX,
@@ -422,10 +433,18 @@ REASONING_MODE_PRO = "pro"
 # excluded on purpose. Mode and effort are independent. Pro bills at the model's
 # standard token rates but on far more tokens (~1.5k fixed input overhead per call,
 # roughly 4-6x per turn, tool schemas and history multiplied), so pricing.yaml needs
-# nothing: extract_usage already captures the inflated usage. The GPT-6 models
-# accept pro as well.
+# nothing: extract_usage already captures the inflated usage. The GPT-6 models and
+# gpt-6.1-sol accept pro as well.
 PRO_MODE_MODELS = frozenset(
-    {"gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+    {
+        "gpt-6-astra",
+        "gpt-6.1-sol",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+    }
 )
 
 
@@ -447,11 +466,12 @@ def reasoning_mode_error(model: str, reasoning_mode: str | None) -> str | None:
 
 
 # Models that reject temperature/top_p outright, whatever the reasoning effort (400
-# "Unsupported parameter: 'temperature'"): gpt-6-astra, the gpt-5 base trio and the
-# Pro tiers. None of them has a `none` effort to lift the restriction.
+# "Unsupported parameter: 'temperature'"): gpt-6-astra, gpt-6.1-sol, the gpt-5 base
+# trio and the Pro tiers. None of them has a `none` effort to lift the restriction.
 NO_SAMPLING_MODELS = frozenset(
     {
         "gpt-6-astra",
+        "gpt-6.1-sol",
         "gpt-5",
         "gpt-5-mini",
         "gpt-5-nano",

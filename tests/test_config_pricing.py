@@ -60,11 +60,27 @@ class TestPricingLoader:
         assert pricing.CACHED_INPUT_PRICING["gpt-6-luna"] == 0.01
         assert pricing.CACHE_WRITE_PRICING["gpt-6-luna"] == 0.125
 
+    def test_gpt_6_1_sol_rates_are_pinned(self):
+        """gpt-6.1-sol (GA 2026-09-29): $2 / $0.10 cached (5% of input, not 10%) / $2.50
+        cache write / $10; long context $4 / $0.20 / $5 / $15."""
+        pricing = _reload_pricing()
+        assert pricing.MODEL_PRICING["gpt-6.1-sol"] == (2.00, 10.00)
+        assert pricing.CACHED_INPUT_PRICING["gpt-6.1-sol"] == 0.10
+        assert pricing.CACHE_WRITE_PRICING["gpt-6.1-sol"] == 2.50
+        assert pricing.LONG_CONTEXT_PRICING["gpt-6.1-sol"] == {
+            "threshold_tokens": 272001,
+            "input_per_million": 4.00,
+            "output_per_million": 15.00,
+            "cached_input_per_million": 0.20,
+            "cache_write_per_million": 5.00,
+        }
+
     def test_gpt_5_6_cache_write_rates_are_pinned(self):
         """Cache writes (1.25x input) are declared on the GPT-6 and GPT-5.6 rows only."""
         pricing = _reload_pricing()
         assert pricing.CACHE_WRITE_PRICING == {
             "gpt-6-astra": 12.50,
+            "gpt-6.1-sol": 2.50,
             "gpt-6-sol": 2.50,
             "gpt-6-luna": 0.125,
             "gpt-5.6-sol": 5.00,
@@ -83,6 +99,7 @@ class TestPricingLoader:
         pricing = _reload_pricing()
         assert set(pricing.LONG_CONTEXT_PRICING) == {
             "gpt-6-astra",
+            "gpt-6.1-sol",
             "gpt-6-sol",
             "gpt-6-luna",
             "gpt-5.6-sol",
@@ -263,6 +280,7 @@ class TestFastTiers:
         expected = {
             # model: (input, output, cached input, cache write)
             "gpt-6-astra": (20.00, 100.00, 2.00, 25.00),
+            "gpt-6.1-sol": (4.00, 20.00, 0.20, 5.00),
             "gpt-6-sol": (4.00, 20.00, 0.40, 5.00),
             "gpt-6-luna": (0.20, 1.00, 0.02, 0.25),
             "gpt-5.6-sol": (8.00, 40.00, 0.80, 10.00),
@@ -297,6 +315,7 @@ class TestFastTiers:
         expected = {
             # model: (input, output, cached input, cache write)
             "gpt-6-astra": (40.00, 150.00, 4.00, 50.00),
+            "gpt-6.1-sol": (8.00, 30.00, 0.40, 10.00),
             "gpt-6-sol": (8.00, 30.00, 0.80, 10.00),
             "gpt-6-luna": (0.40, 1.50, 0.04, 0.50),
             "gpt-5.6-sol": (16.00, 60.00, 1.60, 20.00),

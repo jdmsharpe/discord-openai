@@ -2,6 +2,7 @@ from discord.commands import OptionChoice
 
 CHAT_MODEL_CHOICES = [
     OptionChoice(name="GPT-6 Astra", value="gpt-6-astra"),
+    OptionChoice(name="GPT-6.1 Sol", value="gpt-6.1-sol"),
     OptionChoice(name="GPT-6 Sol", value="gpt-6-sol"),
     OptionChoice(name="GPT-6 Luna", value="gpt-6-luna"),
     OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
@@ -29,7 +30,7 @@ CHAT_MODEL_CHOICES = [
 
 REASONING_EFFORT_CHOICES = [
     OptionChoice(
-        name="None (fastest; rejected by GPT-6 Astra, GPT-5/5 Mini/5 Nano, Pro tiers, o-series)",
+        name="None (fastest; rejected by GPT-6 Astra/6.1 Sol, GPT-5/5 Mini/5 Nano, Pro tiers, o-series)",
         value="none",
     ),
     OptionChoice(name="Minimal (GPT-5 / 5 Mini / 5 Nano only)", value="minimal"),
@@ -37,13 +38,13 @@ REASONING_EFFORT_CHOICES = [
     OptionChoice(name="Medium", value="medium"),
     OptionChoice(name="High", value="high"),
     OptionChoice(name="Extra High (GPT-5.2 and newer)", value="xhigh"),
-    OptionChoice(name="Max (deepest; GPT-6 and GPT-5.6)", value="max"),
+    OptionChoice(name="Max (deepest; GPT-6, GPT-6.1 Sol and GPT-5.6)", value="max"),
 ]
 
 REASONING_MODE_CHOICES = [
     OptionChoice(name="Standard (default)", value="standard"),
     OptionChoice(
-        name="Pro (GPT-6 / GPT-5.6 only; several times the tokens and cost, slower)",
+        name="Pro (GPT-6 / GPT-6.1 Sol / GPT-5.6 only; several times the tokens and cost, slower)",
         value="pro",
     ),
 ]
@@ -138,6 +139,7 @@ STT_ACTION_CHOICES = [
 
 RESEARCH_MODEL_CHOICES = [
     OptionChoice(name="GPT-6 Astra", value="gpt-6-astra"),
+    OptionChoice(name="GPT-6.1 Sol", value="gpt-6.1-sol"),
     OptionChoice(name="GPT-6 Sol", value="gpt-6-sol"),
     OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
     OptionChoice(name="GPT-5.5", value="gpt-5.5"),

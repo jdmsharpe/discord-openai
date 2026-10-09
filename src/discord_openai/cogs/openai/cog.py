@@ -289,7 +289,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "reasoning_mode",
-        description="(Advanced) Pro mode: GPT-6 / GPT-5.6 only; much more cost, slower. (default: not set)",
+        description="(Advanced) Pro mode: GPT-6 / GPT-6.1 Sol / GPT-5.6 only; much more cost, slower. (default: not set)",
         required=False,
         type=str,
         choices=REASONING_MODE_CHOICES,

@@ -2,14 +2,15 @@
 #
 # Canonical source: https://developers.openai.com/api/docs/pricing
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-09-22
+# Last-verified: 2026-10-08
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
 # billed at cached_input_per_million when present, else at 50% of input.
 #
 # THE 50% FALLBACK IS A LAST RESORT, NOT A RULE. OpenAI's published cached
-# discount varies by generation — 90% off for the gpt-5 family, 75% off for
-# gpt-4.1/o3/o4-mini, 50% off for the gpt-4o/o1/o3-mini generation — so any
+# discount varies by generation — 90% off for the gpt-5 and gpt-6 families
+# (95% off for gpt-6.1-sol), 75% off for gpt-4.1/o3/o4-mini, 50% off for the
+# gpt-4o/o1/o3-mini generation — so any
 # single fallback is wrong for most of the catalog. Every model with a
 # published cached rate MUST declare it here; relying on the fallback has
 # silently overbilled cached input twice (5x on gpt-5, 2x on gpt-4.1/o3).
@@ -22,7 +23,7 @@
 # cache_write_per_million: GPT-5.6+ bills the tokens WRITTEN to the prompt cache
 # (usage.input_tokens_details.cache_write_tokens) at 1.25x the uncached input
 # rate — the pricing table's "Cache writes" column. Every other row prints "-"
-# there (no surcharge), so only the gpt-6 and gpt-5.6 rows declare it; a model
+# there (no surcharge), so only the gpt-6, gpt-6.1 and gpt-5.6 rows declare it; a model
 # without the field bills cache-write tokens as ordinary input.
 # `test_gpt_5_6_cache_write_rates_are_125_percent_of_input` pins the ratio.
 #
@@ -38,17 +39,19 @@
 # the published tier rates.
 #
 # fast: Fast mode (formerly "Priority processing", renamed 2026-07-30) is opted
-# into per request with service_tier "fast" (or "priority"; the response echoes
-# "priority") and bills every bucket at the rates on the pricing page's "Fast
-# mode" tab — 2x standard for GPT-6 and GPT-5.6, other multiples elsewhere.
+# into per request with service_tier "fast" (or "priority"; the response reports
+# "fast" on the GPT-6 models and "priority" on GPT-5.6 and earlier) and bills
+# every bucket at the rates on the pricing page's "Fast mode" tab — 2x standard
+# for GPT-6, GPT-6.1 Sol and GPT-5.6, other multiples elsewhere.
 # The tab publishes one rate per model (the GPT-5.5 / 5.4 rows are labelled
 # "<272K context length" ; the GPT-5.6 trio and the GPT-6 models also publish
 # fast long-context rates, nested under `fast.long_context`), so a fast
 # request bills these rates at any prompt size and the long_context block is
 # ignored for it. Rows without the block cannot be requested with Fast mode
-# (`service_tier_error`). "ultrafast" (GPT-5.6 Sol only, limited preview since
-# 2026-08-13) has no published price and is not offered. `test_fast_tiers_are_pinned`
-# pins the published rates.
+# (`service_tier_error`). "ultrafast" (6x standard, published for gpt-6-astra and
+# gpt-6.1-sol only; gpt-6-sol rejects it) is not offered and has no block here, so
+# a response reporting "ultrafast" is billed at the standard rates.
+# `test_fast_tiers_are_pinned` pins the published rates.
 #
 # Override this file at runtime by setting OPENAI_PRICING_PATH to an alternate
 # YAML path — useful for pushing new pricing without a code release.
@@ -68,6 +71,20 @@ models:
       cached_input_per_million: 2.00
       cache_write_per_million: 25.00
       long_context: { threshold_tokens: 272001, input_per_million: 40.00, output_per_million: 150.00, cached_input_per_million: 4.00, cache_write_per_million: 50.00 }
+  # gpt-6.1-sol: same tier structure as gpt-6-astra; cached input is 5% of the
+  # uncached input rate (model page), not 10%.
+  gpt-6.1-sol:
+    input_per_million: 2.00
+    output_per_million: 10.00
+    cached_input_per_million: 0.10
+    cache_write_per_million: 2.50
+    long_context: { threshold_tokens: 272001, input_per_million: 4.00, output_per_million: 15.00, cached_input_per_million: 0.20, cache_write_per_million: 5.00 }
+    fast:
+      input_per_million: 4.00
+      output_per_million: 20.00
+      cached_input_per_million: 0.20
+      cache_write_per_million: 5.00
+      long_context: { threshold_tokens: 272001, input_per_million: 8.00, output_per_million: 30.00, cached_input_per_million: 0.40, cache_write_per_million: 10.00 }
   # gpt-6-sol / gpt-6-luna: same tier structure as gpt-6-astra.
   gpt-6-sol:
     input_per_million: 2.00

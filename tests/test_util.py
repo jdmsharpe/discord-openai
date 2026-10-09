@@ -508,6 +508,7 @@ class TestResearchParameters:
     def test_deep_research_models_constant(self):
         assert DEEP_RESEARCH_MODELS == [
             "gpt-6-astra",
+            "gpt-6.1-sol",
             "gpt-6-sol",
             "gpt-5.6-sol",
             "gpt-5.5",
@@ -863,6 +864,7 @@ class TestModelPricing:
     CACHED_DISCOUNT_BY_MODEL: ClassVar[dict[str, float]] = {
         # gpt-5 family and newer: 90% off
         "gpt-6-astra": 0.10,
+        "gpt-6.1-sol": 0.05,  # model page: "5% of the uncached input token rate"
         "gpt-6-sol": 0.10,
         "gpt-6-luna": 0.10,
         "gpt-5.6-sol": 0.10,
@@ -1236,6 +1238,7 @@ class TestSupportedReasoningEfforts:
     # effort: 2026-07-13 (5.6 minimal) and 2026-08-28 (everything else).
     PROBED: ClassVar[dict[str, set[str]]] = {
         "gpt-6-astra": {"low", "medium", "high", "xhigh", "max"},  # 2026-09-15
+        "gpt-6.1-sol": {"low", "medium", "high", "xhigh", "max"},  # 2026-10-08
         "gpt-6-sol": {"none", "low", "medium", "high", "xhigh", "max"},  # 2026-09-22
         "gpt-6-luna": {"none", "low", "medium", "high", "xhigh", "max"},  # 2026-09-22
         "gpt-5.6-sol": {"none", "low", "medium", "high", "xhigh", "max"},
@@ -1273,6 +1276,8 @@ class TestSupportedReasoningEfforts:
         [
             ("gpt-6-astra", "none"),
             ("gpt-6-astra", "minimal"),
+            ("gpt-6.1-sol", "none"),
+            ("gpt-6.1-sol", "minimal"),
             ("gpt-6-sol", "minimal"),
             ("gpt-6-luna", "minimal"),
             ("gpt-5.6-sol", "minimal"),
@@ -1315,6 +1320,7 @@ class TestReasoningModeError:
 
     PRO_IDS: ClassVar[set[str]] = {
         "gpt-6-astra",
+        "gpt-6.1-sol",
         "gpt-6-sol",
         "gpt-6-luna",
         "gpt-5.6-sol",
@@ -1534,22 +1540,25 @@ class TestServiceTierError:
 
 
 class TestGpt6AstraRequestShape:
-    """gpt-6-astra rejects temperature/top_p outright (probed 2026-09-15)."""
+    """gpt-6-astra and gpt-6.1-sol reject temperature/top_p outright (probed 2026-09-15
+    and 2026-10-08)."""
 
-    def test_sampling_parameters_are_dropped(self):
-        params = ResponseParameters(model="gpt-6-astra", temperature=0.7, top_p=0.9)
+    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6.1-sol"])
+    def test_sampling_parameters_are_dropped(self, model):
+        params = ResponseParameters(model=model, temperature=0.7, top_p=0.9)
         assert params.temperature is None
         assert params.top_p is None
         payload = params.to_dict()
         assert "temperature" not in payload
         assert "top_p" not in payload
 
-    def test_reasoning_and_pro_mode_pass_through(self):
+    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6.1-sol"])
+    def test_reasoning_and_pro_mode_pass_through(self, model):
         params = ResponseParameters(
-            model="gpt-6-astra", reasoning={"effort": "low", "mode": "pro", "summary": "auto"}
+            model=model, reasoning={"effort": "low", "mode": "pro", "summary": "auto"}
         )
         assert params.to_dict()["reasoning"] == {"effort": "low", "mode": "pro", "summary": "auto"}
-        assert reasoning_mode_error("gpt-6-astra", "pro") is None
+        assert reasoning_mode_error(model, "pro") is None
 
 
 class TestSamplingParametersWithoutEffort:

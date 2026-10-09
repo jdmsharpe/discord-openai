@@ -86,7 +86,7 @@ class TestOpenAICog:
         assert error is None
         assert tools[0]["type"] == "shell"
 
-    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"])
+    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"])
     async def test_resolve_selected_tools_allows_shell_on_gpt_6_models(self, model):
         """The hosted shell tool is accepted on the GPT-6 models, the chat default included."""
         cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
@@ -202,12 +202,14 @@ class TestOpenAICog:
 
     def test_critical_choice_values_present(self):
         assert any(choice.value == "gpt-6-astra" for choice in CHAT_MODEL_CHOICES)
+        assert any(choice.value == "gpt-6.1-sol" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-sol" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-luna" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.6-sol" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-2.5-sunburst" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-2.5-flare" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-astra" for choice in RESEARCH_MODEL_CHOICES)
+        assert any(choice.value == "gpt-6.1-sol" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-sol" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.4" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-1.5" for choice in IMAGE_MODEL_CHOICES)
@@ -227,7 +229,7 @@ class TestOpenAICog:
 
     def test_service_tier_choice_set(self):
         """`standard` is never sent (mirrors reasoning_mode); `fast` is the only tier offered —
-        `ultrafast` is Sol-only, access-controlled and unpriced."""
+        `ultrafast` (6x standard, GPT-6 Astra and GPT-6.1 Sol only) has no pricing block."""
         values = [choice.value for choice in SERVICE_TIER_CHOICES]
         assert values == ["standard", "fast"]
 
