@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import tempfile
 from copy import deepcopy
 from datetime import UTC, datetime
@@ -8,6 +9,7 @@ from typing import Any, TypedDict
 import aiohttp
 from openai import APIError
 
+from discord_openai.config.auth import BOT_TOKEN, SAFETY_IDENTIFIER_SECRET
 from discord_openai.config.pricing import (
     CACHE_WRITE_PRICING,
     CACHED_INPUT_PRICING,
@@ -311,9 +313,42 @@ INPUT_FILE_TYPE = "input_file"
 IMAGE_CONTENT_TYPES = frozenset({"image/png", "image/jpeg", "image/gif", "image/webp"})
 
 
-def hash_user_id(user_id: int) -> str:
-    """Hash a numeric user ID into a short, stable safety identifier for OpenAI."""
-    return hashlib.sha256(str(user_id).encode()).hexdigest()[:16]
+SAFETY_IDENTIFIER_KEY_LABEL = b"safety-identifier-v1"
+
+
+def derive_safety_identifier_key(secret: str | None, bot_token: str | None) -> bytes | None:
+    """Return the HMAC key for safety identifiers, or None when no key source is set.
+
+    ``SAFETY_IDENTIFIER_SECRET`` is the key when set; otherwise the key is derived
+    from ``BOT_TOKEN``, which OpenAI never receives. The OpenAI API key is never
+    used: OpenAI holds it and could rebuild the mapping by hashing known Discord
+    user IDs.
+    """
+    if secret:
+        return secret.encode("utf-8")
+    if bot_token:
+        return hmac.new(
+            bot_token.encode("utf-8"), SAFETY_IDENTIFIER_KEY_LABEL, hashlib.sha256
+        ).digest()
+    return None
+
+
+SAFETY_IDENTIFIER_KEY: bytes | None = derive_safety_identifier_key(
+    SAFETY_IDENTIFIER_SECRET, BOT_TOKEN
+)
+
+
+def build_safety_identifier(user_id: int) -> str | None:
+    """Return a keyed pseudonym of a Discord user ID for OpenAI's abuse monitoring.
+
+    The value is HMAC-SHA256 over ``str(user_id)``: 64 lowercase hex characters,
+    stable per user and key. Without the key, OpenAI cannot map it back to a
+    Discord ID. Returns None when no key is available, so no identifier is sent.
+    """
+    key = SAFETY_IDENTIFIER_KEY
+    if key is None:
+        return None
+    return hmac.new(key, str(user_id).encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def build_attachment_content_block(content_type: str | None, url: str) -> dict:
@@ -530,7 +565,7 @@ class ResponseParameters:
         updated_at: datetime | None = None,
         # For regeneration support
         response_id_history: list[str] | None = None,
-        # OpenAI safety identifier (hashed user ID for abuse detection)
+        # OpenAI safety identifier (keyed HMAC of the user ID, see build_safety_identifier)
         safety_identifier: str | None = None,
         # Processing tier requested for every turn (SERVICE_TIER_FAST); None = API default
         service_tier: str | None = None,
@@ -662,6 +697,7 @@ class ImageGenerationParameters:
         size: str | None = "auto",
         background: str | None = "auto",
         output_format: str | None = None,
+        user: str | None = None,
     ):
         self.prompt = prompt
         self.model = model
@@ -674,6 +710,9 @@ class ImageGenerationParameters:
         if output_format is None and background == IMAGE_BACKGROUND_TRANSPARENT:
             output_format = "png"
         self.output_format = output_format
+        # The Images API takes the end-user identifier as `user`; it has no
+        # `safety_identifier` field.
+        self.user = user
 
     def to_dict(self):
         payload = {
@@ -689,6 +728,8 @@ class ImageGenerationParameters:
             payload["background"] = self.background
         if self.output_format is not None:
             payload["output_format"] = self.output_format
+        if self.user is not None:
+            payload["user"] = self.user
         return payload
 
 
@@ -701,11 +742,13 @@ class ResearchParameters:
         model: str = "gpt-6-astra",
         file_search: bool = False,
         code_interpreter: bool = False,
+        safety_identifier: str | None = None,
     ):
         self.prompt = prompt
         self.model = model
         self.file_search = file_search
         self.code_interpreter = code_interpreter
+        self.safety_identifier = safety_identifier
 
     def to_dict(self, tools: list[dict]) -> dict[str, Any]:
         """Convert to dictionary for API calls.
@@ -713,12 +756,15 @@ class ResearchParameters:
         Args:
             tools: Pre-resolved tool list (web_search is always included).
         """
-        return {
+        payload: dict[str, Any] = {
             "model": self.model,
             "input": self.prompt,
             "tools": tools,
             "background": True,
         }
+        if self.safety_identifier:
+            payload["safety_identifier"] = self.safety_identifier
+        return payload
 
 
 class TextToSpeechParameters:

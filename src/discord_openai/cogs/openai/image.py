@@ -8,6 +8,7 @@ from discord import ApplicationContext, Attachment, Colour, Embed, File
 from ...config.auth import SHOW_COST_EMBEDS
 from ...cost_line import count_label
 from ...util import (
+    build_safety_identifier,
     calculate_image_cost,
     calculate_image_cost_from_usage,
     format_openai_error,
@@ -62,6 +63,7 @@ async def run_image_command(
         quality=quality,
         size=size,
         background=background,
+        user=build_safety_identifier(ctx.author.id),
     )
     cog.logger.info(f"{mode} with model {model}")
 
@@ -82,6 +84,8 @@ async def run_image_command(
                 edit_kwargs["background"] = image_params.background
             if image_params.output_format is not None:
                 edit_kwargs["output_format"] = image_params.output_format
+            if image_params.user is not None:
+                edit_kwargs["user"] = image_params.user
             response = await cog.openai_client.images.edit(**edit_kwargs)
         else:
             response = await cog.openai_client.images.generate(**image_params.to_dict())

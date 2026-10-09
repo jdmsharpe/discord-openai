@@ -4,7 +4,12 @@ import time
 
 from discord import ApplicationContext, Colour, Embed, File
 
-from ...util import ResearchParameters, format_openai_error, hash_user_id, truncate_text
+from ...util import (
+    ResearchParameters,
+    build_safety_identifier,
+    format_openai_error,
+    truncate_text,
+)
 from .embed_delivery import send_embed_batches
 from .embeds import append_research_sources_embed, append_thinking_embeds, error_embed
 from .responses import extract_summary_text
@@ -27,6 +32,7 @@ async def run_research_command(
         model=model,
         file_search=file_search,
         code_interpreter=code_interpreter,
+        safety_identifier=build_safety_identifier(ctx.author.id),
     )
 
     try:
@@ -54,9 +60,7 @@ async def run_research_command(
             logger=cog.logger,
         )
 
-        api_dict = research_params.to_dict(tools)
-        api_dict["safety_identifier"] = hash_user_id(ctx.author.id)
-        response = await cog.openai_client.responses.create(**api_dict)
+        response = await cog.openai_client.responses.create(**research_params.to_dict(tools))
 
         max_wait_time = 1200
         start_time = time.time()

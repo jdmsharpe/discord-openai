@@ -125,6 +125,9 @@ python -m pip install -e ".[dev]"
 | `OPENAI_MCP_PRESETS_PATH` | No | Path to a JSON file containing named MCP presets |
 | `OPENAI_PRICING_PATH` | No | Path to a pricing YAML that overrides the bundled `src/discord_openai/config/pricing.yaml` |
 | `LOG_FORMAT` | No | `text` (default) for human-readable logs, or `json` for structured JSON-lines output with per-request IDs |
+| `SAFETY_IDENTIFIER_SECRET` | No | Key for the per-user identifier sent to OpenAI for abuse monitoring (Default: derived from `BOT_TOKEN`) |
+
+Chat, research and image requests carry a per-user identifier (`safety_identifier` on the Responses API, `user` on the Images API) so OpenAI can attribute a policy violation to one Discord user instead of the whole bot. The identifier is HMAC-SHA256 of the Discord user ID, keyed with `SAFETY_IDENTIFIER_SECRET` or, when that is unset, with a key derived from `BOT_TOKEN`; OpenAI never receives the Discord user ID or the key. Changing the key (or the bot token, when no secret is set) gives every user a new identifier. Text-to-speech and speech-to-text requests carry no identifier because those endpoints do not accept one.
 
 #### MCP Setup
 

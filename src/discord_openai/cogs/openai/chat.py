@@ -13,9 +13,9 @@ from ...util import (
     ResponseParameters,
     UsageInfo,
     build_input_content,
+    build_safety_identifier,
     extract_usage,
     format_openai_error,
-    hash_user_id,
     reasoning_effort_error,
     reasoning_mode_error,
     service_tier_error,
@@ -749,7 +749,7 @@ async def run_chat_command(
         conversation_id=interaction.id,
         channel_id=channel_id,
         response_id_history=[],
-        safety_identifier=hash_user_id(author.id),
+        safety_identifier=build_safety_identifier(author.id),
         service_tier=requested_tier,
     )
     params.set_last_user_input(input_content)

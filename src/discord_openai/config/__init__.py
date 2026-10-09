@@ -3,6 +3,7 @@ from .auth import (
     GUILD_IDS,
     OPENAI_API_KEY,
     OPENAI_VECTOR_STORE_IDS,
+    SAFETY_IDENTIFIER_SECRET,
     SHOW_COST_EMBEDS,
     validate_required_config,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "OPENAI_API_KEY",
     "OPENAI_MCP_PRESETS",
     "OPENAI_VECTOR_STORE_IDS",
+    "SAFETY_IDENTIFIER_SECRET",
     "SHOW_COST_EMBEDS",
     "OpenAIMcpPreset",
     "build_mcp_tool",

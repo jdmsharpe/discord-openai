@@ -1,3 +1,8 @@
+import hashlib
+import hmac
+import importlib
+import sys
+from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import ClassVar
 from unittest.mock import MagicMock, patch
@@ -6,6 +11,10 @@ import httpx2
 import pytest
 from openai import APIError
 
+import discord_openai
+import discord_openai.config
+import discord_openai.config.auth
+import discord_openai.util
 from discord_openai.cogs.openai.tooling import (
     TOOL_CODE_INTERPRETER,
     TOOL_FILE_SEARCH,
@@ -32,6 +41,7 @@ from discord_openai.util import (
     REASONING_EFFORT_HIGH,
     REASONING_EFFORT_MEDIUM,
     REASONING_EFFORT_ORDER,
+    SAFETY_IDENTIFIER_KEY_LABEL,
     STT_PRICING_PER_MINUTE,
     SUPPORTED_REASONING_EFFORTS,
     TTS_PRICING_PER_CHAR,
@@ -43,6 +53,7 @@ from discord_openai.util import (
     _parse_error_payload,
     build_attachment_content_block,
     build_input_content,
+    build_safety_identifier,
     calculate_cost,
     calculate_image_cost,
     calculate_image_cost_from_usage,
@@ -50,10 +61,10 @@ from discord_openai.util import (
     calculate_tool_cost,
     calculate_tts_cost,
     chunk_text,
+    derive_safety_identifier_key,
     estimate_audio_duration_seconds,
     extract_usage,
     format_openai_error,
-    hash_user_id,
     image_quality_error,
     reasoning_effort_error,
     reasoning_mode_error,
@@ -1092,27 +1103,118 @@ class TestFormatOpenAIError:
         assert formatted == expected
 
 
-class TestHashUserId:
-    def test_deterministic(self):
-        """Same user ID should always produce the same hash."""
-        assert hash_user_id(123456) == hash_user_id(123456)
+class TestSafetyIdentifier:
+    USER_ID = 1234567890123456789
+    SECRET_KEY = b"operator-secret"
 
-    def test_length_is_16(self):
-        """Hash should be truncated to 16 hex characters."""
-        assert len(hash_user_id(99999)) == 16
+    def _identifier(self, monkeypatch, user_id: int, key: bytes | None) -> str | None:
+        monkeypatch.setattr("discord_openai.util.SAFETY_IDENTIFIER_KEY", key)
+        return build_safety_identifier(user_id)
 
-    def test_different_ids_produce_different_hashes(self):
-        assert hash_user_id(1) != hash_user_id(2)
-
-    def test_hex_characters_only(self):
-        """Output should only contain valid hex digits."""
-        result = hash_user_id(42)
+    def test_is_64_lowercase_hex_chars(self, monkeypatch):
+        result = self._identifier(monkeypatch, self.USER_ID, self.SECRET_KEY)
+        assert result is not None
+        assert len(result) == 64
         assert all(c in "0123456789abcdef" for c in result) is True
 
-    def test_large_user_id(self):
-        """Should handle large Discord snowflake-style IDs."""
-        result = hash_user_id(1234567890123456789)
-        assert len(result) == 16
+    def test_is_hmac_sha256_of_the_decimal_user_id(self, monkeypatch):
+        expected = hmac.new(self.SECRET_KEY, str(self.USER_ID).encode(), hashlib.sha256).hexdigest()
+        assert self._identifier(monkeypatch, self.USER_ID, self.SECRET_KEY) == expected
+
+    def test_deterministic_per_user_and_key(self, monkeypatch):
+        first = self._identifier(monkeypatch, self.USER_ID, self.SECRET_KEY)
+        second = self._identifier(monkeypatch, self.USER_ID, self.SECRET_KEY)
+        assert first == second
+
+    def test_differs_across_users(self, monkeypatch):
+        first = self._identifier(monkeypatch, 1, self.SECRET_KEY)
+        second = self._identifier(monkeypatch, 2, self.SECRET_KEY)
+        assert first != second
+
+    def test_differs_across_keys(self, monkeypatch):
+        first = self._identifier(monkeypatch, self.USER_ID, b"secret-a")
+        second = self._identifier(monkeypatch, self.USER_ID, b"secret-b")
+        assert first != second
+
+    def test_does_not_expose_the_raw_or_unkeyed_id(self, monkeypatch):
+        result = self._identifier(monkeypatch, self.USER_ID, self.SECRET_KEY)
+        assert result is not None
+        unkeyed = hashlib.sha256(str(self.USER_ID).encode()).hexdigest()
+        assert result != str(self.USER_ID)
+        assert result != format(self.USER_ID, "x")
+        assert result != unkeyed
+        assert not unkeyed.startswith(result[:16])
+        assert str(self.USER_ID) not in result
+        assert format(self.USER_ID, "x") not in result
+
+    def test_no_identifier_without_a_key(self, monkeypatch):
+        assert self._identifier(monkeypatch, self.USER_ID, None) is None
+
+
+class TestDeriveSafetyIdentifierKey:
+    def test_secret_overrides_bot_token(self):
+        key = derive_safety_identifier_key("operator-secret", "discord-token")
+        assert key == b"operator-secret"
+
+    def test_secret_is_utf8_encoded(self):
+        assert derive_safety_identifier_key("s\u00e9cret", None) == "s\u00e9cret".encode()
+
+    def test_falls_back_to_a_key_derived_from_the_bot_token(self):
+        expected = hmac.new(b"discord-token", b"safety-identifier-v1", hashlib.sha256).digest()
+        assert SAFETY_IDENTIFIER_KEY_LABEL == b"safety-identifier-v1"
+        assert derive_safety_identifier_key(None, "discord-token") == expected
+        assert derive_safety_identifier_key("", "discord-token") == expected
+
+    def test_bot_token_fallback_is_not_the_raw_token(self):
+        assert derive_safety_identifier_key(None, "discord-token") != b"discord-token"
+
+    def test_different_bot_tokens_give_different_keys(self):
+        assert derive_safety_identifier_key(None, "token-a") != derive_safety_identifier_key(
+            None, "token-b"
+        )
+
+    def test_no_key_without_secret_or_bot_token(self):
+        assert derive_safety_identifier_key(None, None) is None
+        assert derive_safety_identifier_key("", "") is None
+
+    def test_module_key_uses_the_secret_from_the_environment(self, monkeypatch):
+        monkeypatch.setenv("SAFETY_IDENTIFIER_SECRET", "env-secret")
+        with _fresh_util_module(monkeypatch) as util:
+            assert util.SAFETY_IDENTIFIER_KEY == b"env-secret"
+
+    def test_module_key_falls_back_to_bot_token_from_the_environment(self, monkeypatch):
+        monkeypatch.delenv("SAFETY_IDENTIFIER_SECRET", raising=False)
+        monkeypatch.setenv("BOT_TOKEN", "env-bot-token")
+        expected = derive_safety_identifier_key(None, "env-bot-token")
+        with _fresh_util_module(monkeypatch) as util:
+            assert expected == util.SAFETY_IDENTIFIER_KEY
+
+    def test_module_sends_no_identifier_without_either_env_var(self, monkeypatch):
+        monkeypatch.delenv("SAFETY_IDENTIFIER_SECRET", raising=False)
+        monkeypatch.delenv("BOT_TOKEN", raising=False)
+        with _fresh_util_module(monkeypatch) as util:
+            assert util.SAFETY_IDENTIFIER_KEY is None
+            assert util.build_safety_identifier(123) is None
+
+
+@contextmanager
+def _fresh_util_module(monkeypatch):
+    """Import discord_openai.config.auth and discord_openai.util again from the env."""
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *_, **__: None)
+    # Keep the package attributes pointing at the original modules after the test.
+    monkeypatch.setattr(discord_openai.config, "auth", discord_openai.config.auth)
+    monkeypatch.setattr(discord_openai, "util", discord_openai.util)
+    names = ("discord_openai.config.auth", "discord_openai.util")
+    saved = {name: sys.modules[name] for name in names if name in sys.modules}
+    for name in names:
+        sys.modules.pop(name, None)
+    try:
+        importlib.import_module("discord_openai.config.auth")
+        yield importlib.import_module("discord_openai.util")
+    finally:
+        for name in names:
+            sys.modules.pop(name, None)
+        sys.modules.update(saved)
 
 
 class TestCalculateToolCost:

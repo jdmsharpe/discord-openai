@@ -6,7 +6,6 @@ from ...util import (
     build_input_content,
     download_attachment,
     estimate_audio_duration_seconds,
-    hash_user_id,
 )
 
 
@@ -25,6 +24,5 @@ __all__ = [
     "build_input_content",
     "download_attachment",
     "estimate_audio_duration_seconds",
-    "hash_user_id",
     "validate_image_attachment",
 ]

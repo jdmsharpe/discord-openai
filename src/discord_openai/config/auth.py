@@ -50,6 +50,12 @@ def validate_required_config() -> None:
             "Missing required environment configuration: "
             f"{missing_list}. Please set these variables before starting the bot."
         )
+    safety_secret = _get_env_or_none("SAFETY_IDENTIFIER_SECRET")
+    if safety_secret is not None and safety_secret == _get_env_or_none("OPENAI_API_KEY"):
+        raise RuntimeError(
+            "SAFETY_IDENTIFIER_SECRET must not equal OPENAI_API_KEY. "
+            "Set it to a separate random string or leave it unset."
+        )
 
 
 BOT_TOKEN = _get_env_or_none("BOT_TOKEN")
@@ -57,3 +63,4 @@ GUILD_IDS = _parse_guild_ids(os.getenv("GUILD_IDS", ""))
 OPENAI_API_KEY = _get_env_or_none("OPENAI_API_KEY")
 OPENAI_VECTOR_STORE_IDS = _parse_csv_values(os.getenv("OPENAI_VECTOR_STORE_IDS", ""))
 SHOW_COST_EMBEDS = _parse_bool_env("SHOW_COST_EMBEDS")
+SAFETY_IDENTIFIER_SECRET = _get_env_or_none("SAFETY_IDENTIFIER_SECRET")
