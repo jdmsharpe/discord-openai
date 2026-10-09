@@ -261,10 +261,8 @@ async def test_image_generate_request_sends_keyed_user():
 
 
 @pytest.mark.asyncio
-async def test_image_edit_request_sends_keyed_user(tmp_path):
+async def test_image_edit_request_sends_keyed_user():
     edit = AsyncMock(side_effect=RuntimeError("stop after request"))
-    source = tmp_path / "source.png"
-    source.write_bytes(b"\x89PNG\r\n\x1a\n")
     attachment = SimpleNamespace(
         url="https://cdn.example/source.png",
         filename="source.png",
@@ -272,8 +270,8 @@ async def test_image_edit_request_sends_keyed_user(tmp_path):
     )
 
     with patch(
-        "discord_openai.cogs.openai.image.download_attachment",
-        new=AsyncMock(return_value=source),
+        "discord_openai.cogs.openai.image.fetch_attachment_bytes",
+        new=AsyncMock(return_value=b"\x89PNG\r\n\x1a\n"),
     ):
         await run_image_command(
             _image_cog(edit=edit),

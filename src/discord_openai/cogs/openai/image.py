@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import io
 from typing import Any
@@ -15,7 +14,7 @@ from ...util import (
     image_quality_error,
     truncate_text,
 )
-from .attachments import download_attachment, validate_image_attachment
+from .attachments import fetch_attachment_bytes, validate_image_attachment
 from .embed_delivery import send_embed_batches
 from .embeds import append_flat_pricing_embed, error_embed
 from .models import ImageGenerationParameters
@@ -67,11 +66,9 @@ async def run_image_command(
     )
     cog.logger.info(f"{mode} with model {model}")
 
-    image_file_path = None
     try:
         if is_editing:
-            image_file_path = await download_attachment(attachment.url, attachment.filename)
-            image_bytes = await asyncio.to_thread(image_file_path.read_bytes)
+            image_bytes = await fetch_attachment_bytes(attachment.url)
             edit_kwargs: dict[str, Any] = {
                 "image": (attachment.filename, image_bytes),
                 "prompt": prompt,
@@ -166,6 +163,3 @@ async def run_image_command(
         await send_embed_batches(
             ctx.send_followup, embed=error_embed(description), logger=cog.logger
         )
-    finally:
-        if image_file_path and image_file_path.exists():
-            image_file_path.unlink(missing_ok=True)

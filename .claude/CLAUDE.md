@@ -98,6 +98,7 @@ Only `src/bot.py` remains at the repo root; code imports should target `discord_
 - `tests/test_config_pricing.py` covers YAML pricing load and `OPENAI_PRICING_PATH` override.
 - `tests/test_logging_setup.py` covers structured logging and request-id binding.
 - `tests/test_embed_delivery.py` covers Discord embed batching and char/count limits.
+- `tests/test_attachment_bytes.py` covers in-memory attachment downloads and TTS output (concurrent same-name voice messages, nothing written to disk).
 - New tests and patches should target real owners under `discord_openai...`.
 - Examples:
   - `discord_openai.cogs.openai.tool_registry.TOOL_REGISTRY`
@@ -164,3 +165,4 @@ pytest -q
 - **Conversation TTL**: `prune_runtime_state` in `cogs/openai/state.py` evicts conversations older than `CONVERSATION_TTL` (12h) every 15 minutes via `@tasks.loop`. Caps at `MAX_ACTIVE_CONVERSATIONS` / `MAX_VIEW_STATES`. Daily costs retained for `DAILY_COST_RETENTION_DAYS` (30).
 - **Request IDs**: `cog_before_invoke` (and `on_message`) bind a fresh 8-char hex id via `discord_openai.logging_setup.bind_request_id`. All downstream `logger.info`/`warning`/`error` calls automatically include the id. Set `LOG_FORMAT=json` for JSON-lines output.
 - **Async file I/O**: blocking `open()` and `pathlib` methods (`read_bytes`, `write_bytes`, `unlink`, etc.) inside `async def` freeze the Discord event loop and stall every concurrent slash command. Wrap them with `asyncio.to_thread(...)` so the I/O runs on a worker thread. Enforced by `ruff` (`ASYNC230`/`ASYNC240`).
+- **Attachments and generated audio stay in memory (2026-10-08).** `fetch_attachment_bytes(url)` in `discord_openai.util` returns the attachment's bytes; STT, translation and image edit send them as `(filename, bytes)` tuples, and the STT and TTS replies attach a `BytesIO` (TTS uses `response.content`). Nothing is written to disk. Before, `download_attachment` wrote every attachment to `tempfile.gettempdir()/<attachment filename>` and TTS wrote `gettempdir()/<voice>_speech.<format>`, so two users sending a Discord voice message (always named `voice-message.ogg`) at the same time, or two TTS requests with the same voice and format, could read or delete each other's file. Guard: `tests/test_attachment_bytes.py` (`TestSpeechToText`, `TestTextToSpeech`, `TestImageEdit`; the temp and working directories are read-only there, so any file write fails the test).

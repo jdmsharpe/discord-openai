@@ -349,7 +349,7 @@ toml = [
 
 [[package]]
 name = "discord-openai"
-version = "1.15.1"
+version = "1.15.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },

@@ -1,9 +1,7 @@
 import hashlib
 import hmac
-import tempfile
 from copy import deepcopy
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, TypedDict
 
 import aiohttp
@@ -941,11 +939,9 @@ def build_input_content(text: str | None, attachments: list) -> Any:
     return content if content else (text or "")
 
 
-async def download_attachment(url: str, filename: str) -> Path:
-    """Download a URL to a temp file and return the path. Caller must clean up."""
+async def fetch_attachment_bytes(url: str) -> bytes:
+    """Download an attachment into memory and return its bytes."""
     async with aiohttp.ClientSession() as session, session.get(url) as resp:
         if resp.status != 200:
             raise Exception(f"Failed to download the attachment (status {resp.status}).")
-        path = Path(tempfile.gettempdir()) / Path(filename).name
-        path.write_bytes(await resp.read())
-        return path
+        return await resp.read()

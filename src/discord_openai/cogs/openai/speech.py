@@ -1,6 +1,4 @@
-import asyncio
-import tempfile
-from pathlib import Path
+import io
 from typing import Any, cast
 
 from discord import ApplicationContext, Attachment, Colour, Embed, File
@@ -10,8 +8,8 @@ from ...cost_line import count_label
 from ...util import (
     calculate_stt_cost,
     calculate_tts_cost,
-    download_attachment,
     estimate_audio_duration_seconds,
+    fetch_attachment_bytes,
     format_openai_error,
     truncate_text,
 )
@@ -34,11 +32,9 @@ async def run_tts_command(
     await ctx.defer()
 
     params = TextToSpeechParameters(input, model, voice, instructions, response_format, speed)
-    speech_file_path = None
     try:
         response = await cog.openai_client.audio.speech.create(**params.to_dict())
-        speech_file_path = Path(tempfile.gettempdir()) / f"{voice}_speech.{response_format}"
-        response.write_to_file(speech_file_path)
+        speech_bytes = response.content
 
         description = (
             f"**Text:** {truncate_text(params.input, 1500)}\n"
@@ -79,7 +75,7 @@ async def run_tts_command(
         await send_embed_batches(
             ctx.send_followup,
             embeds=embeds,
-            file=File(speech_file_path),
+            file=File(io.BytesIO(speech_bytes), filename=f"{voice}_speech.{response_format}"),
             logger=cog.logger,
         )
     except Exception as e:
@@ -88,9 +84,6 @@ async def run_tts_command(
             embed=error_embed(format_openai_error(e)),
             logger=cog.logger,
         )
-    finally:
-        if speech_file_path and speech_file_path.exists():
-            speech_file_path.unlink(missing_ok=True)
 
 
 async def run_stt_command(
@@ -103,10 +96,8 @@ async def run_stt_command(
     """Run the /openai-tools stt command."""
     await ctx.defer()
 
-    speech_file_path = None
     try:
-        speech_file_path = await download_attachment(attachment.url, attachment.filename)
-        speech_bytes = await asyncio.to_thread(speech_file_path.read_bytes)
+        speech_bytes = await fetch_attachment_bytes(attachment.url)
         speech_file = (attachment.filename, speech_bytes)
         if action == "transcription":
             if model == "gpt-4o-transcribe-diarize":
@@ -168,7 +159,7 @@ async def run_stt_command(
         await send_embed_batches(
             ctx.send_followup,
             embeds=embeds,
-            file=File(speech_file_path),
+            file=File(io.BytesIO(speech_bytes), filename=attachment.filename),
             logger=cog.logger,
         )
     except Exception as e:
@@ -177,6 +168,3 @@ async def run_stt_command(
             embed=error_embed(format_openai_error(e)),
             logger=cog.logger,
         )
-    finally:
-        if speech_file_path and speech_file_path.exists():
-            speech_file_path.unlink(missing_ok=True)

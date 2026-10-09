@@ -4,8 +4,8 @@ from ...util import (
     IMAGE_CONTENT_TYPES,
     build_attachment_content_block,
     build_input_content,
-    download_attachment,
     estimate_audio_duration_seconds,
+    fetch_attachment_bytes,
 )
 
 
@@ -22,7 +22,7 @@ __all__ = [
     "IMAGE_CONTENT_TYPES",
     "build_attachment_content_block",
     "build_input_content",
-    "download_attachment",
     "estimate_audio_duration_seconds",
+    "fetch_attachment_bytes",
     "validate_image_attachment",
 ]
