@@ -41,7 +41,6 @@ Start an interactive thread with an OpenAI model.
 - **Fast mode:** the `service_tier` option (`fast`) opts a conversation into OpenAI's Fast mode — faster processing at the pricing page's Fast-mode rates (2x the token price on GPT-6 Astra / Sol / Luna, GPT-6.1 Sol and GPT-5.6 Sol / Terra / Luna, including their long-context tiers above 272K input tokens). Offered only for the models the page lists a Fast-mode rate for (GPT-6 Astra / Sol / Luna, GPT-6.1 Sol, the GPT-5.6 trio, GPT-5.5 / 5.4 / 5.4 Mini / 5.2 / 5.1 / 5 / 5 Mini, GPT-4.1 / 4.1 Mini, o3, GPT-4o Mini); the Pro tiers reject it before any request is sent. Ultrafast mode is not offered. The cost embed labels fast-mode replies and bills them at the fast rate the response reports.
 - **Cost Embeds:** Each reply ends with one cost line, such as `$0.0120 · 3.4k in (2.1k cached) / 812 out (640 thinking) · 1 search · fast mode · $0.34 today`: the request cost, input tokens (cached ones included and shown in parentheses), output tokens (thinking included and shown in parentheses), tool-call counts, fast mode when used, and your running total for the day. Tool-call fees and cache writes are included in the cost; tools appear only as call counts. GPT-6, GPT-6.1 Sol and GPT-5.6 cache writes are billed at OpenAI's published 1.25x input surcharge, and GPT-6.1 Sol's cached input at 5% of its input rate; GPT-5.6 Sol is priced at its promotional rate (guaranteed through 2026-11-21). Image and speech commands show the cost with the item, plus the token counts when the image was billed by tokens, such as `$0.0512 · 48 in / 1.1k out · 1 image · medium · 1024x1024 · $0.34 today`.
 - **Tools:** `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), `shell`.
-- **Scheduled shutdowns:** OpenAI shuts down `gpt-5`, `gpt-5-mini`, `gpt-5-nano`, `gpt-5-pro`, `o3` and `o3-pro` on 2026-12-11, and `gpt-5.1` (successor `gpt-6-sol`) and `gpt-5.4-nano` (successor `gpt-6-luna`) on 2027-04-01. They stay in the menu until then.
 - **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors. Connector presets are refused on the GPT-6 models and GPT-6.1 Sol, which do not support `connector_id`; use a remote MCP preset or a GPT-5.6 or earlier model for them.
 
 ### `/openai-media image`
@@ -62,13 +61,12 @@ Run a deep research task using `gpt-6-astra` (default), `gpt-6.1-sol`, `gpt-6-so
 Generate lifelike audio from text using OpenAI's TTS stack.
 
 - Select from 13 voices, multiple output formats (MP3, WAV, Opus, AAC, FLAC, PCM), and adjust playback speed.
-- OpenAI shuts down `tts-1`, `tts-1-hd` and the `gpt-4o-mini-tts` snapshots on 2027-01-06. The replacement OpenAI names, `gpt-realtime-2.1-mini`, does not support the speech endpoint this command uses, so the command has no successor model yet.
 
 ### `/openai-tools stt`
 
 Transcribe or translate uploaded audio (up to 25 MB).
 
-- Supports `gpt-transcribe` (default), `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts. OpenAI retires `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, and `gpt-4o-transcribe-diarize` on 2027-02-26; `gpt-transcribe` is the successor for transcription. Translation uses `whisper-1`, and no other model supports OpenAI's translation endpoint, so the translation action will stop working on that date unless it is reworked.
+- Supports `gpt-transcribe` (default), `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts.
 
 ### `/openai check_permissions`
 

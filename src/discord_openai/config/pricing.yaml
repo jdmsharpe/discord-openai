@@ -2,7 +2,7 @@
 #
 # Canonical source: https://developers.openai.com/api/docs/pricing
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-10-08
+# Last-verified: 2026-10-15
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
 # billed at cached_input_per_million when present, else at 50% of input.
