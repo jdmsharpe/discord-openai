@@ -242,7 +242,7 @@ def _image_cog(generate=None, edit=None):
 
 
 @pytest.mark.asyncio
-async def test_image_generate_request_sends_keyed_user():
+async def test_image_generate_request_sends_safety_identifier():
     generate = AsyncMock(side_effect=RuntimeError("stop after request"))
 
     await run_image_command(
@@ -256,12 +256,12 @@ async def test_image_generate_request_sends_keyed_user():
     )
 
     body = generate.await_args.kwargs
-    _assert_body_carries_identifier_only(body, "user")
-    assert "safety_identifier" not in body
+    _assert_body_carries_identifier_only(body, "safety_identifier")
+    assert "user" not in body
 
 
 @pytest.mark.asyncio
-async def test_image_edit_request_sends_keyed_user():
+async def test_image_edit_request_sends_safety_identifier():
     edit = AsyncMock(side_effect=RuntimeError("stop after request"))
     attachment = SimpleNamespace(
         url="https://cdn.example/source.png",
@@ -284,8 +284,8 @@ async def test_image_edit_request_sends_keyed_user():
         )
 
     body = edit.await_args.kwargs
-    _assert_body_carries_identifier_only(body, "user")
-    assert "safety_identifier" not in body
+    _assert_body_carries_identifier_only(body, "safety_identifier")
+    assert "user" not in body
 
 
 @pytest.mark.asyncio

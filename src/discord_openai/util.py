@@ -278,7 +278,7 @@ def calculate_stt_cost(model: str, duration_seconds: float) -> float:
     return per_minute * (duration_seconds / 60.0)
 
 
-REASONING_MODELS = ["o4-mini", "o3-pro", "o3", "o3-mini", "o1-pro", "o1"]
+REASONING_MODELS = ["o3-pro", "o3"]
 DEEP_RESEARCH_MODELS = [
     "gpt-6-astra",
     "gpt-6.1-sol",
@@ -408,6 +408,7 @@ _EFFORTS_O_SERIES = frozenset({"low", "medium", "high"})
 SUPPORTED_REASONING_EFFORTS: dict[str, frozenset[str]] = {
     "gpt-6-astra": _EFFORTS_GPT_6_ASTRA,
     "gpt-6.1-sol": _EFFORTS_GPT_6_ASTRA,
+    "gpt-6.1-terra": _EFFORTS_NONE_TO_MAX,
     "gpt-6-sol": _EFFORTS_NONE_TO_MAX,
     "gpt-6-luna": _EFFORTS_NONE_TO_MAX,
     "gpt-5.6-sol": _EFFORTS_NONE_TO_MAX,
@@ -519,7 +520,15 @@ NO_SAMPLING_MODELS = frozenset(
 # effort, and so reject temperature/top_p unless the effort is explicitly `none`.
 # gpt-5.4 and older accept temperature/top_p with no effort and are absent.
 REASONING_BY_DEFAULT_MODELS = frozenset(
-    {"gpt-6-sol", "gpt-6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"}
+    {
+        "gpt-6.1-terra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5",
+    }
 )
 RICH_TTS_MODELS = ["gpt-4o-mini-tts"]
 
@@ -695,7 +704,7 @@ class ImageGenerationParameters:
         size: str | None = "auto",
         background: str | None = "auto",
         output_format: str | None = None,
-        user: str | None = None,
+        safety_identifier: str | None = None,
     ):
         self.prompt = prompt
         self.model = model
@@ -708,9 +717,7 @@ class ImageGenerationParameters:
         if output_format is None and background == IMAGE_BACKGROUND_TRANSPARENT:
             output_format = "png"
         self.output_format = output_format
-        # The Images API takes the end-user identifier as `user`; it has no
-        # `safety_identifier` field.
-        self.user = user
+        self.safety_identifier = safety_identifier
 
     def to_dict(self):
         payload = {
@@ -726,8 +733,8 @@ class ImageGenerationParameters:
             payload["background"] = self.background
         if self.output_format is not None:
             payload["output_format"] = self.output_format
-        if self.user is not None:
-            payload["user"] = self.user
+        if self.safety_identifier is not None:
+            payload["safety_identifier"] = self.safety_identifier
         return payload
 
 

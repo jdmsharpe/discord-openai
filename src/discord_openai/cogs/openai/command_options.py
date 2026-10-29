@@ -3,6 +3,7 @@ from discord.commands import OptionChoice
 CHAT_MODEL_CHOICES = [
     OptionChoice(name="GPT-6 Astra", value="gpt-6-astra"),
     OptionChoice(name="GPT-6.1 Sol", value="gpt-6.1-sol"),
+    OptionChoice(name="GPT-6.1 Terra", value="gpt-6.1-terra"),
     OptionChoice(name="GPT-6 Sol", value="gpt-6-sol"),
     OptionChoice(name="GPT-6 Luna", value="gpt-6-luna"),
     OptionChoice(name="GPT-5.6 Sol", value="gpt-5.6-sol"),
@@ -20,7 +21,6 @@ CHAT_MODEL_CHOICES = [
     OptionChoice(name="GPT-5 Pro", value="gpt-5-pro"),
     OptionChoice(name="GPT-5", value="gpt-5"),
     OptionChoice(name="GPT-5 Mini", value="gpt-5-mini"),
-    OptionChoice(name="GPT-5 Nano", value="gpt-5-nano"),
     OptionChoice(name="GPT-4.1", value="gpt-4.1"),
     OptionChoice(name="GPT-4.1 Mini", value="gpt-4.1-mini"),
     OptionChoice(name="o3 Pro", value="o3-pro"),
@@ -67,7 +67,6 @@ IMAGE_MODEL_CHOICES = [
     OptionChoice(name="GPT Image 2.5 Flare", value="gpt-image-2.5-flare"),
     OptionChoice(name="GPT Image 2", value="gpt-image-2"),
     OptionChoice(name="GPT Image 1.5", value="gpt-image-1.5"),
-    OptionChoice(name="GPT Image 1", value="gpt-image-1"),
     OptionChoice(name="GPT Image 1 Mini", value="gpt-image-1-mini"),
 ]
 

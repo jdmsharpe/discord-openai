@@ -107,14 +107,14 @@ class TestResponseParameters:
     def test_reasoning_model_behavior(self):
         """Test that reasoning models use reasoning parameter instead of temperature/top_p."""
         params = ResponseParameters(
-            model="o1",  # Reasoning model
+            model="o3",  # Reasoning model
             instructions="Test instructions",
             input=[{"type": INPUT_TEXT_TYPE, "text": "Test"}],
             temperature=0.5,  # Should be ignored
             top_p=0.8,  # Should be ignored
         )
         result = params.to_dict()
-        assert result["model"] == "o1"
+        assert result["model"] == "o3"
         assert "temperature" not in result
         assert "top_p" not in result
         assert "reasoning" in result
@@ -876,6 +876,7 @@ class TestModelPricing:
         # gpt-5 family and newer: 90% off
         "gpt-6-astra": 0.10,
         "gpt-6.1-sol": 0.05,  # model page: "5% of the uncached input token rate"
+        "gpt-6.1-terra": 0.05,
         "gpt-6-sol": 0.10,
         "gpt-6-luna": 0.10,
         "gpt-5.6-sol": 0.10,
@@ -1366,6 +1367,7 @@ class TestSupportedReasoningEfforts:
     PROBED: ClassVar[dict[str, set[str]]] = {
         "gpt-6-astra": {"low", "medium", "high", "xhigh", "max"},  # 2026-09-15
         "gpt-6.1-sol": {"low", "medium", "high", "xhigh", "max"},  # 2026-10-08
+        "gpt-6.1-terra": {"none", "low", "medium", "high", "xhigh", "max"},
         "gpt-6-sol": {"none", "low", "medium", "high", "xhigh", "max"},  # 2026-09-22
         "gpt-6-luna": {"none", "low", "medium", "high", "xhigh", "max"},  # 2026-09-22
         "gpt-5.6-sol": {"none", "low", "medium", "high", "xhigh", "max"},
@@ -1698,6 +1700,7 @@ class TestSamplingParametersWithoutEffort:
     """
 
     REASONING_BY_DEFAULT: ClassVar[set[str]] = {
+        "gpt-6.1-terra",
         "gpt-6-sol",
         "gpt-6-luna",
         "gpt-5.6-sol",
@@ -1814,4 +1817,4 @@ class TestImageQualityGate:
 
     @pytest.mark.parametrize("quality", [None, "auto", "low", "medium", "high"])
     def test_standard_qualities_pass_everywhere(self, quality):
-        assert image_quality_error("gpt-image-1", quality) is None
+        assert image_quality_error("gpt-image-1.5", quality) is None

@@ -1,8 +1,9 @@
 # OpenAI model pricing catalog.
+# Cache-write prices use the default 30-minute retention; 12-hour retention is not requested.
 #
 # Canonical source: https://developers.openai.com/api/docs/pricing
 # Cross-referenced against: https://github.com/pydantic/genai-prices/blob/main/prices/providers/openai.yml
-# Last-verified: 2026-10-15
+# Last-verified: 2026-10-28
 #
 # All chat-model prices are USD per million tokens. Cached input tokens are
 # billed at cached_input_per_million when present, else at 50% of input.
@@ -85,6 +86,18 @@ models:
       cached_input_per_million: 0.20
       cache_write_per_million: 5.00
       long_context: { threshold_tokens: 272001, input_per_million: 8.00, output_per_million: 30.00, cached_input_per_million: 0.40, cache_write_per_million: 10.00 }
+  gpt-6.1-terra:
+    input_per_million: 1.00
+    output_per_million: 5.00
+    cached_input_per_million: 0.05
+    cache_write_per_million: 1.25
+    long_context: { threshold_tokens: 272001, input_per_million: 2.00, output_per_million: 7.50, cached_input_per_million: 0.10, cache_write_per_million: 2.50 }
+    fast:
+      input_per_million: 2.00
+      output_per_million: 10.00
+      cached_input_per_million: 0.10
+      cache_write_per_million: 2.50
+      long_context: { threshold_tokens: 272001, input_per_million: 4.00, output_per_million: 15.00, cached_input_per_million: 0.20, cache_write_per_million: 5.00 }
   # gpt-6-sol / gpt-6-luna: same tier structure as gpt-6-astra.
   gpt-6-sol:
     input_per_million: 2.00

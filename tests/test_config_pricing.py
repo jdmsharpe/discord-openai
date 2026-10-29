@@ -81,6 +81,7 @@ class TestPricingLoader:
         assert pricing.CACHE_WRITE_PRICING == {
             "gpt-6-astra": 12.50,
             "gpt-6.1-sol": 2.50,
+            "gpt-6.1-terra": 1.25,
             "gpt-6-sol": 2.50,
             "gpt-6-luna": 0.125,
             "gpt-5.6-sol": 5.00,
@@ -100,6 +101,7 @@ class TestPricingLoader:
         assert set(pricing.LONG_CONTEXT_PRICING) == {
             "gpt-6-astra",
             "gpt-6.1-sol",
+            "gpt-6.1-terra",
             "gpt-6-sol",
             "gpt-6-luna",
             "gpt-5.6-sol",
@@ -281,6 +283,7 @@ class TestFastTiers:
             # model: (input, output, cached input, cache write)
             "gpt-6-astra": (20.00, 100.00, 2.00, 25.00),
             "gpt-6.1-sol": (4.00, 20.00, 0.20, 5.00),
+            "gpt-6.1-terra": (2.00, 10.00, 0.10, 2.50),
             "gpt-6-sol": (4.00, 20.00, 0.40, 5.00),
             "gpt-6-luna": (0.20, 1.00, 0.02, 0.25),
             "gpt-5.6-sol": (8.00, 40.00, 0.80, 10.00),
@@ -316,6 +319,7 @@ class TestFastTiers:
             # model: (input, output, cached input, cache write)
             "gpt-6-astra": (40.00, 150.00, 4.00, 50.00),
             "gpt-6.1-sol": (8.00, 30.00, 0.40, 10.00),
+            "gpt-6.1-terra": (4.00, 15.00, 0.20, 5.00),
             "gpt-6-sol": (8.00, 30.00, 0.80, 10.00),
             "gpt-6-luna": (0.40, 1.50, 0.04, 0.50),
             "gpt-5.6-sol": (16.00, 60.00, 1.60, 20.00),
