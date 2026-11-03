@@ -6,6 +6,7 @@ from discord import ApplicationContext, Attachment, Colour, Embed, Interaction
 
 from ...config.auth import SHOW_COST_EMBEDS
 from ...config.mcp import parse_mcp_preset_names
+from ...stickers import text_with_stickers
 from ...util import (
     REASONING_MODE_PRO,
     SERVICE_TIER_STANDARD,
@@ -362,11 +363,24 @@ async def handle_new_message_in_conversation(
         )
         return
 
+    input_content = build_input_content(
+        text_with_stickers(message.content, message.stickers), message.attachments
+    )
+    if not input_content:
+        # No text, no sticker and no attachment with a content type: the Responses API
+        # rejects an empty input with 400 missing 'input', and the error path below
+        # would end the conversation.
+        cog.logger.debug(
+            "Ignoring follow-up with nothing to send in conversation %s.",
+            conversation.conversation_id,
+        )
+        return
+
     try:
         await _run_followup_response(
             cog,
             conversation=conversation,
-            input_content=build_input_content(message.content, message.attachments),
+            input_content=input_content,
             user_id=message.author.id,
             channel=message.channel,
             send_reply=message.reply,

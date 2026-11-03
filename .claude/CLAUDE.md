@@ -166,6 +166,7 @@ pytest -q
 - `authorization_env_var` names are user-defined token env vars that must be present at runtime for those presets to be available.
 - MCP state is persisted separately from built-in tool selections via `tool_names`, `mcp_preset_names`, and `pending_mcp_approval`.
 - While an approval is pending, the bot swaps to `McpApprovalView`, blocks typed follow-ups, and resumes the same response chain with `mcp_approval_response` when the owner approves or denies.
+- **Stickers are sent as text (v1.16.1).** A Discord sticker arrives with empty `content` and no `attachments`; `handle_new_message_in_conversation` (`chat.py`) sends each sticker in `message.stickers` as a `[Sticker: <name>]` line after the message text, built by `text_with_stickers` in `stickers.py`, which is byte-identical in the five AI bots (change all five together). The sticker image is not sent. A follow-up with nothing to send (no text, no sticker, no attachment that yields content) is ignored and the conversation stays open. Before, discord-openai, discord-gemini and discord-claude sent an empty turn, got a 400, and the error path removed the conversation; discord-grok and discord-openrouter dropped a sticker-only message without a reply. Pinned by `tests/test_stickers.py` and the sticker follow-up tests in `tests/test_openai_chat.py`.
 
 ## Runtime Conventions (Cross-Project)
 

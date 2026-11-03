@@ -127,6 +127,7 @@ async def test_chat_followup_request_keeps_keyed_safety_identifier():
         channel=SimpleNamespace(),
         content="and then?",
         attachments=[],
+        stickers=[],
         id=111,
         reply=AsyncMock(),
     )

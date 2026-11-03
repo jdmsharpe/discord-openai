@@ -657,6 +657,7 @@ class TestHandleNewMessageInConversation:
             channel=SimpleNamespace(),
             content="hi",
             attachments=[],
+            stickers=[],
             id=111,
             reply=AsyncMock(),
         )
@@ -777,3 +778,68 @@ class TestHandleMcpApprovalAction:
         assert message.edit.await_args.kwargs["view"] is reply_view
         assert cog.views[42][1] is reply_view
         assert cog.last_view_messages[42][1] is message
+
+
+def _followup_conversation_and_message(*, content: str, stickers: list):
+    conversation = ResponseParameters(
+        model="gpt-6-astra",
+        input=[],
+        conversation_starter_id=123,
+        channel_id=456,
+        conversation_id=789,
+    )
+    message = SimpleNamespace(
+        author=SimpleNamespace(id=123),
+        channel=SimpleNamespace(),
+        content=content,
+        attachments=[],
+        stickers=stickers,
+        id=111,
+        reply=AsyncMock(),
+    )
+    return conversation, message
+
+
+@pytest.mark.asyncio
+async def test_sticker_only_followup_sends_the_sticker_name():
+    """A sticker-only message has no text and no attachments. It used to be sent as an
+    empty input (400 "Missing required parameter: 'input'"), and the error path removed
+    the conversation; the sticker's name is now the follow-up's input."""
+    conversation, message = _followup_conversation_and_message(
+        content="", stickers=[SimpleNamespace(name="EEYUP")]
+    )
+    cog = SimpleNamespace(
+        logger=MagicMock(),
+        conversation_histories={789: conversation},
+        _cleanup_conversation=AsyncMock(),
+    )
+
+    with patch(
+        "discord_openai.cogs.openai.chat._run_followup_response", AsyncMock()
+    ) as run_followup:
+        await handle_new_message_in_conversation(cog, message, conversation)
+
+    assert run_followup.await_args.kwargs["input_content"] == "[Sticker: EEYUP]"
+    cog._cleanup_conversation.assert_not_awaited()
+    assert cog.conversation_histories == {789: conversation}
+
+
+@pytest.mark.asyncio
+async def test_followup_with_nothing_to_send_is_ignored_and_keeps_the_conversation():
+    """A message with no text, no sticker and no attachment would be an empty input,
+    which the Responses API rejects; it is ignored and the conversation stays open."""
+    conversation, message = _followup_conversation_and_message(content="", stickers=[])
+    create = AsyncMock()
+    cog = SimpleNamespace(
+        logger=MagicMock(),
+        conversation_histories={789: conversation},
+        openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+        _cleanup_conversation=AsyncMock(),
+    )
+
+    await handle_new_message_in_conversation(cog, message, conversation)
+
+    create.assert_not_awaited()
+    message.reply.assert_not_awaited()
+    cog._cleanup_conversation.assert_not_awaited()
+    assert cog.conversation_histories == {789: conversation}
