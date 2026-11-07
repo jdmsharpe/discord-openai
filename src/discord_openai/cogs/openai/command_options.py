@@ -63,6 +63,8 @@ VERBOSITY_CHOICES = [
 ]
 
 IMAGE_MODEL_CHOICES = [
+    OptionChoice(name="GPT Image 2.6 Sunburst", value="gpt-image-2.6-sunburst"),
+    OptionChoice(name="GPT Image 2.6 Flare", value="gpt-image-2.6-flare"),
     OptionChoice(name="GPT Image 2.5 Sunburst", value="gpt-image-2.5-sunburst"),
     OptionChoice(name="GPT Image 2.5 Flare", value="gpt-image-2.5-flare"),
     OptionChoice(name="GPT Image 2", value="gpt-image-2"),
@@ -75,8 +77,8 @@ IMAGE_QUALITY_CHOICES = [
     OptionChoice(name="Low", value="low"),
     OptionChoice(name="Medium", value="medium"),
     OptionChoice(name="High", value="high"),
-    OptionChoice(name="Extra High (GPT Image 2.5 only)", value="xhigh"),
-    OptionChoice(name="Max (GPT Image 2.5 only)", value="max"),
+    OptionChoice(name="Extra High (GPT Image 2.5 and 2.6 only)", value="xhigh"),
+    OptionChoice(name="Max (GPT Image 2.5 and 2.6 only)", value="max"),
 ]
 
 IMAGE_SIZE_CHOICES = [

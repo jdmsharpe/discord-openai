@@ -384,14 +384,14 @@ class OpenAICog(commands.Cog):
     @option("prompt", description="Prompt", required=True, type=str)
     @option(
         "model",
-        description="Choose from the following image generation models. (default: GPT Image 2.5 Sunburst)",
+        description="Choose from the following image generation models. (default: GPT Image 2.6 Sunburst)",
         required=False,
         type=str,
         choices=IMAGE_MODEL_CHOICES,
     )
     @option(
         "quality",
-        description="Image quality; xhigh and max are GPT Image 2.5 only. (default: auto)",
+        description="Image quality; xhigh and max are GPT Image 2.5 and 2.6 only. (default: auto)",
         required=False,
         type=str,
         choices=IMAGE_QUALITY_CHOICES,
@@ -420,7 +420,7 @@ class OpenAICog(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "gpt-image-2.5-sunburst",
+        model: str = "gpt-image-2.6-sunburst",
         quality: str | None = "auto",
         size: str | None = "auto",
         background: str | None = "auto",

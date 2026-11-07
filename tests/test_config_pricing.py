@@ -177,6 +177,8 @@ class TestPricingLoader:
             "image_output": 30.00,
         }
         assert {
+            "gpt-image-2.6-sunburst": gpt_image_2,
+            "gpt-image-2.6-flare": gpt_image_2,
             "gpt-image-2.5-sunburst": gpt_image_2,
             "gpt-image-2.5-flare": gpt_image_2,
             "gpt-image-2": gpt_image_2,
@@ -208,6 +210,23 @@ class TestPricingLoader:
             assert pricing.IMAGE_PRICING[(model, "xhigh", "1024x1024")] == 0.094
             assert pricing.IMAGE_PRICING[(model, "max", "1024x1024")] == 0.211
         assert ("gpt-image-2", "xhigh", "1024x1024") not in pricing.IMAGE_PRICING
+
+    def test_gpt_image_2_6_per_image_rows(self):
+        """Square rows come from measured output tokens (low 824, medium 1,449, xhigh 3,122)."""
+        pricing = _reload_pricing()
+        for model in ("gpt-image-2.6-sunburst", "gpt-image-2.6-flare"):
+            assert pricing.IMAGE_PRICING_DEFAULTS[model] == 0.025
+            assert pricing.IMAGE_PRICING[(model, "low", "1024x1024")] == 0.025
+            assert pricing.IMAGE_PRICING[(model, "low", "1536x1024")] == 0.020
+            assert pricing.IMAGE_PRICING[(model, "low", "1024x1536")] == 0.020
+            assert pricing.IMAGE_PRICING[(model, "medium", "1024x1024")] == 0.043
+            assert pricing.IMAGE_PRICING[(model, "medium", "1536x1024")] == 0.035
+            assert pricing.IMAGE_PRICING[(model, "high", "1024x1024")] == 0.053
+            assert pricing.IMAGE_PRICING[(model, "xhigh", "1024x1024")] == 0.094
+            # No cell of a 2.6 row is cheaper than the measured low square cell.
+            row = {k: v for k, v in pricing.IMAGE_PRICING.items() if k[0] == model}
+            assert min(v for (_, quality, _), v in row.items() if quality != "low") > 0.025
+            assert pricing.IMAGE_TOKEN_PRICING[model] == pricing.IMAGE_TOKEN_PRICING["gpt-image-2"]
 
     def test_bundled_yaml_loads_image_defaults(self):
         pricing = _reload_pricing()

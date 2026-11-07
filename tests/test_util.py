@@ -425,7 +425,7 @@ class TestImageGenerationParameters:
     def test_defaults(self):
         params = ImageGenerationParameters(prompt="Test prompt")
         result = params.to_dict()
-        assert result["model"] == "gpt-image-2.5-sunburst"
+        assert result["model"] == "gpt-image-2.6-sunburst"
         assert result["quality"] == "auto"
         assert result["size"] == "auto"
         assert result["n"] == 1
@@ -1792,6 +1792,11 @@ class TestImageCostFromUsage:
         assert cost == pytest.approx(0.00652)
         assert cost < calculate_image_cost("gpt-image-2.5-sunburst", "auto", "auto")
 
+    @pytest.mark.parametrize("model", ["gpt-image-2.6-sunburst", "gpt-image-2.6-flare"])
+    def test_gpt_image_2_6_default_request_cost(self, model):
+        cost = calculate_image_cost_from_usage(model, self._usage(11, 0, 664))
+        assert cost == pytest.approx(664 * 30e-6 + 11 * 5e-6)
+
     def test_returns_none_without_rates_or_usage(self):
         assert calculate_image_cost_from_usage("unknown-model", self._usage(1, 0, 100)) is None
         assert calculate_image_cost_from_usage("gpt-image-2", None) is None
@@ -1800,11 +1805,19 @@ class TestImageCostFromUsage:
 
 
 class TestImageQualityGate:
-    """xhigh / max are GPT Image 2.5 only; older models 400 on them."""
+    """xhigh / max are GPT Image 2.5 and 2.6 only; older models 400 on them."""
 
-    @pytest.mark.parametrize("model", ["gpt-image-2.5-sunburst", "gpt-image-2.5-flare"])
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "gpt-image-2.6-sunburst",
+            "gpt-image-2.6-flare",
+            "gpt-image-2.5-sunburst",
+            "gpt-image-2.5-flare",
+        ],
+    )
     @pytest.mark.parametrize("quality", ["xhigh", "max"])
-    def test_extended_qualities_pass_on_gpt_image_2_5(self, model, quality):
+    def test_extended_qualities_pass_on_gpt_image_2_5_and_2_6(self, model, quality):
         assert image_quality_error(model, quality) is None
 
     @pytest.mark.parametrize("model", ["gpt-image-2", "gpt-image-1.5", "gpt-image-1-mini"])
@@ -1814,6 +1827,7 @@ class TestImageQualityGate:
         assert "`xhigh`" in error
         assert f"`{model}`" in error
         assert "`gpt-image-2.5-sunburst`" in error
+        assert "`gpt-image-2.6-sunburst`" in error
 
     @pytest.mark.parametrize("quality", [None, "auto", "low", "medium", "high"])
     def test_standard_qualities_pass_everywhere(self, quality):

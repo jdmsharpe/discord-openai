@@ -156,7 +156,7 @@ class TestOpenAICog:
             None,
         )
         assert OpenAICog.image.callback.__defaults__ == (
-            "gpt-image-2.5-sunburst",
+            "gpt-image-2.6-sunburst",
             "auto",
             "auto",
             "auto",
@@ -206,6 +206,10 @@ class TestOpenAICog:
         assert any(choice.value == "gpt-6-sol" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-luna" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.6-sol" for choice in CHAT_MODEL_CHOICES)
+        assert [choice.value for choice in IMAGE_MODEL_CHOICES][:2] == [
+            "gpt-image-2.6-sunburst",
+            "gpt-image-2.6-flare",
+        ]
         assert any(choice.value == "gpt-image-2.5-sunburst" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-2.5-flare" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-astra" for choice in RESEARCH_MODEL_CHOICES)

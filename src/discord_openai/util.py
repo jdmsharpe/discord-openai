@@ -237,11 +237,18 @@ def calculate_image_cost_from_usage(model: str, usage: Any) -> float | None:
     ) / 1_000_000
 
 
-# Image qualities beyond `high`: GPT Image 2.5 only (Images API reference); older
+# Image qualities beyond `high`: GPT Image 2.5 and 2.6 only (Images API reference); older
 # GPT Image models return 400 "does not support quality 'xhigh'", so the menu
 # combination is refused before any request.
 EXTENDED_IMAGE_QUALITIES = frozenset({"xhigh", "max"})
-EXTENDED_IMAGE_QUALITY_MODELS = frozenset({"gpt-image-2.5-sunburst", "gpt-image-2.5-flare"})
+EXTENDED_IMAGE_QUALITY_MODELS = frozenset(
+    {
+        "gpt-image-2.6-sunburst",
+        "gpt-image-2.6-flare",
+        "gpt-image-2.5-sunburst",
+        "gpt-image-2.5-flare",
+    }
+)
 
 
 def image_quality_error(model: str, quality: str | None) -> str | None:
@@ -295,7 +302,8 @@ CONTEXT_MANAGEMENT = [{"type": "compaction", "compact_threshold": 200_000}]
 # Extended prompt caching: retain cached prefixes up to 24 hours instead of
 # the default 5-10 minute in-memory window, improving cache hits across conversations.
 # openai 3.6.0 marks `prompt_cache_retention` deprecated in favour of
-# `prompt_cache_options.ttl` (GPT-5.6+ only; "30m" is the only accepted ttl). The
+# `prompt_cache_options.ttl` (GPT-5.6+ only; "30m" or "12h"). The bot sends no ttl,
+# so the 30-minute default applies and cache writes bill at the 30-minute write rate. The
 # API still accepts "24h" on gpt-5.6 (probed 2026-08-28) and it remains the correct
 # knob for the older models, so no behaviour change yet — revisit when the SDK or
 # API rejects it.
@@ -698,7 +706,7 @@ class ImageGenerationParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "gpt-image-2.5-sunburst",
+        model: str = "gpt-image-2.6-sunburst",
         n: int = 1,
         quality: str | None = "auto",
         size: str | None = "auto",

@@ -45,9 +45,9 @@ Start an interactive thread with an OpenAI model.
 
 ### `/openai-media image`
 
-Create images using GPT Image models (`gpt-image-2.5-sunburst` (default), `gpt-image-2.5-flare`, `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1-mini`).
+Create images using GPT Image models (`gpt-image-2.6-sunburst` (default), `gpt-image-2.6-flare`, `gpt-image-2.5-sunburst`, `gpt-image-2.5-flare`, `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1-mini`).
 
-- Features quality presets (low, medium, high, auto; `xhigh` and `max` on GPT Image 2.5 only) and multiple sizes (portrait, landscape, square). Cost is billed from the token usage each response reports, so an `auto` request costs what the API actually served.
+- Features quality presets (low, medium, high, auto; `xhigh` and `max` on GPT Image 2.5 and 2.6 only) and multiple sizes (portrait, landscape, square). Cost is billed from the token usage each response reports, so an `auto` request costs what the API actually served.
 - `background`: `auto` (default), `opaque`, or `transparent` — transparent returns an alpha PNG (GA on GPT Image 2.5, in preview on GPT Image 2; works on every listed model) for both generation and edits.
 
 ### `/openai-tools research`
