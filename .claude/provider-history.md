@@ -6,6 +6,12 @@ When a change needs new evidence, add it here under the matching heading (or a n
 
 ## SDK sweep log
 
+### 2026-11-10
+
+- Updated openai 3.46.0 → 3.49.0; additions concern GPT-6 Rosalind, beta agent-session streams and typed async tool definitions, with no removed parameters on the bot paths. Rosalind requires approved research access and is not added to the public chat menu.
+- Rechecked real Responses and audio/image method signatures; prompt_cache_retention remains typed, and prompt_cache_options.ttl remains the future migration route.
+- Default text and media models remain current. The November 10 deprecations update adds GPT Image 2 shutdown on 2027-02-10; no model is due for removal today.
+
 ### 2026-11-06
 
 - `openai~=3.46` (from 3.41): no call-site changes. New image params `complexity` / `frame_count` / `gif` / `svg` and `cache_write_tokens_details{ttl_30m_tokens, ttl_12h_tokens}` are not used.
@@ -76,6 +82,8 @@ When a change needs new evidence, add it here under the matching heading (or a n
 > 2026-11-06: `gpt-5-nano` left `CHAT_MODEL_CHOICES` at the 2026-10-28 sweep (replaced by `gpt-6.1-terra`); its pricing row and `NO_SAMPLING_MODELS` / `SUPPORTED_REASONING_EFFORTS` entries remain.
 
 ### Image cost
+
+2026-11-10: [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations) adds `gpt-image-2` and its dated snapshot retirement on 2027-02-10, with the 2.6 pair as replacements. The existing 1.5 / 1-mini retirement remains 2026-12-01.
 
 - **Image cost is billed from the response's token usage (v1.13.0).** OpenAI bills GPT Image models per token and the Images API reports the usage on every response (`usage.input_tokens_details.text_tokens` / `image_tokens`, `usage.output_tokens_details.image_tokens`); `calculate_image_cost_from_usage(model, response.usage)` prices them with `IMAGE_TOKEN_PRICING` (the `per_million_tokens` block of each `image_generation` row: $5 text in / $8 image in / $30 image out on GPT Image 2 and 2.5, $32 out on 1.5, $10 in / $40 out on 1, $2 / $2.50 / $8 on 1-mini). The per-image table is now only the fallback (`calculate_image_cost`, keyed by the quality and size the response echoes). Motivation: an `auto` request resolves server-side to `low` at a non-standard size (1312x1199, 215 tokens, $0.0065 on 2026-09-15) while the old flat `default_per_image` billed $0.053 — a 9x over-estimate on every default call. GPT Image 2.6 Sunburst (default since the 2026-11-06 sweep) and Flare lead `IMAGE_MODEL_CHOICES`, followed by the 2.5 pair (7 of 25); `xhigh` / `max` qualities are gated by `image_quality_error` (`EXTENDED_IMAGE_QUALITY_MODELS`, the 2.5 and 2.6 pairs) because gpt-image-2 400s `does not support quality 'xhigh'` (probed 2026-09-15); their per-image rows come from OpenAI's calculator and were confirmed at low / medium / high by live generations; Batch is not supported on 2.5. Pinned by `TestImageCostFromUsage` and `TestImageQualityGate` (`tests/test_util.py`), `test_image_token_rates_are_pinned` and `test_gpt_image_2_5_per_image_rows` (`tests/test_config_pricing.py`).
 
