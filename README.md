@@ -14,59 +14,74 @@
 
 ## Overview
 
-A Discord bot built on Pycord 2.0 that integrates the OpenAI API. It brings together conversational AI, image generation, text-to-speech, speech-to-text capabilities, and autonomous research through modern slash commands.
+A Discord bot for the OpenAI API, built on Pycord 2.0. It provides chat, image generation, text-to-speech, speech-to-text and deep research through slash commands.
 
 ## Features
 
-- **Conversational AI:** Engage in interactive, multi-turn conversations with a wide variety of OpenAI models (GPT-5 series, o-series, GPT-4o, etc.). Maintains full context for follow-up replies in the same channel.
-- **Multimodal Input:** Attach images, PDFs, documents, spreadsheets, and code files.
-- **Reasoning Display:** Model thinking processes (for o-series and reasoning-effort models) are displayed in spoilered "Thinking" embeds.
-- **Built-in Tools:** Supports `web_search`, `code_interpreter`, `file_search` (with citation embeds), and `shell` (GPT-5 and GPT-6 series).
-- **Remote MCP & Connectors:** Enable trusted remote MCP servers and OpenAI connectors via named presets with optional tool allow-lists and approval policies. Features a seamless Discord UI approval loop for actions.
-- **Media Generation:**
-  - **Images:** Create images using GPT Image models with quality and aspect ratio controls.
-  - **Text-to-Speech:** Convert text into lifelike audio using `gpt-4o-mini-tts`, `tts-1`, or `tts-1-hd` models with 13 distinct voices.
-  - **Speech-to-Text:** Transform audio attachments into verbatim transcriptions or English translations, complete with optional speaker diarization.
-- **Deep Research:** Run autonomous agents that search the web, read pages, and synthesize detailed reports with inline citations.
-- **Interactive UI:** Incorporates button-based controls, real-time feedback, and dynamic context menus.
+- **Chat:** Multi-turn conversations with GPT-6, GPT-5.x, GPT-4.1, o3 and GPT-4o Mini models. Messages you send in the channel continue the conversation.
+- **Attachments:** Images, PDFs, documents, spreadsheets and code files.
+- **Reasoning:** Reasoning models show a summary of their thinking in a spoiler.
+- **Built-in tools:** `web_search`, `code_interpreter`, `file_search` and `shell`.
+- **Remote MCP and connectors:** Trusted servers enabled through named presets, with optional tool allow-lists and approval policies. Tool calls that need approval show Approve / Deny buttons.
+- **Citations:** Web and file search citations appear in a Sources embed.
+- **Media generation:**
+  - **Images:** GPT Image models with quality, size and background options.
+  - **Text-to-speech:** `gpt-4o-mini-tts`, `tts-1` and `tts-1-hd`, with 13 voices.
+  - **Speech-to-text:** Transcription or English translation of audio files, with optional speaker labels.
+- **Deep research:** Research runs that search the web and return a report with citations.
+- **Cost line:** Each reply ends with a line such as `$0.0120 · 3.4k in (2.1k cached) / 812 out (640 thinking) · 1 search · fast mode · $0.34 today`: request cost, input tokens (cached in parentheses), output tokens (thinking in parentheses), tool calls and your total for the day. Set `SHOW_COST_EMBEDS=false` to hide it.
 
 ## Commands
 
 ### `/openai chat`
 
-Start an interactive thread with an OpenAI model.
+Start a conversation with an OpenAI model.
 
-- **Models:** GPT-6 Astra (default), GPT-6.1 Sol / Terra, GPT-6 Sol / Luna, GPT-5.6 Sol / Terra / Luna, GPT-5 series (incl. 5.5 / 5.5 Pro and 5.4 / 5.2 / 5.1 / 5 variants), GPT-4.1 / 4.1 Mini, o3 / o3 Pro, and GPT-4o Mini.
-- **Tuning Options:** Adjust temperature, `top_p` (dropped on GPT-6 Astra, GPT-6.1 Sol, GPT-5 / 5 Mini and the Pro tiers, which reject them, and on GPT-6.1 Terra, GPT-6 Sol / Luna, GPT-5.6 and GPT-5.5 unless reasoning effort is `none`), reasoning effort, and verbosity. Effort support is per model — `minimal` is GPT-5 / 5 Mini only; `none` is rejected by GPT-6 Astra, GPT-6.1 Sol, those two, the Pro tiers, and the o-series; `xhigh` needs GPT-5.2 or newer; `max` is GPT-6, GPT-6.1 Sol / Terra and GPT-5.6 only; the Pro tiers accept `medium` / `high` / `xhigh` and GPT-5 Pro `high` only — and an unsupported combination is refused with a clear error before any request is sent. Reasoning **mode** is a separate opt-in for GPT-6 Astra / Sol / Luna, GPT-6.1 Sol and GPT-5.6 Sol / Terra / Luna: `pro` is independent of effort and is billed at the model's standard token rates but on substantially more tokens — a fixed ~1.5k-token input overhead per call plus roughly 4–6x per turn, with tool schemas and conversation history multiplied — and it is refused before any request is sent on every other model.
-- **Fast mode:** the `service_tier` option (`fast`) opts a conversation into OpenAI's Fast mode — faster processing at the pricing page's Fast-mode rates (2x the token price on GPT-6 Astra / Sol / Luna, GPT-6.1 Sol and GPT-5.6 Sol / Terra / Luna, including their long-context tiers above 272K input tokens). Offered only for the models the page lists a Fast-mode rate for (GPT-6 Astra / Sol / Luna, GPT-6.1 Sol, the GPT-5.6 trio, GPT-5.5 / 5.4 / 5.4 Mini / 5.2 / 5.1 / 5 / 5 Mini, GPT-4.1 / 4.1 Mini, o3, GPT-4o Mini); the Pro tiers reject it before any request is sent. Ultrafast mode is not offered. The cost embed labels fast-mode replies and bills them at the fast rate the response reports.
-- **Cost Embeds:** Each reply ends with one cost line, such as `$0.0120 · 3.4k in (2.1k cached) / 812 out (640 thinking) · 1 search · fast mode · $0.34 today`: the request cost, input tokens (cached ones included and shown in parentheses), output tokens (thinking included and shown in parentheses), tool-call counts, fast mode when used, and your running total for the day. Tool-call fees and cache writes are included in the cost; tools appear only as call counts. GPT-6, GPT-6.1 Sol and GPT-5.6 cache writes are billed at OpenAI's published 1.25x input surcharge, and GPT-6.1 Sol / Terra's cached input at 5% of its input rate; GPT-5.6 Sol is priced at its promotional rate (guaranteed through 2026-11-21). Image and speech commands show the cost with the item, plus the token counts when the image was billed by tokens, such as `$0.0512 · 48 in / 1.1k out · 1 image · medium · 1024x1024 · $0.34 today`.
-- **Tools:** `web_search`, `code_interpreter`, `file_search` (requires `OPENAI_VECTOR_STORE_IDS`), `shell`.
-- **MCP Integration:** Provide a comma-separated list of preset names via the `mcp` parameter to enable remote servers or connectors. Connector presets are refused on the GPT-6 models and GPT-6.1 Sol, which do not support `connector_id`; use a remote MCP preset or a GPT-5.6 or earlier model for them.
+- **`prompt` (required):** Your first message.
+- **`persona`:** System prompt (default: "You are a helpful assistant.").
+- **`model`:** GPT-6 Astra (default), GPT-6.1 Sol / Terra, GPT-6 Sol / Luna, GPT-5.6 Sol / Terra / Luna, GPT-5.5 through GPT-5 (including the Pro, Mini and Nano tiers), GPT-4.1 / 4.1 Mini, o3 / o3 Pro, GPT-4o Mini.
+- **`attachment`:** An image, PDF, document, spreadsheet or code file.
+- **`temperature` / `top_p`:** Sent only when the model and reasoning effort accept them; otherwise dropped.
+- **`reasoning_effort`:** `none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. Each model supports a subset, and an unsupported level is refused before the request is sent.
+- **`reasoning_mode`:** `pro` on GPT-6 Astra / Sol / Luna, GPT-6.1 Sol and GPT-5.6. Same token rates, but roughly 4–6x the tokens per turn.
+- **`service_tier`:** `fast` for faster processing at OpenAI's Fast-mode rates (2x on GPT-6, GPT-6.1 and GPT-5.6). Not available on the Pro tiers or GPT-5.4 Nano.
+- **`verbosity`:** `low`, `medium` (default) or `high`.
+- **`web_search` / `code_interpreter` / `file_search` / `shell`:** Enable built-in tools (default: off). `file_search` needs `OPENAI_VECTOR_STORE_IDS`; `shell` works on GPT-5 and GPT-6 models.
+- **`mcp`:** Comma-separated MCP preset names (see [MCP Setup](#mcp-setup)).
 
 ### `/openai-media image`
 
-Create images using GPT Image models (`gpt-image-2.6-sunburst` (default), `gpt-image-2.6-flare`, `gpt-image-2.5-sunburst`, `gpt-image-2.5-flare`, `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1-mini`).
+Generate an image from a prompt, or edit an attached image.
 
-- Features quality presets (low, medium, high, auto; `xhigh` and `max` on GPT Image 2.5 and 2.6 only) and multiple sizes (portrait, landscape, square). Cost is billed from the token usage each response reports, so an `auto` request costs what the API actually served.
-- `background`: `auto` (default), `opaque`, or `transparent` — transparent returns an alpha PNG (GA on GPT Image 2.5, in preview on GPT Image 2; works on every listed model) for both generation and edits.
+- **`model`:** `gpt-image-2.6-sunburst` (default), `gpt-image-2.6-flare`, `gpt-image-2.5-sunburst`, `gpt-image-2.5-flare`, `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1-mini`.
+- **`quality`:** `auto` (default), `low`, `medium` or `high`; `xhigh` and `max` on GPT Image 2.5 and 2.6 only.
+- **`size`:** `auto` (default), `1024x1024`, `1024x1536` (portrait) or `1536x1024` (landscape).
+- **`background`:** `auto` (default), `opaque` or `transparent` (alpha PNG).
+- **`attachment`:** An image to edit (PNG, JPEG, GIF, WebP).
+- Cost is billed from the token usage each response reports.
 
 ### `/openai-tools research`
 
-Run a deep research task using `gpt-6-astra` (default), `gpt-6.1-sol`, `gpt-6-sol`, `gpt-5.6-sol`, `gpt-5.5`, or `gpt-5.5-pro`.
+Run a deep research task that searches the web and returns a report with citations.
 
-- Autonomously searches the web and synthesizes cited reports. Optionally enable `file_search` or `code_interpreter` to enhance analysis.
+- **`model`:** `gpt-6-astra` (default), `gpt-6.1-sol`, `gpt-6-sol`, `gpt-5.6-sol`, `gpt-5.5` or `gpt-5.5-pro`.
+- **`file_search` / `code_interpreter`:** Also search your vector stores, or let the model run code (default: off).
 
 ### `/openai-tools tts`
 
-Generate lifelike audio from text using OpenAI's TTS stack.
+Convert text to speech (up to 4096 characters).
 
-- Select from 13 voices, multiple output formats (MP3, WAV, Opus, AAC, FLAC, PCM), and adjust playback speed.
+- **`model`:** `gpt-4o-mini-tts` (default), `tts-1` or `tts-1-hd`.
+- **`voice`:** 13 voices (default: Marin); Marin, Cedar, Ballad and Verse need `gpt-4o-mini-tts`.
+- **`instructions`:** Delivery instructions.
+- **`response_format` / `speed`:** MP3 (default), WAV, Opus, AAC, FLAC or PCM, and playback speed (default 1.0).
 
 ### `/openai-tools stt`
 
-Transcribe or translate uploaded audio (up to 25 MB).
+Transcribe or translate an audio file (up to 25 MB).
 
-- Supports `gpt-transcribe` (default), `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`, and diarization models for speaker-labeled transcripts.
+- **`model`:** `gpt-transcribe` (default), `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`, or a diarization model for speaker-labeled transcripts.
+- **`action`:** Transcription (default) or translation to English.
 
 ### `/openai check_permissions`
 
@@ -82,7 +97,13 @@ Check if the bot has the necessary permissions in the current channel.
 
 ### Installation
 
-1. Clone the repository and navigate to the project directory.
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/jdmsharpe/discord-openai.git
+   cd discord-openai
+   ```
+
 2. Create and activate a virtual environment:
 
    ```bash
@@ -125,11 +146,18 @@ python -m pip install -e ".[dev]"
 | `LOG_FORMAT` | No | `text` (default) for human-readable logs, or `json` for structured JSON-lines output with per-request IDs |
 | `SAFETY_IDENTIFIER_SECRET` | No | Key for the per-user identifier sent to OpenAI for abuse monitoring (Default: derived from `BOT_TOKEN`) |
 
-Chat, research and image requests carry a per-user identifier (`safety_identifier` on the Responses API, `user` on the Images API) so OpenAI can attribute a policy violation to one Discord user instead of the whole bot. The identifier is HMAC-SHA256 of the Discord user ID, keyed with `SAFETY_IDENTIFIER_SECRET` or, when that is unset, with a key derived from `BOT_TOKEN`; OpenAI never receives the Discord user ID or the key. Changing the key (or the bot token, when no secret is set) gives every user a new identifier. Text-to-speech and speech-to-text requests carry no identifier because those endpoints do not accept one.
+#### User Identifier
+
+Chat, research and image requests carry a per-user identifier (`safety_identifier` on the Responses API, `user` on the Images API) so OpenAI can attribute a policy violation to one Discord user instead of the whole bot.
+
+- The identifier is an HMAC-SHA256 of the Discord user ID, keyed with `SAFETY_IDENTIFIER_SECRET` or, when that is unset, a key derived from `BOT_TOKEN`. OpenAI never receives the user ID or the key, and the bot refuses to start when `SAFETY_IDENTIFIER_SECRET` equals `OPENAI_API_KEY`.
+- Changing the key (or the bot token, when no secret is set) gives every user a new identifier. To keep identifiers stable across token changes, set the secret to a long random string, for example `python -c "import secrets; print(secrets.token_hex(32))"`.
+- discord-claude, discord-grok, discord-openai and discord-openrouter compute it the same way, so a user gets the same identifier from each bot that shares the key.
+- Text-to-speech and speech-to-text requests carry none, because those endpoints don't accept one.
 
 #### MCP Setup
 
-Configure trusted MCP presets via JSON. Example schema:
+Configure named presets in `OPENAI_MCP_PRESETS_JSON` or `OPENAI_MCP_PRESETS_PATH`. Example:
 
 ```json
 {
@@ -152,7 +180,9 @@ Configure trusted MCP presets via JSON. Example schema:
 }
 ```
 
-Connector presets (`kind: "connector"`) send a `connector_id`, which the GPT-6 models reject; the bot refuses them on those models before sending the request. Use a `remote_mcp` preset with a `server_url` there, or run the connector on a GPT-5.6 or earlier model.
+Connector presets (`kind: "connector"`) don't work on GPT-6 Astra / Sol / Luna or GPT-6.1 Sol, and the bot refuses them there before sending the request. Use a `remote_mcp` preset or a GPT-5.6 or earlier model instead.
+
+Define presets only for servers you trust: the model can send conversation content to any server it calls.
 
 ### Running the Bot
 
@@ -171,7 +201,7 @@ docker compose up -d --build
 ```
 
 **Using as a Cog:**
-To compose this repo into a larger bot:
+To compose this repo into a larger bot, import the namespaced package:
 
 ```python
 from discord_openai import OpenAICog
@@ -190,9 +220,17 @@ bot.add_cog(OpenAICog(bot=bot))
 7. Select permissions: `Send Messages`, `Read Message History`, `Use Slash Commands`, `Embed Links`, `Attach Files`.
 8. Use the generated URL to invite the bot to your server.
 
-## Usage & Demo
+## Usage
 
-Start a chat via `/openai chat`, write follow-up messages directly in the channel, and utilize interactive UI elements for approvals, regeneration, and tools.
+1. Run `/openai chat` to start a conversation.
+2. Send messages in the same channel to continue it.
+3. Use the controls under each reply:
+   - 🔄 Regenerate the last response
+   - ⏯️ Pause or resume the conversation
+   - ⏹️ End the conversation
+   - **Tools** menu: turn tools on or off mid-conversation
+
+### Demo
 
 <div align="center">
 
@@ -221,11 +259,11 @@ python -m pip install -e ".[dev]"
 python -m pytest -q
 
 # Run tests in Docker
-docker build --build-arg PYTHON_VERSION=3.13 -f Dockerfile.test -t discord-openai-test . 
-docker run --rm discord-openai-test python -m pytest -q
+docker build --build-arg PYTHON_VERSION=3.11 -f Dockerfile.test -t discord-openai-test:3.11 .
+docker run --rm discord-openai-test:3.11 python -m pytest -q
 
 # Run linting and type checks in Docker
-docker run --rm discord-openai-test sh -lc 'ruff check src tests && ruff format --check src tests && pyright'
+docker run --rm discord-openai-test:3.11 sh -lc 'ruff check src tests && ruff format --check src tests && pyright'
 ```
 
 ### Linting & Type Checking
@@ -237,3 +275,7 @@ pyright
 ```
 
 *Run `git config core.hooksPath .githooks` after cloning to enable the pre-commit hook.*
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
