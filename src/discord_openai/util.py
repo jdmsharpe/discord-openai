@@ -88,9 +88,11 @@ def extract_usage(response: Any) -> UsageInfo:
 # Fast mode (formerly "Priority processing", renamed 2026-07-30): request it
 # with `service_tier: "fast"` (or the legacy "priority"); the response reports
 # "fast" on the GPT-6 models and "priority" on GPT-5.6 and earlier. Billed at
-# FAST_TIER_PRICING. "ultrafast" (6x standard, gpt-6-astra and gpt-6.1-sol only;
-# gpt-6-sol rejects it) is not offered, and pricing.yaml has no ultrafast block, so
-# a response reporting "ultrafast" is billed at standard rates.
+# FAST_TIER_PRICING. "ultrafast" is not offered, and pricing.yaml has no ultrafast
+# block, so a response reporting "ultrafast" is billed at standard rates. OpenAI
+# publishes it for gpt-6-astra and gpt-6.1-sol (6x standard) and for gpt-6.2-astra
+# and gpt-6.2-sol (3x standard through 2027-02-28, 6x from 2027-03-01); gpt-6-sol
+# rejects it.
 SERVICE_TIER_STANDARD = "standard"
 SERVICE_TIER_FAST = "fast"
 FAST_SERVICE_TIERS = frozenset({"fast", "priority"})
@@ -287,6 +289,8 @@ def calculate_stt_cost(model: str, duration_seconds: float) -> float:
 
 REASONING_MODELS = ["o3-pro", "o3"]
 DEEP_RESEARCH_MODELS = [
+    "gpt-6.2-astra",
+    "gpt-6.2-sol",
     "gpt-6-astra",
     "gpt-6.1-sol",
     "gpt-6-sol",
@@ -304,9 +308,9 @@ CONTEXT_MANAGEMENT = [{"type": "compaction", "compact_threshold": 200_000}]
 # openai 3.6.0 marks `prompt_cache_retention` deprecated in favour of
 # `prompt_cache_options.ttl` (GPT-5.6+ only; "30m" or "12h"). The bot sends no ttl,
 # so the 30-minute default applies and cache writes bill at the 30-minute write rate. The
-# API still accepts "24h" on gpt-5.6 (probed 2026-08-28) and it remains the correct
-# knob for the older models, so no behaviour change yet — revisit when the SDK or
-# API rejects it.
+# API still accepts "24h" on the GPT-5.6, GPT-6, GPT-6.1 and GPT-6.2 models and it
+# remains the correct setting for the older models, so no behaviour change yet —
+# revisit when the SDK or API rejects it.
 PROMPT_CACHE_RETENTION = "24h"
 
 # Input content types for Responses API
@@ -394,6 +398,7 @@ REASONING_EFFORT_ORDER = (
 # `unsupported_value` on reasoning.effort = rejected; any other outcome, including
 # status=incomplete, = accepted. Probed 2026-07-13 (5.6 minimal), 2026-08-28 and
 # 2026-09-15 (gpt-6-astra):
+#   gpt-6.2-astra, gpt-6.2-sol,
 #   gpt-6-astra, gpt-6.1-sol         low/medium/high/xhigh/max       (reject none, minimal)
 #   gpt-6-sol/-luna                  none/low/medium/high/xhigh/max  (reject minimal)
 #   gpt-5.6-sol/-terra/-luna         none/low/medium/high/xhigh/max  (reject minimal)
@@ -414,6 +419,8 @@ _EFFORTS_PRO = frozenset({"medium", "high", "xhigh"})
 _EFFORTS_GPT_5_BASE = frozenset({"minimal", "low", "medium", "high"})
 _EFFORTS_O_SERIES = frozenset({"low", "medium", "high"})
 SUPPORTED_REASONING_EFFORTS: dict[str, frozenset[str]] = {
+    "gpt-6.2-astra": _EFFORTS_GPT_6_ASTRA,
+    "gpt-6.2-sol": _EFFORTS_GPT_6_ASTRA,
     "gpt-6-astra": _EFFORTS_GPT_6_ASTRA,
     "gpt-6.1-sol": _EFFORTS_GPT_6_ASTRA,
     "gpt-6.1-terra": _EFFORTS_NONE_TO_MAX,
@@ -475,10 +482,12 @@ REASONING_MODE_PRO = "pro"
 # excluded on purpose. Mode and effort are independent. Pro bills at the model's
 # standard token rates but on far more tokens (~1.5k fixed input overhead per call,
 # roughly 4-6x per turn, tool schemas and history multiplied), so pricing.yaml needs
-# nothing: extract_usage already captures the inflated usage. The GPT-6 models and
-# gpt-6.1-sol accept pro as well.
+# nothing: extract_usage already captures the inflated usage. The GPT-6 models,
+# gpt-6.1-sol and the GPT-6.2 models accept pro as well.
 PRO_MODE_MODELS = frozenset(
     {
+        "gpt-6.2-astra",
+        "gpt-6.2-sol",
         "gpt-6-astra",
         "gpt-6.1-sol",
         "gpt-6-sol",
@@ -508,10 +517,13 @@ def reasoning_mode_error(model: str, reasoning_mode: str | None) -> str | None:
 
 
 # Models that reject temperature/top_p outright, whatever the reasoning effort (400
-# "Unsupported parameter: 'temperature'"): gpt-6-astra, gpt-6.1-sol, the gpt-5 base
-# trio and the Pro tiers. None of them has a `none` effort to lift the restriction.
+# "Unsupported parameter: 'temperature'"): the GPT-6.2 models, gpt-6-astra,
+# gpt-6.1-sol, the gpt-5 base trio and the Pro tiers. None of them has a `none`
+# effort to lift the restriction.
 NO_SAMPLING_MODELS = frozenset(
     {
+        "gpt-6.2-astra",
+        "gpt-6.2-sol",
         "gpt-6-astra",
         "gpt-6.1-sol",
         "gpt-5",
@@ -557,7 +569,7 @@ class ResponseParameters:
 
     def __init__(
         self,
-        model: str = "gpt-6-astra",
+        model: str = "gpt-6.2-astra",
         instructions: str = "You are a helpful assistant.",
         input: Any = None,  # Can be string or list of content items
         previous_response_id: str | None = None,
@@ -752,7 +764,7 @@ class ResearchParameters:
     def __init__(
         self,
         prompt: str = "",
-        model: str = "gpt-6-astra",
+        model: str = "gpt-6.2-astra",
         file_search: bool = False,
         code_interpreter: bool = False,
         safety_identifier: str | None = None,

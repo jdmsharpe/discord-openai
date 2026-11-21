@@ -226,11 +226,12 @@ class TestResolveSelectedTools:
         with patch.dict(
             "discord_openai.config.mcp.OPENAI_MCP_PRESETS", {"dropbox": connector}, clear=True
         ):
-            tools, error = resolve_selected_tools(["web_search"], "gpt-6-astra", ["dropbox"])
-            assert tools == []
-            assert error is not None
-            assert "`dropbox`" in error
-            assert "`remote_mcp`" in error
+            for model in ("gpt-6.2-astra", "gpt-6.2-sol", "gpt-6-astra"):
+                tools, error = resolve_selected_tools(["web_search"], model, ["dropbox"])
+                assert tools == []
+                assert error is not None
+                assert "`dropbox`" in error
+                assert "`remote_mcp`" in error
 
             tools, error = resolve_selected_tools(["web_search"], "gpt-5.6-sol", ["dropbox"])
             assert error is None

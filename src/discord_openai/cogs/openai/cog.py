@@ -257,7 +257,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "model",
-        description="Choose from the following GPT models. (default: GPT-6 Astra)",
+        description="Choose from the following GPT models. (default: GPT-6.2 Astra)",
         required=False,
         type=str,
         choices=CHAT_MODEL_CHOICES,
@@ -289,7 +289,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "reasoning_mode",
-        description="(Advanced) Pro mode: GPT-6 / GPT-6.1 Sol / GPT-5.6 only; much more cost, slower. (default: not set)",
+        description="(Advanced) Pro mode: GPT-6, GPT-6.1 Sol, GPT-6.2, GPT-5.6 only; costs far more. (default: not set)",
         required=False,
         type=str,
         choices=REASONING_MODE_CHOICES,
@@ -343,7 +343,7 @@ class OpenAICog(commands.Cog):
         ctx: ApplicationContext,
         prompt: str,
         persona: str = "You are a helpful assistant.",
-        model: str = "gpt-6-astra",
+        model: str = "gpt-6.2-astra",
         attachment: Attachment | None = None,
         temperature: float | None = None,
         top_p: float | None = None,
@@ -534,7 +534,7 @@ class OpenAICog(commands.Cog):
     )
     @option(
         "model",
-        description="Choose the deep research model. (default: GPT-6 Astra)",
+        description="Choose the deep research model. (default: GPT-6.2 Astra)",
         required=False,
         type=str,
         choices=RESEARCH_MODEL_CHOICES,
@@ -555,7 +555,7 @@ class OpenAICog(commands.Cog):
         self,
         ctx: ApplicationContext,
         prompt: str,
-        model: str = "gpt-6-astra",
+        model: str = "gpt-6.2-astra",
         file_search: bool = False,
         code_interpreter: bool = False,
     ):

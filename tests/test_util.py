@@ -97,12 +97,15 @@ class TestResponseParameters:
         assert "reasoning" not in result
         assert "previous_response_id" not in result
 
-    def test_default_model_is_gpt_6_astra(self):
-        """Guard the promoted default: gpt-6-astra, priced, and menu-selectable."""
+    def test_default_model_is_gpt_6_2_astra(self):
+        """Guard the promoted default: gpt-6.2-astra, priced, and menu-selectable."""
         params = ResponseParameters()
-        assert params.model == "gpt-6-astra"
-        assert params.to_dict()["model"] == "gpt-6-astra"
-        assert "gpt-6-astra" in MODEL_PRICING
+        assert params.model == "gpt-6.2-astra"
+        payload = params.to_dict()
+        assert payload["model"] == "gpt-6.2-astra"
+        assert "temperature" not in payload
+        assert "top_p" not in payload
+        assert "gpt-6.2-astra" in MODEL_PRICING
 
     def test_reasoning_model_behavior(self):
         """Test that reasoning models use reasoning parameter instead of temperature/top_p."""
@@ -490,7 +493,7 @@ class TestResearchParameters:
     def test_defaults(self):
         params = ResearchParameters(prompt="Test research")
         assert params.prompt == "Test research"
-        assert params.model == "gpt-6-astra"
+        assert params.model == "gpt-6.2-astra"
         assert params.file_search is False
         assert params.code_interpreter is False
 
@@ -498,7 +501,7 @@ class TestResearchParameters:
         params = ResearchParameters(prompt="What is quantum computing?")
         tools = [TOOL_WEB_SEARCH]
         result = params.to_dict(tools)
-        assert result["model"] == "gpt-6-astra"
+        assert result["model"] == "gpt-6.2-astra"
         assert result["input"] == "What is quantum computing?"
         assert result["tools"] == [TOOL_WEB_SEARCH]
         assert result["background"] is True
@@ -518,6 +521,8 @@ class TestResearchParameters:
 
     def test_deep_research_models_constant(self):
         assert DEEP_RESEARCH_MODELS == [
+            "gpt-6.2-astra",
+            "gpt-6.2-sol",
             "gpt-6-astra",
             "gpt-6.1-sol",
             "gpt-6-sol",
@@ -659,6 +664,8 @@ class TestBuildAttachmentContentBlock:
 
 class TestModelPricing:
     CHAT_MODELS: ClassVar[list[str]] = [
+        "gpt-6.2-astra",
+        "gpt-6.2-sol",
         "gpt-5.6-sol",
         "gpt-5.6-terra",
         "gpt-5.6-luna",
@@ -755,8 +762,8 @@ class TestModelPricing:
     def test_gpt_5_6_cache_write_rates_are_125_percent_of_input(self):
         """Every gpt-6 / gpt-5.6 row declares cache_write_per_million == 1.25x its input rate.
 
-        The pricing table's "Cache writes" column prints a value only for the GPT-6 Astra
-        and GPT-5.6 rows (every other row prints "-"), so the declared set must be exactly those
+        The pricing table's "Cache writes" column prints a value only for the GPT-6 and
+        GPT-5.6 rows (every other row prints "-"), so the declared set must be exactly those
         rows: a stray declaration elsewhere would add a surcharge the vendor does not
         charge, and a missing one would under-bill first-turn writes.
         """
@@ -874,6 +881,8 @@ class TestModelPricing:
     # against the official pricing page 2026-08-18.
     CACHED_DISCOUNT_BY_MODEL: ClassVar[dict[str, float]] = {
         # gpt-5 family and newer: 90% off
+        "gpt-6.2-astra": 0.05,  # cache reads are 0.05x of the uncached input rate
+        "gpt-6.2-sol": 0.05,
         "gpt-6-astra": 0.10,
         "gpt-6.1-sol": 0.05,  # model page: "5% of the uncached input token rate"
         "gpt-6.1-terra": 0.05,
@@ -938,6 +947,78 @@ class TestModelPricing:
         assert not unaccounted, (
             f"{sorted(unaccounted)} neither declare a cached rate nor are listed as "
             "having none published — check the pricing page and update pricing.yaml"
+        )
+
+
+class TestGpt62CostVectors:
+    """Literal dollar amounts for the GPT-6.2 models, worked by hand from the pricing page
+    (per 1M tokens: input / cached / cache write / output). They deliberately avoid the
+    code's own formula so a wrong rate or a wrong tier choice fails here."""
+
+    # (model, input, output, cached, cache_write, service_tier, expected dollars)
+    VECTORS: ClassVar[list[tuple[str, int, int, int, int, str | None, float]]] = [
+        # Astra standard $8 / $0.40 / $10 / $40
+        # 200k input $1.60 + 100k output $4.00
+        ("gpt-6.2-astra", 200_000, 100_000, 0, 0, None, 5.60),
+        ("gpt-6.2-astra", 200_000, 0, 200_000, 0, None, 0.08),
+        ("gpt-6.2-astra", 200_000, 0, 0, 200_000, None, 2.00),
+        # 60k ordinary $0.48 + 100k cached $0.04 + 40k written $0.40 + 10k output $0.40
+        ("gpt-6.2-astra", 200_000, 10_000, 100_000, 40_000, None, 1.32),
+        # Astra long context (>272K) $16 / $0.80 / $20 / $60:
+        # 150k ordinary $2.40 + 100k cached $0.08 + 50k written $1.00 + 1k output $0.06
+        ("gpt-6.2-astra", 300_000, 1_000, 100_000, 50_000, None, 3.54),
+        # Astra fast $16 / $0.80 / $20 / $80:
+        # 50k ordinary $0.80 + 40k cached $0.032 + 10k written $0.20 + 10k output $0.80
+        ("gpt-6.2-astra", 100_000, 10_000, 40_000, 10_000, "fast", 1.832),
+        # Astra fast long context $32 / $1.60 / $40 / $120:
+        # 150k ordinary $4.80 + 100k cached $0.16 + 50k written $2.00 + 1k output $0.12
+        ("gpt-6.2-astra", 300_000, 1_000, 100_000, 50_000, "priority", 7.08),
+        # Sol standard $2 / $0.10 / $2.50 / $10
+        # 200k input $0.40 + 100k output $1.00
+        ("gpt-6.2-sol", 200_000, 100_000, 0, 0, None, 1.40),
+        ("gpt-6.2-sol", 200_000, 0, 200_000, 0, None, 0.02),
+        ("gpt-6.2-sol", 200_000, 0, 0, 200_000, None, 0.50),
+        # 60k ordinary $0.12 + 100k cached $0.01 + 40k written $0.10 + 10k output $0.10
+        ("gpt-6.2-sol", 200_000, 10_000, 100_000, 40_000, None, 0.33),
+        # Sol long context $4 / $0.20 / $5 / $15:
+        # 150k ordinary $0.60 + 100k cached $0.02 + 50k written $0.25 + 1k output $0.015
+        ("gpt-6.2-sol", 300_000, 1_000, 100_000, 50_000, None, 0.885),
+        # Sol fast $4 / $0.20 / $5 / $20:
+        # 50k ordinary $0.20 + 40k cached $0.008 + 10k written $0.05 + 10k output $0.20
+        ("gpt-6.2-sol", 100_000, 10_000, 40_000, 10_000, "fast", 0.458),
+        # Sol fast long context $8 / $0.40 / $10 / $30:
+        # 150k ordinary $1.20 + 100k cached $0.04 + 50k written $0.50 + 1k output $0.03
+        ("gpt-6.2-sol", 300_000, 1_000, 100_000, 50_000, "priority", 1.77),
+    ]
+
+    @pytest.mark.parametrize(
+        "model,input_tokens,output_tokens,cached,cache_write,service_tier,expected", VECTORS
+    )
+    def test_cost_matches_hand_worked_vector(
+        self, model, input_tokens, output_tokens, cached, cache_write, service_tier, expected
+    ):
+        cost = calculate_cost(
+            model,
+            input_tokens,
+            output_tokens,
+            cached_tokens=cached,
+            cache_write_tokens=cache_write,
+            service_tier=service_tier,
+        )
+        assert cost == pytest.approx(expected, abs=1e-9)
+
+    def test_long_context_starts_at_272001_input_tokens(self):
+        assert calculate_cost("gpt-6.2-astra", 272_000, 0) == pytest.approx(2.176)  # 272k @ $8
+        assert calculate_cost("gpt-6.2-astra", 272_001, 0) == pytest.approx(4.352016)  # @ $16
+        assert calculate_cost("gpt-6.2-sol", 272_000, 0) == pytest.approx(0.544)  # 272k @ $2
+        assert calculate_cost("gpt-6.2-sol", 272_001, 0) == pytest.approx(1.088004)  # @ $4
+
+    def test_ultrafast_is_not_priced_and_bills_standard(self):
+        assert calculate_cost("gpt-6.2-astra", 200_000, 0, service_tier="ultrafast") == (
+            pytest.approx(1.60)
+        )
+        assert calculate_cost("gpt-6.2-sol", 200_000, 0, service_tier="ultrafast") == (
+            pytest.approx(0.40)
         )
 
 
@@ -1365,6 +1446,8 @@ class TestSupportedReasoningEfforts:
     # Probed with the bot's Responses payload, max_output_tokens=16, one call per
     # effort: 2026-07-13 (5.6 minimal) and 2026-08-28 (everything else).
     PROBED: ClassVar[dict[str, set[str]]] = {
+        "gpt-6.2-astra": {"low", "medium", "high", "xhigh", "max"},  # 2026-11-20
+        "gpt-6.2-sol": {"low", "medium", "high", "xhigh", "max"},  # 2026-11-20
         "gpt-6-astra": {"low", "medium", "high", "xhigh", "max"},  # 2026-09-15
         "gpt-6.1-sol": {"low", "medium", "high", "xhigh", "max"},  # 2026-10-08
         "gpt-6.1-terra": {"none", "low", "medium", "high", "xhigh", "max"},
@@ -1403,6 +1486,10 @@ class TestSupportedReasoningEfforts:
     @pytest.mark.parametrize(
         "model,effort",
         [
+            ("gpt-6.2-astra", "none"),
+            ("gpt-6.2-astra", "minimal"),
+            ("gpt-6.2-sol", "none"),
+            ("gpt-6.2-sol", "minimal"),
             ("gpt-6-astra", "none"),
             ("gpt-6-astra", "minimal"),
             ("gpt-6.1-sol", "none"),
@@ -1423,7 +1510,14 @@ class TestSupportedReasoningEfforts:
 
     @pytest.mark.parametrize(
         "model,effort",
-        [("gpt-5.6-sol", "max"), ("gpt-5.1", "none"), ("gpt-6-sol", "none"), ("gpt-6-luna", "max")],
+        [
+            ("gpt-5.6-sol", "max"),
+            ("gpt-5.1", "none"),
+            ("gpt-6-sol", "none"),
+            ("gpt-6-luna", "max"),
+            ("gpt-6.2-astra", "max"),
+            ("gpt-6.2-sol", "low"),
+        ],
     )
     def test_accepts_supported_combination(self, model, effort):
         assert reasoning_effort_error(model, effort) is None
@@ -1448,6 +1542,8 @@ class TestReasoningModeError:
     """Pin the pro-mode model set and the chat-path gate built on it."""
 
     PRO_IDS: ClassVar[set[str]] = {
+        "gpt-6.2-astra",
+        "gpt-6.2-sol",
         "gpt-6-astra",
         "gpt-6.1-sol",
         "gpt-6-sol",
@@ -1669,10 +1765,16 @@ class TestServiceTierError:
 
 
 class TestGpt6AstraRequestShape:
-    """gpt-6-astra and gpt-6.1-sol reject temperature/top_p outright (probed 2026-09-15
-    and 2026-10-08)."""
+    """gpt-6-astra, gpt-6.1-sol and the GPT-6.2 models reject temperature/top_p outright
+    (probed 2026-09-15, 2026-10-08 and 2026-11-20)."""
 
-    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6.1-sol"])
+    MODELS: ClassVar[list[str]] = ["gpt-6.2-astra", "gpt-6.2-sol", "gpt-6-astra", "gpt-6.1-sol"]
+
+    def test_model_set_is_in_the_no_sampling_set(self):
+        assert set(self.MODELS) <= NO_SAMPLING_MODELS
+        assert not set(self.MODELS) & REASONING_BY_DEFAULT_MODELS
+
+    @pytest.mark.parametrize("model", MODELS)
     def test_sampling_parameters_are_dropped(self, model):
         params = ResponseParameters(model=model, temperature=0.7, top_p=0.9)
         assert params.temperature is None
@@ -1681,7 +1783,7 @@ class TestGpt6AstraRequestShape:
         assert "temperature" not in payload
         assert "top_p" not in payload
 
-    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6.1-sol"])
+    @pytest.mark.parametrize("model", MODELS)
     def test_reasoning_and_pro_mode_pass_through(self, model):
         params = ResponseParameters(
             model=model, reasoning={"effort": "low", "mode": "pro", "summary": "auto"}

@@ -28,7 +28,7 @@ class TestPricingLoader:
         is how terra and luna went unnoticed while overbilling 25% and 5x.
         """
         pricing = _reload_pricing()
-        assert pricing.MODEL_PRICING["gpt-5.6-sol"] == (4.00, 20.00)  # promo through 2026-11-21
+        assert pricing.MODEL_PRICING["gpt-5.6-sol"] == (4.00, 20.00)  # promo through 2026-11-30
         assert pricing.MODEL_PRICING["gpt-5.6-terra"] == (2.00, 12.00)
         assert pricing.MODEL_PRICING["gpt-5.6-luna"] == (0.20, 1.20)
         assert pricing.CACHED_INPUT_PRICING["gpt-5.6-sol"] == 0.40
@@ -47,6 +47,36 @@ class TestPricingLoader:
             "output_per_million": 75.00,
             "cached_input_per_million": 2.00,
             "cache_write_per_million": 25.00,
+        }
+
+    def test_gpt_6_2_astra_rates_are_pinned(self):
+        """gpt-6.2-astra: $8 / $0.40 cached (5% of input, not 10%) / $10 cache write / $40;
+        long context $16 / $0.80 / $20 / $60."""
+        pricing = _reload_pricing()
+        assert pricing.MODEL_PRICING["gpt-6.2-astra"] == (8.00, 40.00)
+        assert pricing.CACHED_INPUT_PRICING["gpt-6.2-astra"] == 0.40
+        assert pricing.CACHE_WRITE_PRICING["gpt-6.2-astra"] == 10.00
+        assert pricing.LONG_CONTEXT_PRICING["gpt-6.2-astra"] == {
+            "threshold_tokens": 272001,
+            "input_per_million": 16.00,
+            "output_per_million": 60.00,
+            "cached_input_per_million": 0.80,
+            "cache_write_per_million": 20.00,
+        }
+
+    def test_gpt_6_2_sol_rates_are_pinned(self):
+        """gpt-6.2-sol: $2 / $0.10 cached (5% of input, not 10%) / $2.50 cache write / $10;
+        long context $4 / $0.20 / $5 / $15."""
+        pricing = _reload_pricing()
+        assert pricing.MODEL_PRICING["gpt-6.2-sol"] == (2.00, 10.00)
+        assert pricing.CACHED_INPUT_PRICING["gpt-6.2-sol"] == 0.10
+        assert pricing.CACHE_WRITE_PRICING["gpt-6.2-sol"] == 2.50
+        assert pricing.LONG_CONTEXT_PRICING["gpt-6.2-sol"] == {
+            "threshold_tokens": 272001,
+            "input_per_million": 4.00,
+            "output_per_million": 15.00,
+            "cached_input_per_million": 0.20,
+            "cache_write_per_million": 5.00,
         }
 
     def test_gpt_6_sol_and_luna_rates_are_pinned(self):
@@ -79,6 +109,8 @@ class TestPricingLoader:
         """Cache writes (1.25x input) are declared on the GPT-6 and GPT-5.6 rows only."""
         pricing = _reload_pricing()
         assert pricing.CACHE_WRITE_PRICING == {
+            "gpt-6.2-astra": 10.00,
+            "gpt-6.2-sol": 2.50,
             "gpt-6-astra": 12.50,
             "gpt-6.1-sol": 2.50,
             "gpt-6.1-terra": 1.25,
@@ -99,6 +131,8 @@ class TestPricingLoader:
         """
         pricing = _reload_pricing()
         assert set(pricing.LONG_CONTEXT_PRICING) == {
+            "gpt-6.2-astra",
+            "gpt-6.2-sol",
             "gpt-6-astra",
             "gpt-6.1-sol",
             "gpt-6.1-terra",
@@ -300,6 +334,8 @@ class TestFastTiers:
         pricing = _reload_pricing()
         expected = {
             # model: (input, output, cached input, cache write)
+            "gpt-6.2-astra": (16.00, 80.00, 0.80, 20.00),
+            "gpt-6.2-sol": (4.00, 20.00, 0.20, 5.00),
             "gpt-6-astra": (20.00, 100.00, 2.00, 25.00),
             "gpt-6.1-sol": (4.00, 20.00, 0.20, 5.00),
             "gpt-6.1-terra": (2.00, 10.00, 0.10, 2.50),
@@ -336,6 +372,8 @@ class TestFastTiers:
         pricing = _reload_pricing()
         expected = {
             # model: (input, output, cached input, cache write)
+            "gpt-6.2-astra": (32.00, 120.00, 1.60, 40.00),
+            "gpt-6.2-sol": (8.00, 30.00, 0.40, 10.00),
             "gpt-6-astra": (40.00, 150.00, 4.00, 50.00),
             "gpt-6.1-sol": (8.00, 30.00, 0.40, 10.00),
             "gpt-6.1-terra": (4.00, 15.00, 0.20, 5.00),

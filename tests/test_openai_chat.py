@@ -257,7 +257,7 @@ class TestRunChatCommand:
                 ctx,
                 prompt="hi",
                 persona="You are helpful.",
-                model="gpt-6-astra",
+                model="gpt-6.2-astra",
                 attachment=None,
                 temperature=None,
                 top_p=None,
@@ -277,7 +277,7 @@ class TestRunChatCommand:
         embeds = kwargs.get("embeds") or [kwargs["embed"]]
         assert embeds[0].title == "Error"
         assert "`dropbox`" in embeds[0].description
-        assert "`gpt-6-astra`" in embeds[0].description
+        assert "`gpt-6.2-astra`" in embeds[0].description
         assert "`remote_mcp`" in embeds[0].description
 
     @pytest.mark.asyncio
@@ -483,6 +483,110 @@ class TestRunChatCommand:
         assert "**Reasoning Mode:** pro" in intro_description
         assert "**Temperature:**" not in intro_description
         assert cog.conversation_histories[789].reasoning["mode"] == "pro"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("model", ["gpt-6.2-astra", "gpt-6.2-sol"])
+    async def test_chat_command_sends_the_gpt_6_2_request_shape(self, model):
+        """The request body for the GPT-6.2 models: no sampling parameters, the chosen effort
+        and pro mode in `reasoning`, `service_tier: fast`, `text.verbosity` and the 24h
+        prompt-cache retention."""
+        response = _make_response(response_id="resp_62", output=[], output_text="Done")
+        response.service_tier = "fast"
+        create = AsyncMock(return_value=response)
+        cog = SimpleNamespace(
+            conversation_histories={},
+            views={},
+            last_view_messages={},
+            daily_costs={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+            _create_mcp_approval_view=MagicMock(),
+            _create_button_view=MagicMock(return_value=MagicMock()),
+            _track_and_append_cost=MagicMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(return_value=MagicMock()),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="Plan this",
+            persona="You are helpful.",
+            model=model,
+            attachment=None,
+            temperature=0.7,
+            top_p=0.9,
+            reasoning_effort="low",
+            verbosity="low",
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+            reasoning_mode="pro",
+            service_tier="fast",
+        )
+
+        payload = create.await_args.kwargs
+        assert payload["model"] == model
+        assert "temperature" not in payload
+        assert "top_p" not in payload
+        assert payload["reasoning"] == {"summary": "auto", "mode": "pro", "effort": "low"}
+        assert payload["service_tier"] == "fast"
+        assert payload["text"] == {"verbosity": "low"}
+        assert payload["prompt_cache_retention"] == "24h"
+
+    @pytest.mark.asyncio
+    async def test_chat_command_rejects_effort_none_on_gpt_6_2_before_request(self):
+        create = AsyncMock()
+        cog = SimpleNamespace(
+            conversation_histories={},
+            logger=MagicMock(),
+            openai_client=SimpleNamespace(responses=SimpleNamespace(create=create)),
+            resolve_selected_tools=MagicMock(return_value=([], None)),
+            _prune_runtime_state=AsyncMock(),
+            _cleanup_conversation=AsyncMock(),
+        )
+        ctx = SimpleNamespace(
+            author=SimpleNamespace(id=123),
+            channel_id=456,
+            interaction=SimpleNamespace(id=789),
+            defer=AsyncMock(),
+            send_followup=AsyncMock(),
+        )
+
+        await run_chat_command(
+            cog,
+            ctx,
+            prompt="hi",
+            persona="You are helpful.",
+            model="gpt-6.2-astra",
+            attachment=None,
+            temperature=None,
+            top_p=None,
+            reasoning_effort="none",
+            verbosity=None,
+            web_search=False,
+            code_interpreter=False,
+            file_search=False,
+            shell=False,
+            mcp=None,
+        )
+
+        create.assert_not_awaited()
+        kwargs = ctx.send_followup.await_args.kwargs
+        embeds = kwargs.get("embeds") or [kwargs["embed"]]
+        assert embeds[0].title == "Error"
+        assert "`none`" in embeds[0].description
+        assert "`gpt-6.2-astra`" in embeds[0].description
 
     @pytest.mark.asyncio
     async def test_chat_command_renders_zero_numeric_params(self):

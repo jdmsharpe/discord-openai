@@ -18,7 +18,7 @@ from discord_openai.cogs.openai.command_options import (
     TTS_MODEL_CHOICES,
     TTS_VOICE_CHOICES,
 )
-from discord_openai.config.pricing import TTS_PRICING_PER_CHAR
+from discord_openai.config.pricing import MODEL_PRICING, TTS_PRICING_PER_CHAR
 from discord_openai.util import (
     DEEP_RESEARCH_MODELS,
     MODEL_SUPPORTED_TTS_VOICES,
@@ -86,7 +86,10 @@ class TestOpenAICog:
         assert error is None
         assert tools[0]["type"] == "shell"
 
-    @pytest.mark.parametrize("model", ["gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"])
+    @pytest.mark.parametrize(
+        "model",
+        ["gpt-6.2-astra", "gpt-6.2-sol", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"],
+    )
     async def test_resolve_selected_tools_allows_shell_on_gpt_6_models(self, model):
         """The hosted shell tool is accepted on the GPT-6 models, the chat default included."""
         cog = cast(OpenAICog, self.bot.cogs["OpenAICog"])
@@ -141,7 +144,7 @@ class TestOpenAICog:
     def test_command_defaults_are_unchanged(self):
         assert OpenAICog.chat.callback.__defaults__ == (
             "You are a helpful assistant.",
-            "gpt-6-astra",
+            "gpt-6.2-astra",
             None,
             None,
             None,
@@ -164,7 +167,7 @@ class TestOpenAICog:
         )
         assert OpenAICog.tts.callback.__defaults__ == ("gpt-4o-mini-tts", "marin", "", "mp3", 1.0)
         assert OpenAICog.stt.callback.__defaults__ == ("gpt-transcribe", "transcription")
-        assert OpenAICog.research.callback.__defaults__ == ("gpt-6-astra", False, False)
+        assert OpenAICog.research.callback.__defaults__ == ("gpt-6.2-astra", False, False)
 
     def test_registered_command_groups_fit_discord_size_limit(self):
         """Discord rejects any single top-level command payload over 8000 bytes."""
@@ -201,6 +204,16 @@ class TestOpenAICog:
         assert payload_sizes["openai-tools"] < 8000
 
     def test_critical_choice_values_present(self):
+        assert [choice.value for choice in CHAT_MODEL_CHOICES][:3] == [
+            "gpt-6.2-astra",
+            "gpt-6.2-sol",
+            "gpt-6-astra",
+        ]
+        assert [choice.value for choice in RESEARCH_MODEL_CHOICES][:3] == [
+            "gpt-6.2-astra",
+            "gpt-6.2-sol",
+            "gpt-6-astra",
+        ]
         assert any(choice.value == "gpt-6-astra" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-6.1-sol" for choice in CHAT_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-sol" for choice in CHAT_MODEL_CHOICES)
@@ -213,6 +226,7 @@ class TestOpenAICog:
         assert any(choice.value == "gpt-image-2.5-sunburst" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "gpt-image-2.5-flare" for choice in IMAGE_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-astra" for choice in RESEARCH_MODEL_CHOICES)
+        assert len(RESEARCH_MODEL_CHOICES) == 8
         assert any(choice.value == "gpt-6.1-sol" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-6-sol" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.4" for choice in CHAT_MODEL_CHOICES)
@@ -222,6 +236,33 @@ class TestOpenAICog:
         assert any(choice.value == "gpt-5.6-sol" for choice in RESEARCH_MODEL_CHOICES)
         assert any(choice.value == "gpt-5.5" for choice in RESEARCH_MODEL_CHOICES)
         assert [choice.value for choice in RESEARCH_MODEL_CHOICES] == DEEP_RESEARCH_MODELS
+
+    def test_chat_menu_is_full_and_pro_tiers_left_it_early(self):
+        """CHAT_MODEL_CHOICES is at Discord's 25-choice cap. `gpt-5-pro` and `o3-pro` left
+        the menu ahead of the 2026-12-11 shutdown to make room for the GPT-6.2 models; their
+        pricing rows stay so old conversations still cost correctly."""
+        values = [choice.value for choice in CHAT_MODEL_CHOICES]
+        assert len(values) == 25
+        assert len(set(values)) == 25
+        assert "gpt-5-pro" not in values
+        assert "o3-pro" not in values
+        assert {"gpt-5-pro", "o3-pro"} <= set(MODEL_PRICING)
+        assert {"gpt-5", "gpt-5-mini", "o3"} <= set(values)
+
+    def test_slash_option_descriptions_and_choice_names_fit_discord_limits(self):
+        """Discord rejects an option description or a choice name longer than 100 characters."""
+        inspected = 0
+        for command in self.bot.pending_application_commands:
+            subcommands = getattr(command, "subcommands", None) or [command]
+            for subcommand in subcommands:
+                for option in getattr(subcommand, "options", []):
+                    inspected += 1
+                    description = option.description or ""
+                    assert len(description) <= 100, (subcommand.name, option.name, description)
+                    for choice in option.choices or []:
+                        name = getattr(choice, "name", str(choice))
+                        assert len(name) <= 100, (subcommand.name, option.name, name)
+        assert inspected > 20, "option discovery found too few options to be a useful guard"
 
     def test_reasoning_effort_choice_set(self):
         values = {choice.value for choice in REASONING_EFFORT_CHOICES}
@@ -233,7 +274,7 @@ class TestOpenAICog:
 
     def test_service_tier_choice_set(self):
         """`standard` is never sent (mirrors reasoning_mode); `fast` is the only tier offered —
-        `ultrafast` (6x standard, GPT-6 Astra and GPT-6.1 Sol only) has no pricing block."""
+        `ultrafast` (GPT-6 Astra, GPT-6.1 Sol and the GPT-6.2 models only) has no pricing block."""
         values = [choice.value for choice in SERVICE_TIER_CHOICES]
         assert values == ["standard", "fast"]
 

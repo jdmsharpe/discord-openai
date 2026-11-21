@@ -225,9 +225,20 @@ def resolve_mcp_presets(
 
 
 # Models that reject an `mcp` tool carrying `connector_id` with a 400 ("Built-in MCP
-# connector ... is not supported with this model"). Remote MCP presets (`server_url`)
-# are unaffected.
-CONNECTOR_UNSUPPORTED_MODELS = frozenset({"gpt-6-astra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"})
+# connector ... is not supported with this model"): every GPT-6, GPT-6.1 and GPT-6.2
+# model. OpenAI deprecates `connector_id` for models released after 2026-09-01.
+# Remote MCP presets (`server_url`) are unaffected.
+CONNECTOR_UNSUPPORTED_MODELS = frozenset(
+    {
+        "gpt-6.2-astra",
+        "gpt-6.2-sol",
+        "gpt-6-astra",
+        "gpt-6.1-sol",
+        "gpt-6.1-terra",
+        "gpt-6-sol",
+        "gpt-6-luna",
+    }
+)
 
 
 def mcp_connector_error(model: str, presets: list[OpenAIMcpPreset]) -> str | None:
