@@ -39,12 +39,12 @@ Start a conversation with an OpenAI model.
 
 - **`prompt` (required):** Your first message.
 - **`persona`:** System prompt (default: "You are a helpful assistant.").
-- **`model`:** GPT-6 Astra (default), GPT-6.1 Sol / Terra, GPT-6 Sol / Luna, GPT-5.6 Sol / Terra / Luna, GPT-5.5 through GPT-5 (including the Pro, Mini and Nano tiers), GPT-4.1 / 4.1 Mini, o3 / o3 Pro, GPT-4o Mini.
+- **`model`:** GPT-6.2 Astra (default), GPT-6.2 Sol, GPT-6.1 Sol / Terra, GPT-6 Astra / Sol / Luna, GPT-5.6 Sol / Terra / Luna, GPT-5.5 through GPT-5 (including the Pro, Mini and Nano tiers), GPT-4.1 / 4.1 Mini, o3, GPT-4o Mini.
 - **`attachment`:** An image, PDF, document, spreadsheet or code file.
 - **`temperature` / `top_p`:** Sent only when the model and reasoning effort accept them; otherwise dropped.
 - **`reasoning_effort`:** `none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. Each model supports a subset, and an unsupported level is refused before the request is sent.
-- **`reasoning_mode`:** `pro` on GPT-6 Astra / Sol / Luna, GPT-6.1 Sol and GPT-5.6. Same token rates, but roughly 4–6x the tokens per turn.
-- **`service_tier`:** `fast` for faster processing at OpenAI's Fast-mode rates (2x on GPT-6, GPT-6.1 and GPT-5.6). Not available on the Pro tiers or GPT-5.4 Nano.
+- **`reasoning_mode`:** `pro` on GPT-6 Astra / Sol / Luna, GPT-6.1 Sol, GPT-6.2 and GPT-5.6. Same token rates, but roughly 4–6x the tokens per turn.
+- **`service_tier`:** `fast` for faster processing at OpenAI's Fast-mode rates (2x on GPT-6, GPT-6.1, GPT-6.2 and GPT-5.6). Not available on the Pro tiers or GPT-5.4 Nano.
 - **`verbosity`:** `low`, `medium` (default) or `high`.
 - **`web_search` / `code_interpreter` / `file_search` / `shell`:** Enable built-in tools (default: off). `file_search` needs `OPENAI_VECTOR_STORE_IDS`; `shell` works on GPT-5 and GPT-6 models.
 - **`mcp`:** Comma-separated MCP preset names (see [MCP Setup](#mcp-setup)).
@@ -64,7 +64,7 @@ Generate an image from a prompt, or edit an attached image.
 
 Run a deep research task that searches the web and returns a report with citations.
 
-- **`model`:** `gpt-6-astra` (default), `gpt-6.1-sol`, `gpt-6-sol`, `gpt-5.6-sol`, `gpt-5.5` or `gpt-5.5-pro`.
+- **`model`:** `gpt-6.2-astra` (default), `gpt-6.2-sol`, `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6-sol`, `gpt-5.6-sol`, `gpt-5.5` or `gpt-5.5-pro`.
 - **`file_search` / `code_interpreter`:** Also search your vector stores, or let the model run code (default: off).
 
 ### `/openai-tools tts`
@@ -180,7 +180,7 @@ Configure named presets in `OPENAI_MCP_PRESETS_JSON` or `OPENAI_MCP_PRESETS_PATH
 }
 ```
 
-Connector presets (`kind: "connector"`) don't work on GPT-6 Astra / Sol / Luna or GPT-6.1 Sol, and the bot refuses them there before sending the request. Use a `remote_mcp` preset or a GPT-5.6 or earlier model instead.
+Connector presets (`kind: "connector"`) don't work on GPT-6, GPT-6.1 or GPT-6.2 models, and the bot refuses them there before sending the request. Use a `remote_mcp` preset or a GPT-5.6 or earlier model instead.
 
 Define presets only for servers you trust: the model can send conversation content to any server it calls.
 
